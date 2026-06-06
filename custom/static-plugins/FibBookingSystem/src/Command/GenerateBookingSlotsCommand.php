@@ -66,8 +66,10 @@ class GenerateBookingSlotsCommand extends Command
             ->addOption('weekdays', null, InputOption::VALUE_REQUIRED, 'Comma-separated weekdays (Mon..Sun); default: all');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    protected function execute(
+        InputInterface $input,
+        OutputInterface $output,
+    ): int {
         $io = new SymfonyStyle($input, $output);
         $context = Context::createDefaultContext();
 
@@ -138,8 +140,10 @@ class GenerateBookingSlotsCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function resolveResource(string $identifier, Context $context): ?string
-    {
+    private function resolveResource(
+        string $identifier,
+        Context $context,
+    ): ?string {
         if ($identifier === '') {
             return null;
         }
@@ -221,15 +225,19 @@ class GenerateBookingSlotsCommand extends Command
         return $parsed === [] ? null : $parsed;
     }
 
-    private static function stringOption(InputInterface $input, string $name): string
-    {
+    private static function stringOption(
+        InputInterface $input,
+        string $name,
+    ): string {
         $value = $input->getOption($name);
 
         return is_string($value) ? $value : '';
     }
 
-    private static function intOption(InputInterface $input, string $name): int
-    {
+    private static function intOption(
+        InputInterface $input,
+        string $name,
+    ): int {
         $value = $input->getOption($name);
 
         return is_numeric($value) ? (int) $value : 0;

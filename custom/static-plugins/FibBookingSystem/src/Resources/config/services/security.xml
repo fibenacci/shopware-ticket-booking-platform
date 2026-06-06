@@ -1,0 +1,61 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Token encryption and the rate-limiter family. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Core\Domain\Security\TokenCipher">
+            <argument>%kernel.secret%</argument>
+        </service>
+        <service id="fib_booking.rate_limiter.storage" class="Symfony\Component\RateLimiter\Storage\CacheStorage">
+            <argument type="service" id="cache.app"/>
+        </service>
+        <service id="fib_booking.rate_limiter.read" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_read</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">120</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+        <service id="fib_booking.rate_limiter.write" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_write</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">30</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+        <service id="fib_booking.rate_limiter.wallet" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_wallet</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">20</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+        <service id="fib_booking.rate_limiter.scan" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_scan</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">120</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter">
+            <argument type="service" id="fib_booking.rate_limiter.read"/>
+            <argument type="service" id="fib_booking.rate_limiter.write"/>
+            <argument type="service" id="fib_booking.rate_limiter.wallet"/>
+            <argument type="service" id="fib_booking.rate_limiter.scan"/>
+        </service>
+    </services>
+</container>

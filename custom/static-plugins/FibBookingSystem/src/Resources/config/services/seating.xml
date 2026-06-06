@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Seat maps: claims, read model and live-update publisher. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Core\Domain\Seating\SeatClaimService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Seating\SeatmapReadService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher">
+            <argument type="service" id="mercure.hub.default"/>
+            <argument type="service" id="logger"/>
+        </service>
+    </services>
+</container>

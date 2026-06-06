@@ -15,5 +15,9 @@ abstract class AbstractBookingSeatmapRoute
 {
     abstract public function getDecorated(): AbstractBookingSeatmapRoute;
 
-    abstract public function load(string $slotId, Request $request, SalesChannelContext $context): BookingSeatmapRouteResponse;
+    abstract public function load(
+        string $slotId,
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingSeatmapRouteResponse;
 }

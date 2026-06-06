@@ -86,8 +86,11 @@ class ReservationExpirationTest extends TestCase
         );
     }
 
-    private function seedReservation(string $bookingNumber, string $status, int $ageHours): string
-    {
+    private function seedReservation(
+        string $bookingNumber,
+        string $status,
+        int $ageHours,
+    ): string {
         $reservationId = Uuid::randomHex();
 
         $this->connection->executeStatement(

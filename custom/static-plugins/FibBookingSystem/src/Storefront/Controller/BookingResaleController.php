@@ -57,8 +57,10 @@ class BookingResaleController extends StorefrontController
         defaults: ['_loginRequired' => true],
         methods: ['POST'],
     )]
-    public function buy(string $listingId, SalesChannelContext $context): Response
-    {
+    public function buy(
+        string $listingId,
+        SalesChannelContext $context,
+    ): Response {
         if (!Uuid::isValid($listingId)) {
             throw new NotFoundHttpException();
         }
@@ -79,8 +81,11 @@ class BookingResaleController extends StorefrontController
         defaults: ['_loginRequired' => true, '_noStore' => true],
         methods: ['POST'],
     )]
-    public function sell(string $ticketId, Request $request, SalesChannelContext $context): Response
-    {
+    public function sell(
+        string $ticketId,
+        Request $request,
+        SalesChannelContext $context,
+    ): Response {
         $customer = $this->requireCustomer($context);
 
         if (!Uuid::isValid($ticketId)) {
@@ -111,8 +116,10 @@ class BookingResaleController extends StorefrontController
         defaults: ['_loginRequired' => true, '_noStore' => true],
         methods: ['POST'],
     )]
-    public function cancel(string $listingId, SalesChannelContext $context): Response
-    {
+    public function cancel(
+        string $listingId,
+        SalesChannelContext $context,
+    ): Response {
         $customer = $this->requireCustomer($context);
 
         if (!Uuid::isValid($listingId)) {

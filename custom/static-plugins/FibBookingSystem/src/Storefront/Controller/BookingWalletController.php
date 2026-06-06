@@ -55,8 +55,11 @@ class BookingWalletController extends StorefrontController
         defaults: ['_httpCache' => false],
         methods: ['GET'],
     )]
-    public function applePass(string $ticketId, Request $request, SalesChannelContext $context): Response
-    {
+    public function applePass(
+        string $ticketId,
+        Request $request,
+        SalesChannelContext $context,
+    ): Response {
         $data = $this->validateSignedRequest(WalletPassService::PROVIDER_APPLE, $ticketId, $request, $context);
 
         if (!$this->walletService->isAppleAvailable()) {
@@ -77,8 +80,11 @@ class BookingWalletController extends StorefrontController
         defaults: ['_httpCache' => false],
         methods: ['GET'],
     )]
-    public function googlePass(string $ticketId, Request $request, SalesChannelContext $context): Response
-    {
+    public function googlePass(
+        string $ticketId,
+        Request $request,
+        SalesChannelContext $context,
+    ): Response {
         $data = $this->validateSignedRequest(WalletPassService::PROVIDER_GOOGLE, $ticketId, $request, $context);
 
         if (!$this->walletService->isGoogleAvailable()) {
@@ -135,8 +141,10 @@ class BookingWalletController extends StorefrontController
     /**
      * @return list<array{ticketId: string, ticketNumber: string, status: string, hasWalletToken: bool, bookingNumber: string, startsAt: string|null, endsAt: string|null, quantity: int, resourceName: string}>
      */
-    private function fetchCustomerTickets(string $customerId, SalesChannelContext $context): array
-    {
+    private function fetchCustomerTickets(
+        string $customerId,
+        SalesChannelContext $context,
+    ): array {
         $criteria = new Criteria();
         $criteria->addFilter(new OrFilter([
             new EqualsFilter('ownerCustomerId', $customerId),

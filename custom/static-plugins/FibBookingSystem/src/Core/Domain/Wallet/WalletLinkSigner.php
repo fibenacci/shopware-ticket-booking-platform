@@ -26,13 +26,20 @@ class WalletLinkSigner
         $this->key = hash_hkdf('sha256', $appSecret, 32, 'fib-booking-wallet-link');
     }
 
-    public function sign(string $provider, string $ticketId, int $expiresAt): string
-    {
+    public function sign(
+        string $provider,
+        string $ticketId,
+        int $expiresAt,
+    ): string {
         return hash_hmac('sha256', $this->payload($provider, $ticketId, $expiresAt), $this->key);
     }
 
-    public function verify(string $provider, string $ticketId, int $expiresAt, string $signature): bool
-    {
+    public function verify(
+        string $provider,
+        string $ticketId,
+        int $expiresAt,
+        string $signature,
+    ): bool {
         if ($expiresAt < time()) {
             return false;
         }
@@ -44,8 +51,11 @@ class WalletLinkSigner
         return hash_equals($this->sign($provider, $ticketId, $expiresAt), $signature);
     }
 
-    private function payload(string $provider, string $ticketId, int $expiresAt): string
-    {
+    private function payload(
+        string $provider,
+        string $ticketId,
+        int $expiresAt,
+    ): string {
         return sprintf('wallet|%s|%s|%d', $provider, strtolower($ticketId), $expiresAt);
     }
 }

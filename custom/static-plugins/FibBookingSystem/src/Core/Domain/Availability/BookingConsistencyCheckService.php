@@ -133,8 +133,10 @@ class BookingConsistencyCheckService
     /**
      * @return Violation|null
      */
-    private function sweepResource(string $resourceIdHex, int $capacity): ?array
-    {
+    private function sweepResource(
+        string $resourceIdHex,
+        int $capacity,
+    ): ?array {
         /** @var list<array{starts_at: string, ends_at: string, quantity: int|numeric-string}> $windows */
         $windows = $this->connection->fetchAllAssociative(
             <<<'SQL'

@@ -93,8 +93,10 @@ class BookingResaleService
         return $listingId;
     }
 
-    public function cancelListing(string $listingId, string $sellerCustomerId): void
-    {
+    public function cancelListing(
+        string $listingId,
+        string $sellerCustomerId,
+    ): void {
         $seller = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT LOWER(HEX(seller_customer_id)) FROM fib_booking_listing
@@ -158,8 +160,11 @@ class BookingResaleService
     /**
      * @param ListableRow $ticket
      */
-    private function assertListable(array $ticket, string $sellerCustomerId, float $askPrice): void
-    {
+    private function assertListable(
+        array $ticket,
+        string $sellerCustomerId,
+        float $askPrice,
+    ): void {
         if ($ticket['owner_customer_id'] === null || $ticket['owner_customer_id'] !== strtolower($sellerCustomerId)) {
             throw BookingResaleException::ticketNotListable('you do not own this ticket');
         }
@@ -211,8 +216,10 @@ class BookingResaleService
      *
      * @param ListableRow $ticket
      */
-    private function assertPriceCap(array $ticket, float $askPrice): void
-    {
+    private function assertPriceCap(
+        array $ticket,
+        float $askPrice,
+    ): void {
         $raw = $this->systemConfig->get('FibBookingSystem.config.resaleMaxFactor');
         $factor = is_numeric($raw) ? max(0.0, (float) $raw) : 0.0;
 

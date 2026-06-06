@@ -34,8 +34,10 @@ class BookingHoldRoute extends AbstractBookingHoldRoute
         defaults: ['_httpCache' => false],
         methods: ['POST'],
     )]
-    public function create(Request $request, SalesChannelContext $context): BookingHoldRouteResponse
-    {
+    public function create(
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingHoldRouteResponse {
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
 
         $payload = BookingRequestParser::payload($request);

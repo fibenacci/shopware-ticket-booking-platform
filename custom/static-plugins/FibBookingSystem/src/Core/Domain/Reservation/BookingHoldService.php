@@ -33,8 +33,10 @@ class BookingHoldService
     ) {
     }
 
-    public function createHold(BookingHoldRequest $request, Context $context): BookingHold
-    {
+    public function createHold(
+        BookingHoldRequest $request,
+        Context $context,
+    ): BookingHold {
         return $this->connection->transactional(function () use ($request, $context): BookingHold {
             $seatingMode = $this->lockResource($request->resourceId);
             $this->assertHoldQuota($request->customerId);
@@ -84,8 +86,10 @@ class BookingHoldService
      * authoritative guard — the pool check is skipped on purpose, see
      * docs/SEATING_PLAN.md.
      */
-    private function assertSeatingPreconditions(string $seatingMode, BookingHoldRequest $request): void
-    {
+    private function assertSeatingPreconditions(
+        string $seatingMode,
+        BookingHoldRequest $request,
+    ): void {
         if ($seatingMode === SeatingMode::SEATMAP) {
             if ($request->seatIds === []) {
                 throw FibBookingException::seatSelectionInvalid('this resource requires picking seats');

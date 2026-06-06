@@ -129,8 +129,12 @@ class BookingStatisticsServiceTest extends TestCase
         );
     }
 
-    private function seedReservation(string $id, string $bookingNumber, int $quantity, string $createdAt): void
-    {
+    private function seedReservation(
+        string $id,
+        string $bookingNumber,
+        int $quantity,
+        string $createdAt,
+    ): void {
         $this->connection->executeStatement(
             <<<'SQL'
                 INSERT INTO fib_booking_reservation (id, resource_id, booking_number, starts_at, ends_at, quantity, status, created_at)
@@ -146,14 +150,19 @@ class BookingStatisticsServiceTest extends TestCase
         );
     }
 
-    private function seedScanPair(string $checkInAt, string $checkOutAt): void
-    {
+    private function seedScanPair(
+        string $checkInAt,
+        string $checkOutAt,
+    ): void {
         $this->seedScanLog('check_in', 'valid', $checkInAt);
         $this->seedScanLog('check_out', 'checked_out', $checkOutAt);
     }
 
-    private function seedScanLog(string $direction, string $verdict, string $createdAt): void
-    {
+    private function seedScanLog(
+        string $direction,
+        string $verdict,
+        string $createdAt,
+    ): void {
         $this->connection->executeStatement(
             <<<'SQL'
                 INSERT INTO fib_booking_scan_log (id, ticket_id, verdict, direction, token_fingerprint, scanned_by, source, created_at)

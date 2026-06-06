@@ -34,8 +34,10 @@ class SeedDemoDataCommand extends Command
         $this->addOption('skip-reservation', null, InputOption::VALUE_NONE, 'Do not create the demo reservation + ticket');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    protected function execute(
+        InputInterface $input,
+        OutputInterface $output,
+    ): int {
         $io = new SymfonyStyle($input, $output);
         $io->title('FIB Booking demo data');
 

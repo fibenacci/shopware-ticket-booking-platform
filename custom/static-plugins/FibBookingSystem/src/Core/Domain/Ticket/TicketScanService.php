@@ -117,8 +117,10 @@ class TicketScanService
     /**
      * @param TicketRow|false $ticket
      */
-    private function resolveCheckInVerdict(array|false $ticket, Context $context): TicketScanResult
-    {
+    private function resolveCheckInVerdict(
+        array|false $ticket,
+        Context $context,
+    ): TicketScanResult {
         if ($ticket === false) {
             return new TicketScanResult(TicketScanResult::NOT_FOUND);
         }
@@ -161,8 +163,11 @@ class TicketScanService
      *
      * @param TicketRow $ticket
      */
-    private function acceptEntry(array $ticket, Context $context, bool $transition): TicketScanResult
-    {
+    private function acceptEntry(
+        array $ticket,
+        Context $context,
+        bool $transition,
+    ): TicketScanResult {
         if ($this->hasReachedDailyLimit($ticket)) {
             return new TicketScanResult(TicketScanResult::ENTRY_LIMIT_REACHED, $ticket['ticket_number'], $ticket['booking_number'], seatLabel: $ticket['seat_label']);
         }
@@ -228,8 +233,10 @@ class TicketScanService
      *
      * @param TicketRow $ticket
      */
-    private function activateFirstUse(array $ticket, Context $context): void
-    {
+    private function activateFirstUse(
+        array $ticket,
+        Context $context,
+    ): void {
         if ($ticket['validity_anchor'] !== ValidityAnchor::FIRST_USE
             || $ticket['valid_from'] !== null
             || !is_string($ticket['validity_duration'])
@@ -254,8 +261,10 @@ class TicketScanService
      *
      * @param TicketRow $ticket
      */
-    private function resolveExpiredVerdict(array $ticket, Context $context): ?TicketScanResult
-    {
+    private function resolveExpiredVerdict(
+        array $ticket,
+        Context $context,
+    ): ?TicketScanResult {
         $isExpired = $ticket['expires_at'] !== null
             && UtcDateTime::parse($ticket['expires_at']) < UtcDateTime::now();
 
@@ -276,8 +285,10 @@ class TicketScanService
     /**
      * @param TicketRow|false $ticket
      */
-    private function resolveCheckOutVerdict(array|false $ticket, Context $context): TicketScanResult
-    {
+    private function resolveCheckOutVerdict(
+        array|false $ticket,
+        Context $context,
+    ): TicketScanResult {
         if ($ticket === false) {
             return new TicketScanResult(TicketScanResult::NOT_FOUND, direction: ScanDirection::CHECK_OUT);
         }
@@ -322,15 +333,24 @@ class TicketScanService
      *
      * @param array<string, mixed> $update
      */
-    private function updateTicket(array $update, Context $context): void
-    {
+    private function updateTicket(
+        array $update,
+        Context $context,
+    ): void {
         $context->scope(Context::SYSTEM_SCOPE, function (Context $systemContext) use ($update): void {
             $this->ticketRepository->update([$update], $systemContext);
         });
     }
 
-    private function logAttempt(Context $context, TicketScanResult $result, ?string $ticketIdBytes, string $tokenHash, ?string $scannedBy, string $source, ?string $gate): void
-    {
+    private function logAttempt(
+        Context $context,
+        TicketScanResult $result,
+        ?string $ticketIdBytes,
+        string $tokenHash,
+        ?string $scannedBy,
+        string $source,
+        ?string $gate,
+    ): void {
         // DAL write — shares the connection, so it stays inside the
         // FOR UPDATE transaction scope above. SYSTEM_SCOPE for the same
         // reason as updateTicket(): the audit row is an internal effect of

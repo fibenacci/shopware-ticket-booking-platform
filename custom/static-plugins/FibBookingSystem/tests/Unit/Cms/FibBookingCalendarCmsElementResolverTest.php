@@ -111,8 +111,11 @@ class FibBookingCalendarCmsElementResolverTest extends TestCase
         static::assertNull($packages[1]['name']);
     }
 
-    private function createConfig(string $productId, string $productNumber, ?string $name): ProductBookingConfigEntity
-    {
+    private function createConfig(
+        string $productId,
+        string $productNumber,
+        ?string $name,
+    ): ProductBookingConfigEntity {
         $product = new ProductEntity();
         $product->setUniqueIdentifier($productId);
         $product->setId($productId);

@@ -65,8 +65,11 @@ final class BookingTicketRenderer extends AbstractDocumentRenderer
         return self::TYPE;
     }
 
-    public function render(array $operations, Context $context, DocumentRendererConfig $rendererConfig): RendererResult
-    {
+    public function render(
+        array $operations,
+        Context $context,
+        DocumentRendererConfig $rendererConfig,
+    ): RendererResult {
         $result = new RendererResult();
 
         $ids = \array_map(static fn (DocumentGenerateOperation $operation) => $operation->getOrderId(), $operations);
@@ -159,8 +162,10 @@ final class BookingTicketRenderer extends AbstractDocumentRenderer
     /**
      * @return list<array{number: string, status: string, issuedAt: ?DateTimeInterface, bookingNumber: ?string, resourceName: ?string, startsAt: ?DateTimeInterface, endsAt: ?DateTimeInterface, qrCodeDataUri: ?string}>
      */
-    private function loadTickets(string $orderId, Context $context): array
-    {
+    private function loadTickets(
+        string $orderId,
+        Context $context,
+    ): array {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('reservation.orderId', $orderId));
         $criteria->addFilter(new EqualsAnyFilter('status', ['issued', 'sent', 'scanned']));
@@ -219,8 +224,10 @@ final class BookingTicketRenderer extends AbstractDocumentRenderer
         return $rows;
     }
 
-    private function buildQrCodeDataUri(BookingTicketEntity $ticket, ?string $cipher): ?string
-    {
+    private function buildQrCodeDataUri(
+        BookingTicketEntity $ticket,
+        ?string $cipher,
+    ): ?string {
         if ($cipher === null || $cipher === '') {
             return null;
         }

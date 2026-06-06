@@ -114,8 +114,10 @@ class FibBookingException extends HttpException
         );
     }
 
-    public static function invalidPayload(string $field, string $reason): self
-    {
+    public static function invalidPayload(
+        string $field,
+        string $reason,
+    ): self {
         return new self(
             Response::HTTP_BAD_REQUEST,
             self::INVALID_PAYLOAD,

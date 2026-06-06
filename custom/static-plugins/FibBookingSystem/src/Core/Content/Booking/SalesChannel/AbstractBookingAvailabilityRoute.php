@@ -15,5 +15,8 @@ abstract class AbstractBookingAvailabilityRoute
 {
     abstract public function getDecorated(): AbstractBookingAvailabilityRoute;
 
-    abstract public function check(Request $request, SalesChannelContext $context): BookingAvailabilityRouteResponse;
+    abstract public function check(
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingAvailabilityRouteResponse;
 }

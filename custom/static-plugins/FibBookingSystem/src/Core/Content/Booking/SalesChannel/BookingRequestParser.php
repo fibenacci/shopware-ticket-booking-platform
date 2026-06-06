@@ -50,8 +50,10 @@ final class BookingRequestParser
     /**
      * @param array<string, mixed> $payload
      */
-    public static function uuid(array $payload, string $field): string
-    {
+    public static function uuid(
+        array $payload,
+        string $field,
+    ): string {
         $value = $payload[$field] ?? null;
         $normalized = is_string($value) ? strtolower($value) : null;
 
@@ -71,8 +73,10 @@ final class BookingRequestParser
      *
      * @param array<string, mixed> $payload
      */
-    public static function dateTime(array $payload, string $field): DateTimeInterface
-    {
+    public static function dateTime(
+        array $payload,
+        string $field,
+    ): DateTimeInterface {
         $value = $payload[$field] ?? null;
 
         if (!is_string($value) || $value === '') {
@@ -93,8 +97,11 @@ final class BookingRequestParser
      *
      * @return list<string> lowercase hex UUIDs
      */
-    public static function optionalUuidList(array $payload, string $field, int $maxItems = 100): array
-    {
+    public static function optionalUuidList(
+        array $payload,
+        string $field,
+        int $maxItems = 100,
+    ): array {
         $value = $payload[$field] ?? null;
 
         if ($value === null) {
@@ -122,8 +129,10 @@ final class BookingRequestParser
     /**
      * @param array<string, mixed> $payload
      */
-    public static function positiveInt(array $payload, string $field): int
-    {
+    public static function positiveInt(
+        array $payload,
+        string $field,
+    ): int {
         $value = $payload[$field] ?? null;
 
         if (!is_int($value) || $value < 1) {

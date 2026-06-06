@@ -52,8 +52,11 @@ class TicketTransferService
      *                                        ticket level while the reservation (capacity) stays untouched;
      *                                        null re-issues for the current owner (e.g. lost-ticket flows)
      */
-    public function transfer(string $ticketId, Context $context, ?string $newOwnerCustomerId = null): BookingTicket
-    {
+    public function transfer(
+        string $ticketId,
+        Context $context,
+        ?string $newOwnerCustomerId = null,
+    ): BookingTicket {
         return $this->connection->transactional(function () use ($ticketId, $context, $newOwnerCustomerId): BookingTicket {
             /** @var TransferableRow|false $ticket */
             $ticket = $this->connection->fetchAssociative(
@@ -102,8 +105,12 @@ class TicketTransferService
     /**
      * @param TransferableRow $ticket
      */
-    private function issueReplacement(array $ticket, string $oldTicketId, Context $context, ?string $newOwnerCustomerId): BookingTicket
-    {
+    private function issueReplacement(
+        array $ticket,
+        string $oldTicketId,
+        Context $context,
+        ?string $newOwnerCustomerId,
+    ): BookingTicket {
         $newTicketId = Uuid::randomHex();
         $ticketNumber = $this->numberRangeValueGenerator->getValue(
             BookingTicketService::NUMBER_RANGE_TYPE,

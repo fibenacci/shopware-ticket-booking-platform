@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Cart processors/factories and order/payment state routing. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
+        <service id="FibBookingSystem\Checkout\Cart\Resale\ResaleLineItemFactory">
+            <tag name="shopware.cart.line_item.factory"/>
+        </service>
+        <service id="FibBookingSystem\Checkout\Cart\Resale\ResaleCartProcessor">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingCartReader"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\Price\QuantityPriceCalculator"/>
+            <tag name="shopware.cart.collector"/>
+            <tag name="shopware.cart.processor" priority="4100"/>
+        </service>
+        <service id="FibBookingSystem\Checkout\Cart\BookingCartProcessor">
+            <argument type="service" id="fib_booking_hold.repository"/>
+            <argument type="service" id="fib_booking_product_config.repository"/>
+            <tag name="shopware.cart.processor" priority="4100"/>
+        </service>
+        <service id="FibBookingSystem\Checkout\Cart\BookingPassStartDateSubscriber">
+            <argument type="service" id="request_stack"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+        <service id="FibBookingSystem\Checkout\Order\BookingOrderPlacedSubscriber">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingPassReservationService"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+        <service id="FibBookingSystem\Checkout\Payment\BookingPaymentStateSubscriber">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ResaleSettlementService"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+    </services>
+</container>

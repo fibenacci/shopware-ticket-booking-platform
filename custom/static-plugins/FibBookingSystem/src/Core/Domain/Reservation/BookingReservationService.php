@@ -64,8 +64,10 @@ class BookingReservationService
     ) {
     }
 
-    public function convertOrderHolds(string $orderId, Context $context): int
-    {
+    public function convertOrderHolds(
+        string $orderId,
+        Context $context,
+    ): int {
         $converted = $this->connection->transactional(function () use ($orderId, $context): int {
             $criteria = new Criteria([$orderId]);
             $criteria->addAssociation('orderCustomer');
@@ -102,8 +104,10 @@ class BookingReservationService
         return $converted;
     }
 
-    public function confirmReservationsForOrder(string $orderId, Context $context): int
-    {
+    public function confirmReservationsForOrder(
+        string $orderId,
+        Context $context,
+    ): int {
         // Payment may legitimately arrive AFTER the pending-payment TTL
         // (prepayment takes days) — resurrect what the expiry task flipped,
         // as long as the window is still free.
@@ -127,8 +131,10 @@ class BookingReservationService
      * plain re-check is exact. A window that was given away in the meantime
      * stays lost: the operator gets an error log to re-book or refund.
      */
-    private function resurrectExpiredReservations(string $orderId, Context $context): void
-    {
+    private function resurrectExpiredReservations(
+        string $orderId,
+        Context $context,
+    ): void {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('orderId', $orderId));
         $criteria->addFilter(new EqualsFilter('status', 'expired'));
@@ -177,8 +183,10 @@ class BookingReservationService
         }
     }
 
-    public function confirmReservationsForOrderTransaction(string $orderTransactionId, Context $context): int
-    {
+    public function confirmReservationsForOrderTransaction(
+        string $orderTransactionId,
+        Context $context,
+    ): int {
         /** @var OrderTransactionEntity|null $transaction */
         $transaction = $this->orderTransactionRepository
             ->search(new Criteria([$orderTransactionId]), $context)
@@ -203,8 +211,11 @@ class BookingReservationService
      *
      * @return int number of reservations cancelled
      */
-    public function cancelReservationsForOrder(string $orderId, Context $context, string $reason): int
-    {
+    public function cancelReservationsForOrder(
+        string $orderId,
+        Context $context,
+        string $reason,
+    ): int {
         // One transaction: a cancelled reservation with a still-scannable
         // ticket (or vice versa) must not exist, not even transiently.
         $count = $this->connection->transactional(function () use ($orderId, $context): int {
@@ -250,8 +261,11 @@ class BookingReservationService
     /**
      * @see cancelReservationsForOrder — resolved via the transaction's order
      */
-    public function cancelReservationsForOrderTransaction(string $orderTransactionId, Context $context, string $reason): int
-    {
+    public function cancelReservationsForOrderTransaction(
+        string $orderTransactionId,
+        Context $context,
+        string $reason,
+    ): int {
         /** @var OrderTransactionEntity|null $transaction */
         $transaction = $this->orderTransactionRepository
             ->search(new Criteria([$orderTransactionId]), $context)
@@ -267,8 +281,10 @@ class BookingReservationService
     /**
      * @param list<string> $reservationIds
      */
-    private function confirmReservations(array $reservationIds, Context $context): int
-    {
+    private function confirmReservations(
+        array $reservationIds,
+        Context $context,
+    ): int {
         if ($reservationIds === []) {
             return 0;
         }
@@ -452,8 +468,12 @@ class BookingReservationService
      *
      * @param array{status: string, expires_at: string} $hold
      */
-    private function holdIsDead(array $hold, OrderEntity $order, OrderLineItemEntity $lineItem, string $holdId): bool
-    {
+    private function holdIsDead(
+        array $hold,
+        OrderEntity $order,
+        OrderLineItemEntity $lineItem,
+        string $holdId,
+    ): bool {
         if ($hold['status'] === 'active' && UtcDateTime::parse($hold['expires_at']) > UtcDateTime::now()) {
             return false;
         }
@@ -470,8 +490,10 @@ class BookingReservationService
         return true;
     }
 
-    private function hasReservationForHold(string $holdId, Context $context): bool
-    {
+    private function hasReservationForHold(
+        string $holdId,
+        Context $context,
+    ): bool {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('holdId', $holdId));
 

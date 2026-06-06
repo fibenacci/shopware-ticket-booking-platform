@@ -32,8 +32,10 @@ class ResaleLineItemFactory implements LineItemFactoryInterface
     /**
      * @param array<string, mixed> $data
      */
-    public function create(array $data, SalesChannelContext $context): LineItem
-    {
+    public function create(
+        array $data,
+        SalesChannelContext $context,
+    ): LineItem {
         $listingId = $data['referencedId'] ?? null;
 
         if (!is_string($listingId) || !Uuid::isValid($listingId)) {
@@ -54,8 +56,11 @@ class ResaleLineItemFactory implements LineItemFactoryInterface
     /**
      * @param array<string, mixed> $data
      */
-    public function update(LineItem $lineItem, array $data, SalesChannelContext $context): void
-    {
+    public function update(
+        LineItem $lineItem,
+        array $data,
+        SalesChannelContext $context,
+    ): void {
         throw FibBookingException::invalidPayload('lineItem', 'resale line items cannot be modified');
     }
 }

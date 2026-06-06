@@ -103,8 +103,11 @@ class BookingConsistencyCheckTest extends TestCase
         ));
     }
 
-    private function seedResource(string $resourceId, string $technicalName, int $capacity): void
-    {
+    private function seedResource(
+        string $resourceId,
+        string $technicalName,
+        int $capacity,
+    ): void {
         $this->connection->executeStatement(
             <<<'SQL'
                 INSERT INTO fib_booking_resource (id, name, technical_name, capacity, active, created_at)
@@ -118,8 +121,10 @@ class BookingConsistencyCheckTest extends TestCase
         );
     }
 
-    private function seedSlot(string $resourceId, int $capacity): void
-    {
+    private function seedSlot(
+        string $resourceId,
+        int $capacity,
+    ): void {
         $this->connection->executeStatement(
             <<<'SQL'
                 INSERT INTO fib_booking_slot (id, resource_id, starts_at, ends_at, capacity, active, created_at)

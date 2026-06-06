@@ -64,8 +64,10 @@ class BookingPassStartDateSubscriberTest extends TestCase
         static::assertFalse($lineItem->hasPayloadValue(BookingPassStartDateSubscriber::PAYLOAD_KEY));
     }
 
-    private function dispatchWithRequestValue(string $value, string $lineItemType = LineItem::PRODUCT_LINE_ITEM_TYPE): LineItem
-    {
+    private function dispatchWithRequestValue(
+        string $value,
+        string $lineItemType = LineItem::PRODUCT_LINE_ITEM_TYPE,
+    ): LineItem {
         $requestStack = new RequestStack();
         $requestStack->push(new Request(request: [BookingPassStartDateSubscriber::PAYLOAD_KEY => $value]));
 

@@ -1,0 +1,49 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- DAL entity definitions and the product extension. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Core\Content\BookingResource\BookingResourceDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_resource"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingReservation\BookingReservationDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_reservation"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingTicket\BookingTicketDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_ticket"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_product_config"/>
+        </service>
+        <service id="FibBookingSystem\Extension\Content\Product\ProductBookingConfigExtension">
+            <tag name="shopware.entity.extension"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingHold\BookingHoldDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_hold"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingSeat\BookingSeatDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_seat"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingSeatClaim\BookingSeatClaimDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_seat_claim"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingListing\BookingListingDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_listing"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingBid\BookingBidDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_bid"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingScanLog\BookingScanLogDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_scan_log"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\BookingSlot\BookingSlotDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_slot"/>
+        </service>
+    </services>
+</container>

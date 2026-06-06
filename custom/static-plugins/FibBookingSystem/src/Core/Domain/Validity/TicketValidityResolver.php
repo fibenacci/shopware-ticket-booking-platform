@@ -23,8 +23,11 @@ class TicketValidityResolver
      * @param DateTimeImmutable|null $customerStart start date chosen by the customer (required for the `customer` anchor)
      * @param DateTimeImmutable|null $now           injectable clock for tests
      */
-    public function resolve(?array $config, ?DateTimeImmutable $customerStart = null, ?DateTimeImmutable $now = null): TicketValidity
-    {
+    public function resolve(
+        ?array $config,
+        ?DateTimeImmutable $customerStart = null,
+        ?DateTimeImmutable $now = null,
+    ): TicketValidity {
         $entryPolicy = $this->resolveEntryPolicy($config['entry_policy'] ?? null);
         $maxEntriesPerDay = $this->resolveMaxEntriesPerDay($config['max_entries_per_day'] ?? null);
         $mode = $config['validity_mode'] ?? ValidityMode::SLOT;

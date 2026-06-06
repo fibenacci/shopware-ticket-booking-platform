@@ -33,8 +33,11 @@ class ReservationSeeder
     /**
      * @return array{0: string, 1: string|null}
      */
-    public function seedReservationWithTicket(SeedSection $reservation, string $resourceId, Context $context): array
-    {
+    public function seedReservationWithTicket(
+        SeedSection $reservation,
+        string $resourceId,
+        Context $context,
+    ): array {
         $bookingNumber = $reservation->string('bookingNumber');
 
         $existingReservationId = $this->reservationRepository->searchIds(

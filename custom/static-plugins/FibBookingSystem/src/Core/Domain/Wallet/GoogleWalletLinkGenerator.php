@@ -99,8 +99,10 @@ class GoogleWalletLinkGenerator
     /**
      * @param array<string, mixed> $claims
      */
-    private function signJwt(array $claims, string $privateKeyPem): string
-    {
+    private function signJwt(
+        array $claims,
+        string $privateKeyPem,
+    ): string {
         $segments = [
             $this->base64UrlEncode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'], JSON_THROW_ON_ERROR)),
             $this->base64UrlEncode(json_encode($claims, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)),

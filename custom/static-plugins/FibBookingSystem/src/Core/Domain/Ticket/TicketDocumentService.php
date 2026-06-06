@@ -41,8 +41,10 @@ class TicketDocumentService
      * duplicate-number check, which is answered with the existing document
      * instead of a silent null. Every other failure is logged.
      */
-    public function generateForOrder(string $orderId, Context $context): ?string
-    {
+    public function generateForOrder(
+        string $orderId,
+        Context $context,
+    ): ?string {
         $operation = new DocumentGenerateOperation($orderId);
 
         $result = $this->documentGenerator->generate(
@@ -80,8 +82,10 @@ class TicketDocumentService
      * Returns the newest ticket document of the order as rendered PDF —
      * generating it first when none exists yet.
      */
-    public function getOrderTicketPdf(string $orderId, Context $context): ?RenderedDocument
-    {
+    public function getOrderTicketPdf(
+        string $orderId,
+        Context $context,
+    ): ?RenderedDocument {
         $documentId = $this->findNewestDocumentId($orderId, $context) ?? $this->generateForOrder($orderId, $context);
 
         if ($documentId === null) {
@@ -91,8 +95,10 @@ class TicketDocumentService
         return $this->documentGenerator->readDocument($documentId, $context);
     }
 
-    private function findNewestDocumentId(string $orderId, Context $context): ?string
-    {
+    private function findNewestDocumentId(
+        string $orderId,
+        Context $context,
+    ): ?string {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('orderId', $orderId));
         $criteria->addFilter(new EqualsFilter('documentType.technicalName', BookingTicketRenderer::TYPE));

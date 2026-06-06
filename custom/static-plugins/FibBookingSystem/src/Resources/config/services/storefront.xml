@@ -1,0 +1,110 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Store-API routes, storefront/admin-API controllers, CMS, rules and flows. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Cache\BookingCacheSubscriber">
+            <argument type="service" id="Shopware\Core\Framework\Adapter\Cache\CacheInvalidator"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+        <service id="FibBookingSystem\Storefront\Subscriber\ProductBookingConfigCriteriaSubscriber">
+            <tag name="kernel.event_subscriber"/>
+        </service>
+        <service id="FibBookingSystem\Rule\BookingLineItemInCartRule">
+            <tag name="shopware.rule.definition"/>
+        </service>
+        <service id="FibBookingSystem\Flow\Action\IssueBookingTicketAction">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <tag name="flow.action" key="action.fib_booking.issue_ticket"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\Cms\FibBookingCalendarCmsElementResolver">
+            <argument type="service" id="fib_booking_resource.repository"/>
+            <argument type="service" id="fib_booking_product_config.repository"/>
+            <tag name="shopware.cms.data_resolver"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingCalendarRoute" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\BookingCalendarService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingCalendarRoute"/>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingAvailabilityRoute" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingHoldRoute" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingAvailabilityRoute"/>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingHoldRoute"/>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingSeatmapRoute" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapReadService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingSeatmapRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingSeatmapRoute"/>
+        <service id="FibBookingSystem\Storefront\Controller\BookingApiController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute"/>
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute"/>
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute"/>
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingSeatmapRoute"/>
+            <argument type="service" id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Storefront\Controller\BookingWalletController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingReadService"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Storefront\Controller\BookingResaleController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\BookingResaleService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingReadService"/>
+            <argument type="service" id="FibBookingSystem\Checkout\Cart\Resale\ResaleLineItemFactory"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Api\Controller\BookingTicketScanController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketScanService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+        <service id="FibBookingSystem\Api\Controller\BookingStatisticsController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Statistics\BookingStatisticsService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+    </services>
+</container>

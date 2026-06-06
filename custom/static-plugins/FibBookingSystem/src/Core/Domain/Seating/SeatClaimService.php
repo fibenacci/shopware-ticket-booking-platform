@@ -34,8 +34,13 @@ class SeatClaimService
      *
      * @param list<string> $seatIds hex UUIDs
      */
-    public function claimSeatsForHold(string $holdId, string $resourceId, string $slotId, array $seatIds, int $quantity): void
-    {
+    public function claimSeatsForHold(
+        string $holdId,
+        string $resourceId,
+        string $slotId,
+        array $seatIds,
+        int $quantity,
+    ): void {
         $seatIds = array_values(array_unique($seatIds));
 
         if (count($seatIds) !== $quantity) {
@@ -76,8 +81,10 @@ class SeatClaimService
      *
      * @return list<string> affected slot ids (hex) — for live seat-map pushes
      */
-    public function bindHoldClaimsToReservation(string $holdId, string $reservationId): array
-    {
+    public function bindHoldClaimsToReservation(
+        string $holdId,
+        string $reservationId,
+    ): array {
         /** @var list<string> $slotIds */
         $slotIds = $this->connection->fetchFirstColumn(
             <<<'SQL'
@@ -161,8 +168,10 @@ class SeatClaimService
         return $labels;
     }
 
-    private function assertSlotBelongsToResource(string $slotId, string $resourceId): void
-    {
+    private function assertSlotBelongsToResource(
+        string $slotId,
+        string $resourceId,
+    ): void {
         $belongs = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT 1 FROM fib_booking_slot
@@ -182,8 +191,10 @@ class SeatClaimService
     /**
      * @param list<string> $seatIds hex UUIDs
      */
-    private function assertSeatsBelongToResource(array $seatIds, string $resourceId): void
-    {
+    private function assertSeatsBelongToResource(
+        array $seatIds,
+        string $resourceId,
+    ): void {
         $found = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT COUNT(*) FROM fib_booking_seat

@@ -132,8 +132,10 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         ], $context);
     }
 
-    private function fetchReservationMailData(string $reservationId, Context $context): ?BookingReservationEntity
-    {
+    private function fetchReservationMailData(
+        string $reservationId,
+        Context $context,
+    ): ?BookingReservationEntity {
         $criteria = new Criteria([$reservationId]);
         $criteria->addAssociation('customer');
 
@@ -150,8 +152,11 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
      *
      * @return array{appleUrl: string|null, googleUrl: string|null, accountUrl: string|null}
      */
-    private function buildWalletTemplateData(string $ticketId, ?string $salesChannelId, Context $context): array
-    {
+    private function buildWalletTemplateData(
+        string $ticketId,
+        ?string $salesChannelId,
+        Context $context,
+    ): array {
         $baseUrl = is_string($salesChannelId) ? $this->fetchSalesChannelBaseUrl($salesChannelId, $context) : null;
 
         if ($baseUrl === null) {
@@ -177,8 +182,10 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         ];
     }
 
-    private function fetchSalesChannelBaseUrl(string $salesChannelId, Context $context): ?string
-    {
+    private function fetchSalesChannelBaseUrl(
+        string $salesChannelId,
+        Context $context,
+    ): ?string {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('salesChannelId', $salesChannelId));
 

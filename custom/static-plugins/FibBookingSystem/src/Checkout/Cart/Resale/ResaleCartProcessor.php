@@ -46,8 +46,12 @@ class ResaleCartProcessor implements CartDataCollectorInterface, CartProcessorIn
     ) {
     }
 
-    public function collect(CartDataCollection $data, Cart $original, SalesChannelContext $context, CartBehavior $behavior): void
-    {
+    public function collect(
+        CartDataCollection $data,
+        Cart $original,
+        SalesChannelContext $context,
+        CartBehavior $behavior,
+    ): void {
         $listingIds = [];
         foreach ($original->getLineItems()->filterType(ResaleLineItemFactory::TYPE) as $lineItem) {
             if (is_string($lineItem->getReferencedId())) {
@@ -64,8 +68,13 @@ class ResaleCartProcessor implements CartDataCollectorInterface, CartProcessorIn
         }
     }
 
-    public function process(CartDataCollection $data, Cart $original, Cart $toCalculate, SalesChannelContext $context, CartBehavior $behavior): void
-    {
+    public function process(
+        CartDataCollection $data,
+        Cart $original,
+        Cart $toCalculate,
+        SalesChannelContext $context,
+        CartBehavior $behavior,
+    ): void {
         $lineItems = $original->getLineItems()->filterType(ResaleLineItemFactory::TYPE);
 
         if (\count($lineItems) === 0) {
@@ -103,8 +112,10 @@ class ResaleCartProcessor implements CartDataCollectorInterface, CartProcessorIn
     /**
      * @param CartRow|null $row
      */
-    private function rejectionReason(?array $row, ?string $buyerId): ?string
-    {
+    private function rejectionReason(
+        ?array $row,
+        ?string $buyerId,
+    ): ?string {
         if ($row === null || $row['status'] !== 'active' || $row['mode'] !== 'fixed_price') {
             return 'gone';
         }
@@ -123,8 +134,11 @@ class ResaleCartProcessor implements CartDataCollectorInterface, CartProcessorIn
     /**
      * @param CartRow $row
      */
-    private function priceAndLabel(LineItem $lineItem, array $row, SalesChannelContext $context): void
-    {
+    private function priceAndLabel(
+        LineItem $lineItem,
+        array $row,
+        SalesChannelContext $context,
+    ): void {
         // Tax-free by design (private C2C sale, platform without profit).
         $definition = new QuantityPriceDefinition($row['ask_price'], new TaxRuleCollection(), 1);
 

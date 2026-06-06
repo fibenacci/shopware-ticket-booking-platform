@@ -119,8 +119,10 @@ class SnippetCoverageTest extends TestCase
      *
      * @return list<string>
      */
-    private function flatten(array $data, string $prefix = ''): array
-    {
+    private function flatten(
+        array $data,
+        string $prefix = '',
+    ): array {
         $keys = [];
 
         foreach ($data as $key => $value) {

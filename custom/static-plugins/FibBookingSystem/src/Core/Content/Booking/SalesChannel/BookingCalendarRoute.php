@@ -33,8 +33,10 @@ class BookingCalendarRoute extends AbstractBookingCalendarRoute
         defaults: ['_httpCache' => false],
         methods: ['POST'],
     )]
-    public function load(Request $request, SalesChannelContext $context): BookingCalendarRouteResponse
-    {
+    public function load(
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingCalendarRouteResponse {
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, $request->getClientIp());
 
         $payload = BookingRequestParser::payload($request);

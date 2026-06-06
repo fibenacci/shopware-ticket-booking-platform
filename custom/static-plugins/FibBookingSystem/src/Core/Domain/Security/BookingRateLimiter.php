@@ -47,8 +47,10 @@ class BookingRateLimiter
     /**
      * @throws TooManyRequestsHttpException
      */
-    public function ensureAccepted(string $limiter, ?string $key): void
-    {
+    public function ensureAccepted(
+        string $limiter,
+        ?string $key,
+    ): void {
         $factory = $this->factories[$limiter] ?? null;
 
         if ($factory === null) {

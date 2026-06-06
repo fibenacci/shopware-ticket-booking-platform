@@ -36,8 +36,10 @@ class BookingSystemMigrationTest extends TestCase
         ));
     }
 
-    private static function assertTableExists(Connection $connection, string $tableName): void
-    {
+    private static function assertTableExists(
+        Connection $connection,
+        string $tableName,
+    ): void {
         static::assertSame($tableName, $connection->fetchOne('SHOW TABLES LIKE :tableName', [
             'tableName' => $tableName,
         ]));

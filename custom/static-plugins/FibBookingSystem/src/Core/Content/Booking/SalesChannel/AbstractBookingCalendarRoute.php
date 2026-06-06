@@ -16,5 +16,8 @@ abstract class AbstractBookingCalendarRoute
 {
     abstract public function getDecorated(): AbstractBookingCalendarRoute;
 
-    abstract public function load(Request $request, SalesChannelContext $context): BookingCalendarRouteResponse;
+    abstract public function load(
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingCalendarRouteResponse;
 }

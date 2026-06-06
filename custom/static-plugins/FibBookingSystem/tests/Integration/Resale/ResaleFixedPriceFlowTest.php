@@ -195,8 +195,11 @@ class ResaleFixedPriceFlowTest extends TestCase
         static::assertStringContainsString('login-required', (string) $cart->getErrors()->first()?->getId());
     }
 
-    private function calculatedCartFor(string $listingId, ?string $customerId, bool $guest = false): Cart
-    {
+    private function calculatedCartFor(
+        string $listingId,
+        ?string $customerId,
+        bool $guest = false,
+    ): Cart {
         $factory = new ResaleLineItemFactory();
         $processor = new ResaleCartProcessor(
             new ListingCartReader($this->connection),
@@ -432,8 +435,11 @@ class ResaleFixedPriceFlowTest extends TestCase
         );
     }
 
-    private function createCustomer(string $customerId, string $customerNumber, string $email): void
-    {
+    private function createCustomer(
+        string $customerId,
+        string $customerNumber,
+        string $email,
+    ): void {
         $channel = $this->connection->fetchAssociative(
             <<<'SQL'
                 SELECT LOWER(HEX(id)) AS id, LOWER(HEX(customer_group_id)) AS group_id, LOWER(HEX(language_id)) AS language_id

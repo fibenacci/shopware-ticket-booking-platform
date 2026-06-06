@@ -45,8 +45,10 @@ class ResaleSettlementService
     ) {
     }
 
-    public function settleForOrderTransaction(string $orderTransactionId, Context $context): int
-    {
+    public function settleForOrderTransaction(
+        string $orderTransactionId,
+        Context $context,
+    ): int {
         $orderId = $this->fetchOrderIdForTransaction($orderTransactionId);
 
         return $orderId !== null ? $this->settleForOrder($orderId, $context) : 0;
@@ -55,8 +57,10 @@ class ResaleSettlementService
     /**
      * @return int number of listings settled
      */
-    public function settleForOrder(string $orderId, Context $context): int
-    {
+    public function settleForOrder(
+        string $orderId,
+        Context $context,
+    ): int {
         $items = $this->fetchResaleOrderItems($orderId);
 
         if ($items === []) {
@@ -86,8 +90,10 @@ class ResaleSettlementService
         return $settled;
     }
 
-    public function revokeForOrderTransaction(string $orderTransactionId, string $reason): int
-    {
+    public function revokeForOrderTransaction(
+        string $orderTransactionId,
+        string $reason,
+    ): int {
         $orderId = $this->fetchOrderIdForTransaction($orderTransactionId);
 
         return $orderId !== null ? $this->revokeForOrder($orderId, $reason) : 0;
@@ -101,8 +107,10 @@ class ResaleSettlementService
      *
      * @return int number of tickets revoked
      */
-    public function revokeForOrder(string $orderId, string $reason): int
-    {
+    public function revokeForOrder(
+        string $orderId,
+        string $reason,
+    ): int {
         $revoked = $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE fib_booking_ticket ticket
@@ -134,8 +142,12 @@ class ResaleSettlementService
     /**
      * @param ResaleOrderItem $item
      */
-    private function settleListing(array $item, string $orderId, string $buyerCustomerId, Context $context): bool
-    {
+    private function settleListing(
+        array $item,
+        string $orderId,
+        string $buyerCustomerId,
+        Context $context,
+    ): bool {
         return $this->connection->transactional(function () use ($item, $orderId, $buyerCustomerId, $context): bool {
             /** @var array{ticket_id: string, status: string, sold_order_id: string|null}|false $listing */
             $listing = $this->connection->fetchAssociative(

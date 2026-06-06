@@ -18,8 +18,12 @@ class AvailabilityService
     {
     }
 
-    public function check(string $resourceId, DateTimeInterface $startsAt, DateTimeInterface $endsAt, int $quantity): AvailabilityResult
-    {
+    public function check(
+        string $resourceId,
+        DateTimeInterface $startsAt,
+        DateTimeInterface $endsAt,
+        int $quantity,
+    ): AvailabilityResult {
         if ($quantity < 1) {
             throw new InvalidArgumentException('Booking quantity must be greater than zero.');
         }
@@ -70,8 +74,11 @@ class AvailabilityService
         return is_numeric($capacity) ? (int) $capacity : null;
     }
 
-    private function fetchSlotCapacity(string $resourceBytes, DateTimeInterface $startsAt, DateTimeInterface $endsAt): ?int
-    {
+    private function fetchSlotCapacity(
+        string $resourceBytes,
+        DateTimeInterface $startsAt,
+        DateTimeInterface $endsAt,
+    ): ?int {
         $capacity = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT capacity FROM fib_booking_slot
@@ -100,8 +107,11 @@ class AvailabilityService
         );
     }
 
-    private function fetchReservedQuantity(string $resourceBytes, DateTimeInterface $startsAt, DateTimeInterface $endsAt): int
-    {
+    private function fetchReservedQuantity(
+        string $resourceBytes,
+        DateTimeInterface $startsAt,
+        DateTimeInterface $endsAt,
+    ): int {
         $holdQuantity = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT COALESCE(SUM(quantity), 0)

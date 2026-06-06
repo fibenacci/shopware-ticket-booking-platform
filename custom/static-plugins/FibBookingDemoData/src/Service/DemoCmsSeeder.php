@@ -34,8 +34,12 @@ class DemoCmsSeeder
      * with the package resource) and assigns it as the homepage of every
      * storefront sales channel's root category.
      */
-    public function seedHomepageWithCalendar(SeedSection $homepage, string $calendarResourceId, Context $context, ?string $cinemaResourceId = null): bool
-    {
+    public function seedHomepageWithCalendar(
+        SeedSection $homepage,
+        string $calendarResourceId,
+        Context $context,
+        ?string $cinemaResourceId = null,
+    ): bool {
         $pageId = SeedIds::stable('cms:homepage');
 
         $blocks = [
@@ -98,8 +102,12 @@ class DemoCmsSeeder
     /**
      * @return array<string, mixed>
      */
-    private function buildCalendarBlock(string $seedKey, int $position, string $resourceId, int $monthsAhead): array
-    {
+    private function buildCalendarBlock(
+        string $seedKey,
+        int $position,
+        string $resourceId,
+        int $monthsAhead,
+    ): array {
         return [
             'id' => SeedIds::stable($seedKey),
             'type' => 'fib-booking-calendar',
@@ -125,8 +133,10 @@ class DemoCmsSeeder
      *
      * @return array<string, mixed>
      */
-    private function buildScannerLinkBlock(SeedSection $scannerLink, int $position = 1): array
-    {
+    private function buildScannerLinkBlock(
+        SeedSection $scannerLink,
+        int $position = 1,
+    ): array {
         $url = htmlspecialchars($scannerLink->string('url', '/scanner/'), \ENT_QUOTES);
         $headline = htmlspecialchars($scannerLink->string('headline', 'Operator area'), \ENT_QUOTES);
         $label = htmlspecialchars($scannerLink->string('label', 'Open ticket scanner'), \ENT_QUOTES);

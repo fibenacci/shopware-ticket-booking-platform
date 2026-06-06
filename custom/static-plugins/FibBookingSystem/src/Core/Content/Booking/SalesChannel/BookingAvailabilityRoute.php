@@ -31,8 +31,10 @@ class BookingAvailabilityRoute extends AbstractBookingAvailabilityRoute
         defaults: ['_httpCache' => false],
         methods: ['POST'],
     )]
-    public function check(Request $request, SalesChannelContext $context): BookingAvailabilityRouteResponse
-    {
+    public function check(
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingAvailabilityRouteResponse {
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, $request->getClientIp());
 
         $payload = BookingRequestParser::payload($request);

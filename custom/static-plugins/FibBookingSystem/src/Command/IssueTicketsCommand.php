@@ -47,8 +47,10 @@ class IssueTicketsCommand extends Command
         $this->addArgument('orderNumber', InputArgument::REQUIRED, 'Order number (e.g. 10001)');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    protected function execute(
+        InputInterface $input,
+        OutputInterface $output,
+    ): int {
         $io = new SymfonyStyle($input, $output);
         $context = Context::createCLIContext();
         $orderNumber = $input->getArgument('orderNumber');

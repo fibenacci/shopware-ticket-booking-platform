@@ -49,8 +49,10 @@ class CatalogSeeder
     /**
      * @return CatalogResult
      */
-    public function seedCatalog(SeedSection $seeds, Context $context): array
-    {
+    public function seedCatalog(
+        SeedSection $seeds,
+        Context $context,
+    ): array {
         $taxId = $this->fetchTaxId($context);
         $salesChannelIds = $this->fetchStorefrontSalesChannelIds($context);
 
@@ -92,8 +94,10 @@ class CatalogSeeder
         ];
     }
 
-    private function upsertResource(SeedSection $resource, Context $context): string
-    {
+    private function upsertResource(
+        SeedSection $resource,
+        Context $context,
+    ): string {
         // Reuse an existing resource with the same technical name (unique key)
         // so id-scheme changes between seeder versions never collide.
         $existingId = $this->resourceRepository->searchIds(
@@ -124,8 +128,12 @@ class CatalogSeeder
      * Cinema-style rectangle: rows × seatsPerRow, row labels A, B, C, …
      * Idempotent via stable ids — re-seeding updates in place.
      */
-    private function seedSeatGrid(SeedSection $seating, string $resourceKey, string $resourceId, Context $context): void
-    {
+    private function seedSeatGrid(
+        SeedSection $seating,
+        string $resourceKey,
+        string $resourceId,
+        Context $context,
+    ): void {
         $rows = max(1, min(26, $seating->int('rows', 5)));
         $seatsPerRow = max(1, $seating->int('seatsPerRow', 8));
 
@@ -154,8 +162,14 @@ class CatalogSeeder
      *
      * @return ProductSummary
      */
-    private function upsertBookableProduct(SeedSection $product, string $resourceId, string $taxId, array $salesChannelIds, Context $context, ?int $slotMinutes = null): array
-    {
+    private function upsertBookableProduct(
+        SeedSection $product,
+        string $resourceId,
+        string $taxId,
+        array $salesChannelIds,
+        Context $context,
+        ?int $slotMinutes = null,
+    ): array {
         $productNumber = $product->string('productNumber');
         $grossPrice = $product->float('grossPrice');
 
@@ -240,8 +254,12 @@ class CatalogSeeder
      *
      * @return array{0: list<ProductSummary>, 1: int}
      */
-    private function seedPackages(SeedSection $packages, string $taxId, array $salesChannelIds, Context $context): array
-    {
+    private function seedPackages(
+        SeedSection $packages,
+        string $taxId,
+        array $salesChannelIds,
+        Context $context,
+    ): array {
         $resourceId = $this->upsertResource($packages->section('resource'), $context);
         $slots = $packages->section('slots');
         $slotMinutes = $slots->int('durationMinutes', 120);
@@ -256,8 +274,11 @@ class CatalogSeeder
         return [$packageProducts, $slotCount];
     }
 
-    private function seedSlots(SeedSection $slotConfig, string $resourceId, Context $context): int
-    {
+    private function seedSlots(
+        SeedSection $slotConfig,
+        string $resourceId,
+        Context $context,
+    ): int {
         $daysAhead = max(1, $slotConfig->int('daysAhead', 14));
         $duration = max(5, $slotConfig->int('durationMinutes', 120));
         $capacity = max(1, $slotConfig->int('capacity', 10));

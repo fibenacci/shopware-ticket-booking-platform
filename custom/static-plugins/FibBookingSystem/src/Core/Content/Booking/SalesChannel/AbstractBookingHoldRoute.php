@@ -15,5 +15,8 @@ abstract class AbstractBookingHoldRoute
 {
     abstract public function getDecorated(): AbstractBookingHoldRoute;
 
-    abstract public function create(Request $request, SalesChannelContext $context): BookingHoldRouteResponse;
+    abstract public function create(
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingHoldRouteResponse;
 }

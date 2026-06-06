@@ -108,8 +108,10 @@ class GoogleWalletLinkGeneratorTest extends TestCase
         return $stub;
     }
 
-    private function base64UrlDecode(string $data, bool $raw = false): string
-    {
+    private function base64UrlDecode(
+        string $data,
+        bool $raw = false,
+    ): string {
         $decoded = base64_decode(strtr($data, '-_', '+/') . str_repeat('=', (4 - strlen($data) % 4) % 4), true);
 
         if ($decoded === false) {

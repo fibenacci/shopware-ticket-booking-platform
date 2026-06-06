@@ -164,8 +164,11 @@ class TicketSlotWindowTest extends TestCase
         );
     }
 
-    private function seedReservation(string $bookingNumber, string $startsAt, string $endsAt): string
-    {
+    private function seedReservation(
+        string $bookingNumber,
+        string $startsAt,
+        string $endsAt,
+    ): string {
         $reservationId = Uuid::randomHex();
 
         $this->connection->executeStatement(

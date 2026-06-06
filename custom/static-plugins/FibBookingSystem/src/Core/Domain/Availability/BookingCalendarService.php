@@ -32,8 +32,10 @@ class BookingCalendarService
     /**
      * @return array{resourceId: string, seatingMode: string, month: string, days: list<array<string, mixed>>}
      */
-    public function getMonth(string $resourceId, DateTimeImmutable $month): array
-    {
+    public function getMonth(
+        string $resourceId,
+        DateTimeImmutable $month,
+    ): array {
         $resourceBytes = Uuid::fromHexToBytes($resourceId);
         $from = $month->modify('first day of this month')->setTime(0, 0);
         $to = $from->modify('first day of next month');

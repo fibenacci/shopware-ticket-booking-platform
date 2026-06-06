@@ -57,8 +57,10 @@ class BookingPassReservationService
     /**
      * @return int number of pass reservations created
      */
-    public function createForOrder(string $orderId, Context $context): int
-    {
+    public function createForOrder(
+        string $orderId,
+        Context $context,
+    ): int {
         $criteria = new Criteria([$orderId]);
         $criteria->addAssociation('orderCustomer');
         $criteria->addAssociation('lineItems');
@@ -108,8 +110,10 @@ class BookingPassReservationService
      *
      * @return array<string, ProductBookingConfigEntity>
      */
-    private function fetchPassConfigs(OrderEntity $order, Context $context): array
-    {
+    private function fetchPassConfigs(
+        OrderEntity $order,
+        Context $context,
+    ): array {
         $productIds = [];
         foreach ($order->getLineItems() ?? [] as $lineItem) {
             if ($lineItem->getProductId() !== null) {
@@ -135,8 +139,10 @@ class BookingPassReservationService
         return $configs;
     }
 
-    private function hasReservation(string $orderLineItemId, Context $context): bool
-    {
+    private function hasReservation(
+        string $orderLineItemId,
+        Context $context,
+    ): bool {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('orderLineItemId', $orderLineItemId));
 

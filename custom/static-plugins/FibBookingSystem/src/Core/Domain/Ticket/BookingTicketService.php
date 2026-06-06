@@ -56,8 +56,12 @@ class BookingTicketService
      *
      * @param array<string, mixed> $payload
      */
-    public function issueTicket(string $reservationId, Context $context, array $payload = [], ?DateTimeInterface $expiresAt = null): BookingTicket
-    {
+    public function issueTicket(
+        string $reservationId,
+        Context $context,
+        array $payload = [],
+        ?DateTimeInterface $expiresAt = null,
+    ): BookingTicket {
         return $this->issueTickets($reservationId, $context, $payload, $expiresAt)[0];
     }
 
@@ -70,8 +74,12 @@ class BookingTicketService
      *
      * @return non-empty-list<BookingTicket>
      */
-    public function issueTickets(string $reservationId, Context $context, array $payload = [], ?DateTimeInterface $expiresAt = null): array
-    {
+    public function issueTickets(
+        string $reservationId,
+        Context $context,
+        array $payload = [],
+        ?DateTimeInterface $expiresAt = null,
+    ): array {
         $tickets = $this->connection->transactional(function () use ($reservationId, $context, $payload, $expiresAt): array {
             $reservation = $this->connection->fetchAssociative(
                 <<<'SQL'
@@ -228,8 +236,10 @@ class BookingTicketService
      *
      * @return int number of tickets revoked
      */
-    public function revokeForReservations(array $reservationIds, Context $context): int
-    {
+    public function revokeForReservations(
+        array $reservationIds,
+        Context $context,
+    ): int {
         if ($reservationIds === []) {
             return 0;
         }
@@ -258,8 +268,10 @@ class BookingTicketService
         return count($ticketIds);
     }
 
-    public function markSent(string $ticketId, Context $context): void
-    {
+    public function markSent(
+        string $ticketId,
+        Context $context,
+    ): void {
         $this->ticketRepository->update([
             [
                 'id' => $ticketId,
@@ -309,8 +321,11 @@ class BookingTicketService
     /**
      * @param array{validFrom: DateTimeImmutable, expiresAt: DateTimeImmutable}|null $slotWindow
      */
-    private function resolveExpiresAt(?DateTimeInterface $expiresAt, TicketValidity $validity, ?array $slotWindow): ?string
-    {
+    private function resolveExpiresAt(
+        ?DateTimeInterface $expiresAt,
+        TicketValidity $validity,
+        ?array $slotWindow,
+    ): ?string {
         $resolved = $expiresAt ?? $validity->expiresAt ?? $slotWindow['expiresAt'] ?? null;
 
         return $resolved !== null ? $this->formatDateTime($resolved) : null;
@@ -319,8 +334,10 @@ class BookingTicketService
     /**
      * @param array{validFrom: DateTimeImmutable, expiresAt: DateTimeImmutable}|null $slotWindow
      */
-    private function resolveValidFrom(TicketValidity $validity, ?array $slotWindow): ?string
-    {
+    private function resolveValidFrom(
+        TicketValidity $validity,
+        ?array $slotWindow,
+    ): ?string {
         $resolved = $validity->validFrom ?? $slotWindow['validFrom'] ?? null;
 
         return $resolved !== null ? $this->formatDateTime($resolved) : null;
@@ -379,8 +396,10 @@ class BookingTicketService
         }
     }
 
-    private function createQrPayload(string $ticketNumber, string $scanToken): string
-    {
+    private function createQrPayload(
+        string $ticketNumber,
+        string $scanToken,
+    ): string {
         return json_encode([
             'type' => 'fib_booking_ticket',
             'ticketNumber' => $ticketNumber,

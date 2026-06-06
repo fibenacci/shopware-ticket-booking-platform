@@ -45,8 +45,11 @@ class BookingApiController extends StorefrontController
         defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['GET'],
     )]
-    public function seatmap(string $slotId, Request $request, SalesChannelContext $context): JsonResponse
-    {
+    public function seatmap(
+        string $slotId,
+        Request $request,
+        SalesChannelContext $context,
+    ): JsonResponse {
         try {
             $response = $this->seatmapRoute->load($slotId, $request, $context);
 
@@ -67,8 +70,10 @@ class BookingApiController extends StorefrontController
         defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
-    public function calendar(Request $request, SalesChannelContext $context): JsonResponse
-    {
+    public function calendar(
+        Request $request,
+        SalesChannelContext $context,
+    ): JsonResponse {
         try {
             $response = $this->calendarRoute->load($request, $context);
 
@@ -89,8 +94,10 @@ class BookingApiController extends StorefrontController
         defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
-    public function availability(Request $request, SalesChannelContext $context): JsonResponse
-    {
+    public function availability(
+        Request $request,
+        SalesChannelContext $context,
+    ): JsonResponse {
         try {
             $response = $this->availabilityRoute->check($request, $context);
 
@@ -111,8 +118,10 @@ class BookingApiController extends StorefrontController
         defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
-    public function hold(Request $request, SalesChannelContext $context): JsonResponse
-    {
+    public function hold(
+        Request $request,
+        SalesChannelContext $context,
+    ): JsonResponse {
         try {
             $response = $this->holdRoute->create($request, $context);
 
@@ -133,8 +142,10 @@ class BookingApiController extends StorefrontController
         defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
-    public function addToCart(Request $request, SalesChannelContext $context): JsonResponse
-    {
+    public function addToCart(
+        Request $request,
+        SalesChannelContext $context,
+    ): JsonResponse {
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
 
         try {
@@ -165,8 +176,10 @@ class BookingApiController extends StorefrontController
     /**
      * @param array<string, mixed> $payload
      */
-    private function requireString(array $payload, string $field): string
-    {
+    private function requireString(
+        array $payload,
+        string $field,
+    ): string {
         $value = $payload[$field] ?? null;
 
         if (!is_string($value) || $value === '') {
@@ -179,8 +192,10 @@ class BookingApiController extends StorefrontController
     /**
      * @param array<string, mixed> $data
      */
-    private function noStoreJson(array $data, int $status = JsonResponse::HTTP_OK): JsonResponse
-    {
+    private function noStoreJson(
+        array $data,
+        int $status = JsonResponse::HTTP_OK,
+    ): JsonResponse {
         $response = new JsonResponse($data, $status);
         $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         $response->headers->set('Pragma', 'no-cache');

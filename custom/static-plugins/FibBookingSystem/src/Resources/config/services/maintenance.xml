@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Console commands and scheduled tasks. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Command\GenerateBookingSlotsCommand">
+            <argument type="service" id="fib_booking_resource.repository"/>
+            <argument type="service" id="fib_booking_slot.repository"/>
+            <tag name="console.command"/>
+        </service>
+        <service id="FibBookingSystem\Command\IssueTicketsCommand">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <tag name="console.command"/>
+        </service>
+        <service id="FibBookingSystem\ScheduledTask\BookingConsistencyCheckTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+        <service id="FibBookingSystem\ScheduledTask\BookingConsistencyCheckTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\BookingConsistencyCheckService"/>
+            <argument type="service" id="logger"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+        <service id="FibBookingSystem\ScheduledTask\AnonymizeScanLogTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+        <service id="FibBookingSystem\ScheduledTask\AnonymizeScanLogTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingScanLogRetentionService"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+        <service id="FibBookingSystem\ScheduledTask\ExpireBookingHoldsTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+        <service id="FibBookingSystem\ScheduledTask\ExpireBookingHoldsTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldExpirationService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationExpirationService"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+    </services>
+</container>

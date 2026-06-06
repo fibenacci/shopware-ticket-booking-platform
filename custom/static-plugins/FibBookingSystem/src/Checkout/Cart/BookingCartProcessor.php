@@ -48,14 +48,21 @@ class BookingCartProcessor implements CartProcessorInterface
     ) {
     }
 
-    public function process(CartDataCollection $data, Cart $original, Cart $toCalculate, SalesChannelContext $context, CartBehavior $behavior): void
-    {
+    public function process(
+        CartDataCollection $data,
+        Cart $original,
+        Cart $toCalculate,
+        SalesChannelContext $context,
+        CartBehavior $behavior,
+    ): void {
         $this->validateHolds($toCalculate, $context->getContext());
         $this->validatePassStartDates($toCalculate, $context->getContext());
     }
 
-    private function validateHolds(Cart $toCalculate, Context $context): void
-    {
+    private function validateHolds(
+        Cart $toCalculate,
+        Context $context,
+    ): void {
         foreach ($toCalculate->getLineItems()->getFlat() as $lineItem) {
             $bookingPayload = $this->extractBookingPayload($lineItem);
 
@@ -86,8 +93,10 @@ class BookingCartProcessor implements CartProcessorInterface
      * a missing/past date blocks checkout with an actionable message instead
      * of failing silently at ticket-issue time.
      */
-    private function validatePassStartDates(Cart $toCalculate, Context $context): void
-    {
+    private function validatePassStartDates(
+        Cart $toCalculate,
+        Context $context,
+    ): void {
         $productLineItems = [];
         foreach ($toCalculate->getLineItems()->getFlat() as $lineItem) {
             if ($lineItem->getType() === LineItem::PRODUCT_LINE_ITEM_TYPE && $lineItem->getReferencedId() !== null) {
@@ -136,8 +145,10 @@ class BookingCartProcessor implements CartProcessorInterface
      *
      * @return list<string>
      */
-    private function fetchCustomerAnchoredProductIds(array $productIds, Context $context): array
-    {
+    private function fetchCustomerAnchoredProductIds(
+        array $productIds,
+        Context $context,
+    ): array {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsAnyFilter('productId', array_values(array_unique($productIds))));
         $criteria->addFilter(new EqualsFilter('enabled', true));
@@ -193,8 +204,11 @@ class BookingCartProcessor implements CartProcessorInterface
         ];
     }
 
-    private function isValidHold(string $holdId, string $holdToken, Context $context): bool
-    {
+    private function isValidHold(
+        string $holdId,
+        string $holdToken,
+        Context $context,
+    ): bool {
         if (!Uuid::isValid($holdId)) {
             return false;
         }

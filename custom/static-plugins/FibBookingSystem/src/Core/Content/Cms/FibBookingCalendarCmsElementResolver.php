@@ -46,13 +46,18 @@ class FibBookingCalendarCmsElementResolver extends AbstractCmsElementResolver
         return 'fib-booking-calendar';
     }
 
-    public function collect(CmsSlotEntity $slot, ResolverContext $resolverContext): ?CriteriaCollection
-    {
+    public function collect(
+        CmsSlotEntity $slot,
+        ResolverContext $resolverContext,
+    ): ?CriteriaCollection {
         return null;
     }
 
-    public function enrich(CmsSlotEntity $slot, ResolverContext $resolverContext, ElementDataCollection $result): void
-    {
+    public function enrich(
+        CmsSlotEntity $slot,
+        ResolverContext $resolverContext,
+        ElementDataCollection $result,
+    ): void {
         $config = $slot->getFieldConfig();
         $resourceConfig = $config->get('resourceId');
         $resourceId = $resourceConfig?->getValue();
@@ -76,8 +81,10 @@ class FibBookingCalendarCmsElementResolver extends AbstractCmsElementResolver
         ], 'fib_booking_calendar_data'));
     }
 
-    private function fetchResourceName(string $resourceId, Context $context): ?string
-    {
+    private function fetchResourceName(
+        string $resourceId,
+        Context $context,
+    ): ?string {
         $criteria = new Criteria([$resourceId]);
         $criteria->addFilter(new EqualsFilter('active', true));
 
@@ -90,8 +97,10 @@ class FibBookingCalendarCmsElementResolver extends AbstractCmsElementResolver
     /**
      * @return list<array{productId: string, productNumber: string, name: string|null}>
      */
-    private function fetchPackages(string $resourceId, Context $context): array
-    {
+    private function fetchPackages(
+        string $resourceId,
+        Context $context,
+    ): array {
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('resourceId', $resourceId));
         $criteria->addFilter(new EqualsFilter('enabled', true));

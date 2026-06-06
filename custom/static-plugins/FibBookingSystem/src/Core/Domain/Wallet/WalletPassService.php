@@ -52,8 +52,11 @@ class WalletPassService
      *
      * @return array{exp: int, sig: string}
      */
-    public function createSignedParams(string $provider, string $ticketId, int $ttlDays = self::DEFAULT_LINK_TTL_DAYS): array
-    {
+    public function createSignedParams(
+        string $provider,
+        string $ticketId,
+        int $ttlDays = self::DEFAULT_LINK_TTL_DAYS,
+    ): array {
         $expiresAt = time() + ($ttlDays * 86400);
 
         return [
@@ -62,8 +65,12 @@ class WalletPassService
         ];
     }
 
-    public function verifySignature(string $provider, string $ticketId, int $expiresAt, string $signature): bool
-    {
+    public function verifySignature(
+        string $provider,
+        string $ticketId,
+        int $expiresAt,
+        string $signature,
+    ): bool {
         return $this->linkSigner->verify($provider, $ticketId, $expiresAt, $signature);
     }
 
@@ -92,8 +99,10 @@ class WalletPassService
      * not exist, is not in a pass-worthy state, or predates wallet support
      * (no encrypted token stored).
      */
-    public function loadTicketData(string $ticketId, Context $context): ?TicketWalletData
-    {
+    public function loadTicketData(
+        string $ticketId,
+        Context $context,
+    ): ?TicketWalletData {
         if (!Uuid::isValid($ticketId)) {
             return null;
         }
@@ -142,8 +151,11 @@ class WalletPassService
     /**
      * Whether the given customer owns the ticket — used by the account area.
      */
-    public function isOwnedByCustomer(string $ticketId, string $customerId, Context $context): bool
-    {
+    public function isOwnedByCustomer(
+        string $ticketId,
+        string $customerId,
+        Context $context,
+    ): bool {
         if (!Uuid::isValid($ticketId) || !Uuid::isValid($customerId)) {
             return false;
         }
@@ -181,8 +193,10 @@ class WalletPassService
         return array_fill_keys($rows, true);
     }
 
-    private function fetchPassWorthyTicket(string $ticketId, Context $context): ?BookingTicketEntity
-    {
+    private function fetchPassWorthyTicket(
+        string $ticketId,
+        Context $context,
+    ): ?BookingTicketEntity {
         $criteria = new Criteria([$ticketId]);
         $criteria->addAssociation('reservation.resource');
         $criteria->addAssociation('reservation.customer');

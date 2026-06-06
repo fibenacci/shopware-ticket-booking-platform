@@ -37,8 +37,10 @@ class BookingStatisticsController extends AbstractController
         defaults: ['_acl' => ['fib_booking.statistics']],
         methods: ['GET'],
     )]
-    public function overview(Request $request, Context $context): JsonResponse
-    {
+    public function overview(
+        Request $request,
+        Context $context,
+    ): JsonResponse {
         $actor = $this->resolveActor($context);
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, ($actor ?? 'anonymous') . '|' . $request->getClientIp());
 
@@ -59,8 +61,10 @@ class BookingStatisticsController extends AbstractController
         return $response;
     }
 
-    private function parseDate(string $value, DateTimeImmutable $fallback): DateTimeImmutable
-    {
+    private function parseDate(
+        string $value,
+        DateTimeImmutable $fallback,
+    ): DateTimeImmutable {
         if ($value === '') {
             return $fallback;
         }

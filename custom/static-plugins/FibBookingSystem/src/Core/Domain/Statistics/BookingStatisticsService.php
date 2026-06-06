@@ -31,8 +31,10 @@ class BookingStatisticsService
      *     attendance: array{checkIns: int, checkOuts: int, currentlyInside: int, dwell: array{sessions: int, averageMinutes: float|null, medianMinutes: float|null}}
      * }
      */
-    public function overview(DateTimeImmutable $from, DateTimeImmutable $to): array
-    {
+    public function overview(
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+    ): array {
         // Millisecond precision: created_at is DATETIME(3) — truncating the
         // upper bound to whole seconds would silently drop events that
         // happened within the current second.
@@ -191,8 +193,10 @@ class BookingStatisticsService
     /**
      * @param array<string, string> $params
      */
-    private function fetchCount(string $sql, array $params = []): int
-    {
+    private function fetchCount(
+        string $sql,
+        array $params = [],
+    ): int {
         $value = $this->connection->fetchOne($sql, $params);
 
         return is_numeric($value) ? (int) $value : 0;

@@ -39,8 +39,10 @@ class BookingDemoDataSeeder
     /**
      * @return SeedResult
      */
-    public function seed(Context $context, bool $withReservation = true): array
-    {
+    public function seed(
+        Context $context,
+        bool $withReservation = true,
+    ): array {
         $seeds = $this->loadSeeds();
 
         $catalog = $this->catalogSeeder->seedCatalog($seeds, $context);

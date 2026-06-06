@@ -31,8 +31,11 @@ class BookingTicketScanController extends AbstractController
         defaults: ['_acl' => ['fib_booking.ticket_scan']],
         methods: ['POST'],
     )]
-    public function scan(Request $request, RequestDataBag $dataBag, Context $context): JsonResponse
-    {
+    public function scan(
+        Request $request,
+        RequestDataBag $dataBag,
+        Context $context,
+    ): JsonResponse {
         $actor = $this->resolveActor($context);
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::SCAN, ($actor ?? 'anonymous') . '|' . $request->getClientIp());
 

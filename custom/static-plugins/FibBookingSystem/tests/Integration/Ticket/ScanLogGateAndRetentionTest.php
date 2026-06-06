@@ -116,8 +116,10 @@ class ScanLogGateAndRetentionTest extends TestCase
         return $row;
     }
 
-    private function seedScanLogRow(int $ageDays, ?string $gate): string
-    {
+    private function seedScanLogRow(
+        int $ageDays,
+        ?string $gate,
+    ): string {
         $id = Uuid::randomHex();
 
         $this->connection->executeStatement(

@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Availability, calendar, holds, reservations and validity. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Core\Domain\Availability\AvailabilityService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_hold.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldExpirationService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingReservationExpirationService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="order_transaction.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="fib_booking_hold.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="logger"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingPassReservationService">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="fib_booking_product_config.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="logger"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Availability\BookingCalendarService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Availability\BookingConsistencyCheckService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+    </services>
+</container>

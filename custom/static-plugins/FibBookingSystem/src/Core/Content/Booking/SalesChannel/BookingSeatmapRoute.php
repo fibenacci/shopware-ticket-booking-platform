@@ -33,8 +33,11 @@ class BookingSeatmapRoute extends AbstractBookingSeatmapRoute
         defaults: ['_httpCache' => false],
         methods: ['GET'],
     )]
-    public function load(string $slotId, Request $request, SalesChannelContext $context): BookingSeatmapRouteResponse
-    {
+    public function load(
+        string $slotId,
+        Request $request,
+        SalesChannelContext $context,
+    ): BookingSeatmapRouteResponse {
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, $request->getClientIp());
 
         $normalized = strtolower($slotId);

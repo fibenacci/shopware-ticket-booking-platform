@@ -1,0 +1,68 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <!-- Tickets: issue, scan, statistics, mail and PDF documents. -->
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+        <service id="FibBookingSystem\Core\Domain\Ticket\TicketScanService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="fib_booking_scan_log.repository"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Statistics\BookingStatisticsService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketMailSubscriber">
+            <argument type="service" id="Shopware\Core\Content\Mail\Service\MailService"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="mail_template.repository"/>
+            <argument type="service" id="sales_channel_domain.repository"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+        <!-- Ticket PDF as a regular order document (admin order detail) -->
+        <service id="FibBookingSystem\Checkout\Document\BookingTicketRenderer">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Document\Service\DocumentConfigLoader"/>
+            <argument type="service" id="Shopware\Core\Checkout\Document\Service\DocumentFileRendererRegistry"/>
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+            <tag name="document.renderer"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService">
+            <argument type="service" id="Shopware\Core\Checkout\Document\Service\DocumentGenerator"/>
+            <argument type="service" id="document.repository"/>
+            <argument type="service" id="logger"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketDocumentSubscriber">
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService"/>
+            <argument type="service" id="logger"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingScanLogRetentionService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+    </services>
+</container>

@@ -378,8 +378,10 @@ class Migration1717000000CreateBookingTables extends MigrationStep
         ]);
     }
 
-    private function fetchLanguageId(Connection $connection, string $localeCode): ?string
-    {
+    private function fetchLanguageId(
+        Connection $connection,
+        string $localeCode,
+    ): ?string {
         $languageId = $connection->fetchOne(<<<'SQL'
                 SELECT `language`.`id`
                 FROM `language`

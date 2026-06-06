@@ -37,8 +37,10 @@ class ScannerAccessSeeder
     /**
      * @return array{username: string, role: string}|null
      */
-    public function seedScannerAccess(SeedSection $scanner, Context $context): ?array
-    {
+    public function seedScannerAccess(
+        SeedSection $scanner,
+        Context $context,
+    ): ?array {
         if ($scanner->has('checkOutEnabled')) {
             $this->systemConfig->set('FibBookingSystem.config.scanCheckOutEnabled', $scanner->bool('checkOutEnabled'));
         }

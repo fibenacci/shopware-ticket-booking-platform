@@ -25,8 +25,10 @@ final class SeedSection
     ) {
     }
 
-    public static function fromJson(string $json, string $sourceName): self
-    {
+    public static function fromJson(
+        string $json,
+        string $sourceName,
+    ): self {
         $decoded = json_decode($json, true, 16, \JSON_THROW_ON_ERROR);
 
         if (!is_array($decoded)) {
@@ -41,8 +43,10 @@ final class SeedSection
         return array_key_exists($key, $this->data);
     }
 
-    public function string(string $key, ?string $default = null): string
-    {
+    public function string(
+        string $key,
+        ?string $default = null,
+    ): string {
         $value = $this->data[$key] ?? $default;
 
         if (!is_string($value) || $value === '') {
@@ -52,8 +56,10 @@ final class SeedSection
         return $value;
     }
 
-    public function int(string $key, ?int $default = null): int
-    {
+    public function int(
+        string $key,
+        ?int $default = null,
+    ): int {
         $value = $this->data[$key] ?? $default;
 
         if (!is_int($value)) {
@@ -74,8 +80,10 @@ final class SeedSection
         return (float) $value;
     }
 
-    public function bool(string $key, bool $default = false): bool
-    {
+    public function bool(
+        string $key,
+        bool $default = false,
+    ): bool {
         $value = $this->data[$key] ?? $default;
 
         if (!is_bool($value)) {
@@ -139,8 +147,10 @@ final class SeedSection
      *
      * @return list<string>
      */
-    public function stringList(string $key, array $default = []): array
-    {
+    public function stringList(
+        string $key,
+        array $default = [],
+    ): array {
         $value = $this->data[$key] ?? $default;
 
         if (!is_array($value)) {
@@ -159,8 +169,10 @@ final class SeedSection
         return $strings;
     }
 
-    private function invalid(string $key, string $expected): RuntimeException
-    {
+    private function invalid(
+        string $key,
+        string $expected,
+    ): RuntimeException {
         return new RuntimeException(sprintf('Seed value "%s.%s" must be %s.', $this->path, $key, $expected));
     }
 }
