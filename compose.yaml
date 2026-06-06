@@ -107,6 +107,21 @@ services:
         networks:
             - shopware
 
+    # Realtime hub (SSE) for live seat-map updates — docs/SEATING_PLAN.md
+    # phase 5. Publish needs the JWT secret (shopware env below); subscribing
+    # is anonymous on purpose: seat states are public storefront data.
+    mercure:
+        image: dunglas/mercure:latest
+        container_name: fib-mercure
+        environment:
+            - SERVER_NAME=:80
+            - MERCURE_PUBLISHER_JWT_KEY=fib-dev-mercure-secret-0123456789abcdef!
+            - MERCURE_SUBSCRIBER_JWT_KEY=fib-dev-mercure-secret-0123456789abcdef!
+            - 'MERCURE_EXTRA_DIRECTIVES=anonymous
+              cors_origins *'
+        networks:
+            - shopware
+
     ingress:
         image: nginx:alpine
         container_name: fib-ingress
@@ -143,6 +158,11 @@ services:
             - XDEBUG_ENABLED=${XDEBUG_ENABLED:-0}
             - DATABASE_URL=mysql://root:root@mariadb:3306/shopware
             - SHOP_DOMAIN=booking.docker
+            # Mercure publisher (live seat-map pushes). Unset = feature off,
+            # the seat picker falls back to polling.
+            - MERCURE_URL=http://fib-mercure/.well-known/mercure
+            - MERCURE_PUBLIC_URL=https://booking.docker/.well-known/mercure
+            - MERCURE_JWT_SECRET=fib-dev-mercure-secret-0123456789abcdef!
         ports:
             - '127.0.0.1:8090:80'
         volumes:

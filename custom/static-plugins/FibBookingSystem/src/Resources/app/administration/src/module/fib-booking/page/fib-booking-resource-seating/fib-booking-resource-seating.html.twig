@@ -1,0 +1,111 @@
+{% block fib_booking_resource_seating %}
+    <sw-page class="fib-booking-resource-seating">
+        <template #smart-bar-header>
+            <h2>{{ resource ? resource.name : '' }}</h2>
+        </template>
+
+        <template #smart-bar-actions>
+            <sw-button-process
+                variant="primary"
+                :is-loading="isSaving"
+                :process-success="false"
+                @click="onSave"
+            >
+                {{ $tc('fibBooking.seating.saveLabel') }}
+            </sw-button-process>
+        </template>
+
+        <template #content>
+            <sw-card-view>
+                <sw-card
+                    position-identifier="fib-booking-resource-settings"
+                    :title="$tc('fibBooking.seating.settingsTitle')"
+                    :is-loading="isLoading"
+                >
+                    <template v-if="resource">
+                        <sw-text-field
+                            v-model:value="resource.name"
+                            :label="$tc('fibBooking.list.columnName')"
+                        />
+                        <sw-single-select
+                            v-model:value="resource.seatingMode"
+                            :options="seatingModeOptions"
+                            :label="$tc('fibBooking.list.columnSeatingMode')"
+                            :help-text="$tc('fibBooking.seating.modeHelp')"
+                        />
+                        <sw-number-field
+                            v-model:value="resource.capacity"
+                            number-type="int"
+                            :min="1"
+                            :label="$tc('fibBooking.list.columnCapacity')"
+                            :help-text="$tc('fibBooking.seating.capacityHelp')"
+                        />
+                    </template>
+                </sw-card>
+
+                <sw-card
+                    v-if="isSeatmap"
+                    position-identifier="fib-booking-resource-grid-generator"
+                    :title="$tc('fibBooking.seating.generatorTitle')"
+                    :is-loading="isLoading"
+                >
+                    <sw-container columns="1fr 1fr auto" gap="16px" align="end">
+                        <sw-number-field
+                            v-model:value="generatorRows"
+                            number-type="int"
+                            :min="1"
+                            :max="26"
+                            :label="$tc('fibBooking.seating.rowsLabel')"
+                        />
+                        <sw-number-field
+                            v-model:value="generatorSeatsPerRow"
+                            number-type="int"
+                            :min="1"
+                            :label="$tc('fibBooking.seating.seatsPerRowLabel')"
+                        />
+                        <sw-button-process
+                            :is-loading="isSaving"
+                            :process-success="false"
+                            @click="generateGrid"
+                        >
+                            {{ $tc('fibBooking.seating.generateLabel') }}
+                        </sw-button-process>
+                    </sw-container>
+                    <p class="fib-seating-hint">{{ $tc('fibBooking.seating.generatorHint') }}</p>
+                </sw-card>
+
+                <sw-card
+                    v-if="isSeatmap"
+                    position-identifier="fib-booking-resource-seat-grid"
+                    :title="$tc('fibBooking.seating.gridTitle', { count: activeSeatCount }, activeSeatCount)"
+                    :is-loading="isLoading"
+                >
+                    <p v-if="seats.length === 0" class="fib-seating-hint">
+                        {{ $tc('fibBooking.seating.emptyHint') }}
+                    </p>
+
+                    <div v-else class="fib-seating-screen">{{ $tc('fibBooking.seating.screenLabel') }}</div>
+
+                    <div class="fib-seating-grid">
+                        <div v-for="(row, index) in seatRows" :key="index" class="fib-seating-row">
+                            <span class="fib-seating-row-label">{{ row[0] ? row[0].rowLabel : '' }}</span>
+                            <button
+                                v-for="seat in row"
+                                :key="seat.id"
+                                type="button"
+                                class="fib-seating-seat"
+                                :class="{ 'is-inactive': !seat.active }"
+                                :title="seat.rowLabel + seat.seatLabel"
+                                @click="toggleSeat(seat)"
+                            >
+                                {{ seat.seatLabel }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="fib-seating-hint">{{ $tc('fibBooking.seating.toggleHint') }}</p>
+                </sw-card>
+            </sw-card-view>
+        </template>
+    </sw-page>
+{% endblock %}

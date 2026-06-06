@@ -2,10 +2,12 @@
   "base": "/bundles/fibbookingsystem/administration/",
   "entryPoints": {
     "fib-booking-system": {
-      "css": [],
+      "css": [
+        "/bundles/fibbookingsystem/administration/assets/fib-booking-system-BEKEWwNY.css"
+      ],
       "dynamic": [],
       "js": [
-        "/bundles/fibbookingsystem/administration/assets/fib-booking-system-dW8OIdOF.js"
+        "/bundles/fibbookingsystem/administration/assets/fib-booking-system-e5MsC0s8.js"
       ],
       "legacy": false,
       "preload": []

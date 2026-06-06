@@ -10,6 +10,7 @@ use FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollectio
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationEntity;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
+use FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\FibBookingException;
@@ -56,6 +57,7 @@ class BookingReservationService
         private readonly BookingTicketService $ticketService,
         private readonly AvailabilityService $availabilityService,
         private readonly SeatClaimService $seatClaimService,
+        private readonly SeatmapUpdatePublisher $seatmapPublisher,
         private readonly NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly LoggerInterface $logger,
@@ -64,7 +66,7 @@ class BookingReservationService
 
     public function convertOrderHolds(string $orderId, Context $context): int
     {
-        return $this->connection->transactional(function () use ($orderId, $context): int {
+        $converted = $this->connection->transactional(function () use ($orderId, $context): int {
             $criteria = new Criteria([$orderId]);
             $criteria->addAssociation('orderCustomer');
             $criteria->addAssociation('lineItems');
@@ -92,6 +94,12 @@ class BookingReservationService
 
             return $converted;
         });
+
+        // Deferred seat-map pushes (held → sold) — strictly after commit, so
+        // subscribers can only ever re-fetch committed state.
+        $this->seatmapPublisher->flush();
+
+        return $converted;
     }
 
     public function confirmReservationsForOrder(string $orderId, Context $context): int
@@ -429,7 +437,10 @@ class BookingReservationService
         // Seatmap resources: the seats now belong to the reservation. MUST
         // stay inside this transaction — once the hold flips to 'converted',
         // unbound claims would look orphaned to the cleanup/read model.
-        $this->seatClaimService->bindHoldClaimsToReservation($bookingPayload['holdId'], $reservationId);
+        // Pushes are DEFERRED: convertOrderHolds() flushes after commit.
+        foreach ($this->seatClaimService->bindHoldClaimsToReservation($bookingPayload['holdId'], $reservationId) as $slotId) {
+            $this->seatmapPublisher->defer($slotId);
+        }
 
         return true;
     }

@@ -1,6 +1,6 @@
 # Seating — Numbered Seats (Design)
 
-> Status: **phases 1-3 implemented.**
+> Status: **all phases (1-5) implemented.**
 > Phase 1 (core): schema, claim primitive, hold/expiry/conversion
 > integration, seatmap Store API (`GET /store-api/fib-booking/seatmap/{slotId}`
 > + storefront proxy) — covered by
@@ -14,7 +14,18 @@
 > Phase 3 (ticket-per-seat): `BookingTicketService::issueTickets()` issues
 > one ticket PER claimed seat with the seat-label snapshot; the seat shows on
 > the scan verdict (scanner app), Apple/Google wallet passes and the ticket
-> PDF. Phases 4-5 (admin generator, realtime push) follow this blueprint.
+> PDF.
+> Phase 4 (admin): "Booking resources" module (Catalogues) — resource list +
+> seat-map editor with grid generator (regeneration upserts by row/label and
+> deactivates out-of-grid seats, never deletes) and click-to-toggle seats;
+> planning logic vitest-covered (`grid-generator.test.js`).
+> Phase 5 (realtime): Mercure hub (compose dev + prod) publishes
+> `fib-booking/seatmap/{slotId}` pokes AFTER COMMIT via
+> `SeatmapUpdatePublisher` (defer/flush; best-effort — a dead hub degrades to
+> polling) on hold creation, hold expiry and order conversion; the picker
+> subscribes via SSE and slows its poll to a 60s safety net. Gotcha: Symfony
+> Flex appends example.com Mercure defaults to the untracked `.env`, which
+> OVERRIDES container env (dotenv_overload) — dev values must live in `.env`.
 
 Numbered seating (cinema, theater) as a **per-resource option** — the
 pool-based model stays the default and remains untouched for everything that

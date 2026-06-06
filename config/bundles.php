@@ -19,4 +19,5 @@ return [
     Shopware\Elasticsearch\Elasticsearch::class => ['all' => true],
     Sentry\SentryBundle\SentryBundle::class => ['all' => true],
     Frosh\SentryBundle\ShopwareSentryBundle::class => ['all' => true],
+    Symfony\Bundle\MercureBundle\MercureBundle::class => ['all' => true],
 ];

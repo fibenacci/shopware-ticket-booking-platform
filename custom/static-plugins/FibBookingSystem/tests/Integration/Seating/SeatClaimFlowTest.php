@@ -192,7 +192,14 @@ class SeatClaimFlowTest extends TestCase
             SQL,
             ['holdId' => Uuid::fromHexToBytes($hold->getId())],
         );
-        (new BookingHoldExpirationService($this->connection, $this->claimService))->expireOverdueHolds();
+        (new BookingHoldExpirationService(
+            $this->connection,
+            $this->claimService,
+            new \FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher(
+                $this->createStub(\Symfony\Component\Mercure\HubInterface::class),
+                new \Psr\Log\NullLogger(),
+            ),
+        ))->expireOverdueHolds();
 
         static::assertSame(0, (int) $this->connection->fetchOne(
             <<<'SQL'

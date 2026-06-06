@@ -1,0 +1,37 @@
+<div class="picker" role="group" aria-label="Seat selection">
+    <p v-if="loading" class="muted">Loading seats…</p>
+    <p v-else-if="error" class="error" role="alert">{{ error }}</p>
+
+    <template v-else>
+        <div class="screen" aria-hidden="true">SCREEN</div>
+
+        <div class="grid">
+            <div v-for="(row, index) in rows" :key="index" class="row">
+                <span class="row-label">{{ row[0]?.row }}</span>
+                <button
+                    v-for="seat in row"
+                    :key="seat.id"
+                    type="button"
+                    class="seat"
+                    :class="seatClass(seat)"
+                    :disabled="seat.state !== 'free' && !selection.includes(seat.id)"
+                    :title="`${seat.row}${seat.label}`"
+                    :aria-pressed="selection.includes(seat.id)"
+                    @click="onSeatClick(seat)"
+                >
+                    {{ seat.label }}
+                </button>
+            </div>
+        </div>
+
+        <div class="legend">
+            <span><i class="dot is-free"></i> free</span>
+            <span><i class="dot is-held"></i> held</span>
+            <span><i class="dot is-sold"></i> sold</span>
+            <span><i class="dot is-selected"></i> yours</span>
+        </div>
+
+        <p v-if="notice" class="notice" role="status">{{ notice }}</p>
+        <p v-if="capReached" class="muted">Seat limit reached — deselect to change.</p>
+    </template>
+</div>

@@ -1,0 +1,123 @@
+/* Shadow-DOM scoped (injected via the SFC's <style src>). Theme tokens
+   pierce via CSS custom properties — every var() carries a standalone
+   fallback so the element works on any host. */
+.picker {
+    font-family: var(--fib-font, system-ui, sans-serif);
+    color: var(--fib-text, #e8ecf4);
+}
+
+.screen {
+    margin: 0 auto 1rem;
+    width: 70%;
+    padding: 0.25rem 0;
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--fib-text-dim, rgba(232, 236, 244, 0.6));
+    border-bottom: 3px solid var(--fib-aurora-two, #22d3ee);
+    border-radius: 0 0 50% 50% / 0 0 12px 12px;
+    opacity: 0.8;
+}
+
+.grid {
+    display: grid;
+    gap: 0.4rem;
+    justify-content: center;
+}
+
+.row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.row-label {
+    width: 1.4rem;
+    font-size: 0.75rem;
+    color: var(--fib-text-dim, rgba(232, 236, 244, 0.6));
+    text-align: center;
+}
+
+.seat {
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 0.5rem 0.5rem 0.7rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--fib-text, #e8ecf4);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.seat.is-free:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.seat.is-held {
+    background: rgba(251, 191, 36, 0.18);
+    border-color: rgba(251, 191, 36, 0.5);
+    color: rgba(253, 230, 138, 0.9);
+    cursor: not-allowed;
+}
+
+.seat.is-sold {
+    background: rgba(220, 38, 38, 0.16);
+    border-color: rgba(248, 113, 113, 0.45);
+    color: rgba(253, 164, 175, 0.8);
+    cursor: not-allowed;
+}
+
+.seat.is-selected {
+    background: linear-gradient(135deg, var(--fib-aurora-one, #6366f1), var(--fib-aurora-two, #22d3ee));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45);
+}
+
+.legend {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--fib-text-dim, rgba(232, 236, 244, 0.6));
+}
+
+.dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 0.2rem;
+    vertical-align: -1px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.dot.is-held {
+    background: rgba(251, 191, 36, 0.4);
+}
+
+.dot.is-sold {
+    background: rgba(220, 38, 38, 0.4);
+}
+
+.dot.is-selected {
+    background: linear-gradient(135deg, var(--fib-aurora-one, #6366f1), var(--fib-aurora-two, #22d3ee));
+}
+
+.notice {
+    margin-top: 0.75rem;
+    color: #fbbf24;
+    font-size: 0.85rem;
+}
+
+.error {
+    color: #f87171;
+}
+
+.muted {
+    color: var(--fib-text-dim, rgba(232, 236, 244, 0.6));
+    font-size: 0.85rem;
+}

@@ -1,6 +1,7 @@
 import './module/sw-cms/elements/fib-booking-calendar';
 import './module/sw-cms/blocks/commerce/fib-booking-calendar';
 import './module/sw-product';
+import './module/fib-booking';
 
 // ACL: make the booking privileges assignable via checkbox in the admin UI
 // (Settings → Users & permissions → Roles → Additional permissions).

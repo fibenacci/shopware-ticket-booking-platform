@@ -6,6 +6,7 @@ namespace FibBookingSystem\Core\Domain\Reservation;
 
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
+use FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher;
 
 /**
  * Deliberate raw DBAL (documented exception, see docs/ARCHITECTURE_PLAN.md):
@@ -19,6 +20,7 @@ class BookingHoldExpirationService
     public function __construct(
         private readonly Connection $connection,
         private readonly SeatClaimService $seatClaimService,
+        private readonly SeatmapUpdatePublisher $seatmapPublisher,
     ) {
     }
 
@@ -36,7 +38,13 @@ class BookingHoldExpirationService
         // Seats of dead holds become claimable again. The seatmap read model
         // already ignores these claims via its liveness predicate — this is
         // garbage collection, not the correctness boundary.
-        $this->seatClaimService->releaseOrphanedClaims();
+        $releasedSlotIds = $this->seatClaimService->releaseOrphanedClaims();
+
+        // Live seat maps: freed seats appear without waiting for the poll.
+        foreach ($releasedSlotIds as $slotId) {
+            $this->seatmapPublisher->defer($slotId);
+        }
+        $this->seatmapPublisher->flush();
 
         return $expired;
     }

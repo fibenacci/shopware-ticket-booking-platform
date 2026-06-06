@@ -1,0 +1,27 @@
+{% block fib_booking_resource_list %}
+    <sw-page class="fib-booking-resource-list">
+        <template #smart-bar-header>
+            <h2>{{ $tc('fibBooking.module.title') }}</h2>
+        </template>
+
+        <template #content>
+            <sw-entity-listing
+                v-if="resources"
+                :items="resources"
+                :columns="columns"
+                :repository="resourceRepository"
+                :is-loading="isLoading"
+                :show-selection="false"
+                :allow-delete="false"
+                detail-route="fib.booking.seating"
+            >
+                <template #column-seatingMode="{ item }">
+                    {{ item.seatingMode === 'seatmap' ? $tc('fibBooking.list.modeSeatmap') : $tc('fibBooking.list.modePool') }}
+                </template>
+                <template #column-active="{ item }">
+                    {{ item.active ? '✓' : '—' }}
+                </template>
+            </sw-entity-listing>
+        </template>
+    </sw-page>
+{% endblock %}

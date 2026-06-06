@@ -1,11 +1,12 @@
 {
     "name": "fib-seat-picker",
     "private": true,
-    "description": "Seat picker as a framework-agnostic custom element (<fib-seat-picker>): Vue 3 inside a shadow root, consumed by the storefront calendar widget — and portable to any future (headless) frontend.",
+    "description": "Seat picker as a framework-agnostic custom element (<fib-seat-picker>): Vue 3 inside a shadow root, consumed by the storefront calendar widget \u2014 and portable to any future (headless) frontend.",
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build",
+        "check": "vue-tsc --noEmit",
+        "build": "vue-tsc --noEmit && vite build",
         "test": "vitest run"
     },
     "dependencies": {
@@ -14,6 +15,8 @@
     "devDependencies": {
         "@vitejs/plugin-vue": "latest",
         "vite": "latest",
-        "vitest": "latest"
+        "vitest": "latest",
+        "typescript": "latest",
+        "vue-tsc": "latest"
     }
 }

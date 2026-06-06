@@ -51,6 +51,11 @@
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
+        <service id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher">
+            <argument type="service" id="mercure.hub.default"/>
+            <argument type="service" id="logger"/>
+        </service>
+
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="fib_booking_hold.repository"/>
@@ -62,6 +67,7 @@
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldExpirationService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingReservationExpirationService">
@@ -77,6 +83,7 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher"/>
             <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
             <argument type="service" id="event_dispatcher"/>
             <argument type="service" id="logger"/>
@@ -297,6 +304,7 @@
         <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingHoldRoute" public="true">
             <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher"/>
             <tag name="controller.service_arguments"/>
         </service>
 

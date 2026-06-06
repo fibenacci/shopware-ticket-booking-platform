@@ -1,8 +1,11 @@
 {
   "main.js": {
-    "file": "assets/fib-booking-system-dW8OIdOF.js",
+    "file": "assets/fib-booking-system-e5MsC0s8.js",
     "name": "fib-booking-system",
     "src": "main.js",
-    "isEntry": true
+    "isEntry": true,
+    "css": [
+      "assets/fib-booking-system-BEKEWwNY.css"
+    ]
   }
 }

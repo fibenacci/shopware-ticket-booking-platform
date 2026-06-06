@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { groupRows, reconcileSelection, toggleSeat } from './selection.js';
+import { groupRows, reconcileSelection, toggleSeat } from './selection';
+import type { Seat, SeatState } from './selection';
 
-const seat = (id, state = 'free', row = 'A', label = '1', x = 1, y = 1) => ({ id, state, row, label, x, y });
+const seat = (
+    id: string,
+    state: SeatState = 'free',
+    row = 'A',
+    label = '1',
+    x = 1,
+    y = 1,
+): Seat => ({ id, state, row, label, x, y, category: null });
 
 describe('toggleSeat', () => {
     it('adds and removes a seat', () => {

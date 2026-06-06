@@ -73,9 +73,19 @@ class SeatClaimService
     /**
      * Hold → reservation conversion: claims survive, now owned by the
      * reservation. Runs inside the conversion transaction.
+     *
+     * @return list<string> affected slot ids (hex) — for live seat-map pushes
      */
-    public function bindHoldClaimsToReservation(string $holdId, string $reservationId): void
+    public function bindHoldClaimsToReservation(string $holdId, string $reservationId): array
     {
+        /** @var list<string> $slotIds */
+        $slotIds = $this->connection->fetchFirstColumn(
+            <<<'SQL'
+                SELECT DISTINCT LOWER(HEX(slot_id)) FROM fib_booking_seat_claim WHERE hold_id = :holdId
+            SQL,
+            ['holdId' => Uuid::fromHexToBytes($holdId)],
+        );
+
         $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE fib_booking_seat_claim
@@ -87,22 +97,41 @@ class SeatClaimService
                 'holdId' => Uuid::fromHexToBytes($holdId),
             ],
         );
+
+        return $slotIds;
     }
 
     /**
      * Frees seats whose hold died without converting (expired or flipped by
      * the scheduled task). Set-based — called by the hold expiration task.
+     *
+     * @return list<string> affected slot ids (hex) — for live seat-map pushes
      */
-    public function releaseOrphanedClaims(): int
+    public function releaseOrphanedClaims(): array
     {
-        return (int) $this->connection->executeStatement(
+        /** @var list<string> $slotIds */
+        $slotIds = $this->connection->fetchFirstColumn(
             <<<'SQL'
-                DELETE claim FROM fib_booking_seat_claim claim
+                SELECT DISTINCT LOWER(HEX(claim.slot_id))
+                FROM fib_booking_seat_claim claim
                 INNER JOIN fib_booking_hold hold ON hold.id = claim.hold_id
                 WHERE claim.reservation_id IS NULL
                 AND (hold.status != 'active' OR hold.expires_at <= UTC_TIMESTAMP(3))
             SQL,
         );
+
+        if ($slotIds !== []) {
+            $this->connection->executeStatement(
+                <<<'SQL'
+                    DELETE claim FROM fib_booking_seat_claim claim
+                    INNER JOIN fib_booking_hold hold ON hold.id = claim.hold_id
+                    WHERE claim.reservation_id IS NULL
+                    AND (hold.status != 'active' OR hold.expires_at <= UTC_TIMESTAMP(3))
+                SQL,
+            );
+        }
+
+        return $slotIds;
     }
 
     /**

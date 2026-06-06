@@ -20,7 +20,7 @@ export default defineConfig({
     },
     build: {
         lib: {
-            entry: 'src/main.js',
+            entry: 'src/main.ts',
             formats: ['iife'],
             name: 'FibSeatPicker',
             fileName: () => 'fib-seat-picker.js',

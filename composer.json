@@ -18,7 +18,8 @@
         "shopware/elasticsearch": "*",
         "shopware/storefront": "*",
         "swag/paypal": "*",
-        "symfony/flex": "~2"
+        "symfony/flex": "~2",
+        "symfony/mercure-bundle": "*"
     },
     "require-dev": {
         "fib/fib-booking-demo-data": "*",

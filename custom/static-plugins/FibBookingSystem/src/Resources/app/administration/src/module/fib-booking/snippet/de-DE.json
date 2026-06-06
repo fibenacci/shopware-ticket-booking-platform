@@ -1,0 +1,37 @@
+{
+    "fibBooking": {
+        "module": {
+            "title": "Buchungsressourcen",
+            "description": "Buchbare Ressourcen, Saalpläne und Kapazitäten"
+        },
+        "list": {
+            "columnName": "Name",
+            "columnTechnicalName": "Technischer Name",
+            "columnSeatingMode": "Bestuhlung",
+            "columnCapacity": "Kapazität",
+            "columnActive": "Aktiv",
+            "modePool": "Pool (Kapazitätszähler)",
+            "modeSeatmap": "Saalplan (nummerierte Plätze)"
+        },
+        "seating": {
+            "settingsTitle": "Ressource",
+            "modeHelp": "Pool: N austauschbare Plätze pro Slot. Saalplan: nummerierte Plätze, Kunden wählen exakte Sitze (Kino/Theater).",
+            "capacityHelp": "Pool-Kapazität pro Slot. Im Saalplan-Modus begrenzt effektiv die Zahl der aktiven Sitze eine Vorstellung.",
+            "generatorTitle": "Grid-Generator",
+            "rowsLabel": "Reihen (A, B, C, …)",
+            "seatsPerRowLabel": "Sitze pro Reihe",
+            "generateLabel": "Grid erzeugen",
+            "generatorHint": "Neu generieren erhält bestehende Sitze (verkaufte Tickets bleiben gültig) und deaktiviert Sitze außerhalb des neuen Grids — gelöscht wird nichts.",
+            "gridTitle": "Saalplan ({count} aktive Sitze)",
+            "screenLabel": "LEINWAND",
+            "emptyHint": "Noch keine Sitze — oben ein Grid erzeugen.",
+            "toggleHint": "Sitz anklicken zum Deaktivieren/Aktivieren (Säulen, Rollstuhlplätze, defekte Sitze). Speichern übernimmt die Änderung.",
+            "saveLabel": "Speichern",
+            "notification": {
+                "generated": "Saalplan-Grid erzeugt.",
+                "saved": "Ressource und Saalplan gespeichert.",
+                "error": "Speichern des Saalplans fehlgeschlagen."
+            }
+        }
+    }
+}

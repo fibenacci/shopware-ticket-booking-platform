@@ -38,6 +38,11 @@ x-environment: &shopware-env
     # HMAC secret for the self-hosted ALTCHA captcha (config/packages/bot_protection.yaml).
     # Generate once: openssl rand -hex 32
     ALTCHA_SECRET_KEY: ${ALTCHA_SECRET_KEY:?ALTCHA_SECRET_KEY is required — generate with `openssl rand -hex 32`}
+    # Live seat-map pushes (SSE, docs/SEATING_PLAN.md phase 5). ≥32 chars
+    # (HS256). Generate once: openssl rand -hex 32
+    MERCURE_URL: http://mercure/.well-known/mercure
+    MERCURE_PUBLIC_URL: https://${SHOP_DOMAIN}/.well-known/mercure
+    MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET is required — generate with `openssl rand -hex 32`}
     # Optional: Sentry/GlitchTip error tracking (config/packages/sentry.yaml).
     # Empty = disabled.
     SENTRY_DSN: ${SENTRY_DSN:-}
@@ -338,6 +343,31 @@ services:
             timeout: 5s
             retries: 10
         mem_limit: 1g
+        restart: always
+
+    # Realtime hub (SSE) for live seat maps. Subscribing is anonymous on
+    # purpose (seat states are public storefront data); publishing requires
+    # the JWT secret, which only the app containers hold.
+    mercure:
+        <<: *hardening
+        image: dunglas/mercure:latest
+        environment:
+            SERVER_NAME: ':80'
+            MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET}
+            MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET}
+            MERCURE_EXTRA_DIRECTIVES: |
+                anonymous
+                cors_origins https://${SHOP_DOMAIN}
+        networks:
+            - edge
+            - backend
+        labels:
+            - 'traefik.enable=true'
+            - 'traefik.http.routers.mercure.rule=Host(`${SHOP_DOMAIN}`) && PathPrefix(`/.well-known/mercure`)'
+            - 'traefik.http.routers.mercure.entrypoints=websecure'
+            - 'traefik.http.routers.mercure.tls.certresolver=letsencrypt'
+            - 'traefik.http.services.mercure.loadbalancer.server.port=80'
+        mem_limit: 256m
         restart: always
 
     redis:

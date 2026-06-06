@@ -8,9 +8,11 @@ use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\Core\Domain\Reservation\BookingReservationService;
 use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
+use FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\OrderCollection;
@@ -19,6 +21,7 @@ use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
 use Shopware\Core\Test\Stub\DataAbstractionLayer\StaticEntityRepository;
+use Symfony\Component\Mercure\HubInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -136,6 +139,7 @@ class BookingHoldConversionLoggingTest extends TestCase
             $this->createStub(BookingTicketService::class),
             $this->createStub(AvailabilityService::class),
             $this->createStub(SeatClaimService::class),
+            new SeatmapUpdatePublisher($this->createStub(HubInterface::class), new NullLogger()),
             $this->createStub(NumberRangeValueGeneratorInterface::class),
             $this->createStub(EventDispatcherInterface::class),
             $logger,

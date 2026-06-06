@@ -6,6 +6,7 @@ namespace FibBookingSystem\Core\Content\Booking\SalesChannel;
 
 use FibBookingSystem\Core\Domain\Reservation\BookingHoldRequest;
 use FibBookingSystem\Core\Domain\Reservation\BookingHoldService;
+use FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher;
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -18,6 +19,7 @@ class BookingHoldRoute extends AbstractBookingHoldRoute
     public function __construct(
         private readonly BookingHoldService $holdService,
         private readonly BookingRateLimiter $rateLimiter,
+        private readonly SeatmapUpdatePublisher $seatmapPublisher,
     ) {
     }
 
@@ -39,6 +41,8 @@ class BookingHoldRoute extends AbstractBookingHoldRoute
         $payload = BookingRequestParser::payload($request);
         $customer = $context->getCustomer();
 
+        $seatIds = BookingRequestParser::optionalUuidList($payload, 'seatIds');
+
         $hold = $this->holdService->createHold(
             new BookingHoldRequest(
                 resourceId: BookingRequestParser::uuid($payload, 'resourceId'),
@@ -48,10 +52,16 @@ class BookingHoldRoute extends AbstractBookingHoldRoute
                 salesChannelId: $context->getSalesChannelId(),
                 customerId: $customer?->getId(),
                 payload: $payload,
-                seatIds: BookingRequestParser::optionalUuidList($payload, 'seatIds'),
+                seatIds: $seatIds,
             ),
             $context->getContext(),
         );
+
+        // Live seat maps: other shoppers see the seats turn "held" instantly.
+        // The hold transaction committed inside createHold — safe to publish.
+        if ($seatIds !== [] && is_string($payload['slotId'] ?? null)) {
+            $this->seatmapPublisher->publish(strtolower($payload['slotId']));
+        }
 
         return new BookingHoldRouteResponse([
             'id' => $hold->getId(),

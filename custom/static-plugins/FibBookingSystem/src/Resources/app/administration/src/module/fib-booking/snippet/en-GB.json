@@ -1,0 +1,37 @@
+{
+    "fibBooking": {
+        "module": {
+            "title": "Booking resources",
+            "description": "Bookable resources, seat maps and capacities"
+        },
+        "list": {
+            "columnName": "Name",
+            "columnTechnicalName": "Technical name",
+            "columnSeatingMode": "Seating",
+            "columnCapacity": "Capacity",
+            "columnActive": "Active",
+            "modePool": "Pool (capacity counter)",
+            "modeSeatmap": "Seat map (numbered seats)"
+        },
+        "seating": {
+            "settingsTitle": "Resource",
+            "modeHelp": "Pool: N interchangeable places per slot. Seat map: numbered seats, customers pick exact seats (cinema/theater).",
+            "capacityHelp": "Pool capacity per slot. In seat-map mode the active seat count is what effectively limits a showing.",
+            "generatorTitle": "Grid generator",
+            "rowsLabel": "Rows (A, B, C, …)",
+            "seatsPerRowLabel": "Seats per row",
+            "generateLabel": "Generate grid",
+            "generatorHint": "Regenerating keeps existing seats (sold tickets stay valid) and deactivates seats outside the new grid — nothing is deleted.",
+            "gridTitle": "Seat map ({count} active seats)",
+            "screenLabel": "SCREEN",
+            "emptyHint": "No seats yet — generate a grid above.",
+            "toggleHint": "Click a seat to deactivate/activate it (pillars, wheelchair spaces, broken seats). Save to apply.",
+            "saveLabel": "Save",
+            "notification": {
+                "generated": "Seat grid generated.",
+                "saved": "Resource and seat map saved.",
+                "error": "Saving the seat map failed."
+            }
+        }
+    }
+}
