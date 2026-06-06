@@ -26,6 +26,13 @@ structured and editable without touching PHP:
   the booking-calendar CMS element
 - `reservation` — one confirmed reservation `B-DEMO-1` with a real QR ticket
   (issued through `BookingTicketService`)
+- `cms.homepage` — a CMS layout ("FIB Booking Home") with the booking-calendar
+  element (configured to the package resource) and a scanner-link text block,
+  assigned to every storefront entry category (`assignToHomepage: false` to
+  opt out)
+- `scanner` — least-privilege scanner access: ACL role `Booking Scanner`
+  (ONLY `fib_booking.ticket_scan`) plus a non-admin demo user bound to it
+  (**demo credentials** — change for anything public)
 
 `BookingDemoDataSeeder` only interprets the JSON; all writes go through DAL
 repositories. Ids are **deterministic** and existing rows are matched by

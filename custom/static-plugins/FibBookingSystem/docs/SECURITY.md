@@ -25,11 +25,16 @@ fingerprints. No stored value allows forging a scannable QR code.
 
 ## Attack surface & mitigations
 
-### Storefront booking JSON (`/fib-booking/availability|hold|cart/add`)
-- strict input validation (typed extractors, date parsing, positive ints)
+### Storefront/Store-API booking JSON (`/fib-booking/availability|hold|cart/add|calendar`, `/store-api/fib-booking/*`)
+- strict input validation in `BookingRequestParser` (UUID/date/int extractors,
+  month format `YYYY-MM`) with stable error codes — shared by both surfaces
 - `Cache-Control: no-store` — no cache poisoning/leakage
-- sliding-window rate limits: 120/min/IP (read), 30/min/IP (write)
-- hold creation is transactional with `SELECT … FOR UPDATE` (no overbooking)
+- sliding-window rate limits: 120/min/IP (read incl. calendar), 30/min/IP (write)
+- hold creation is transactional with `SELECT … FOR UPDATE` (no overbooking);
+  resources with slots ("Termine") accept bookings ONLY on a slot, with the
+  slot's capacity as the hard limit
+- the calendar exposes only aggregate availability per slot — no customer or
+  reservation details
 
 ### Wallet downloads (`/fib-booking/wallet/{ticketId}/…`)
 - HMAC-SHA256 signature over `provider|ticketId|expiry`, `hash_equals`

@@ -72,6 +72,22 @@ services:
         depends_on:
             - mariadb
 
+    # Optional: public HTTPS tunnel to the scanner app (e.g. to scan with a
+    # real phone camera — browsers require a secure context for camera access).
+    # Opt-in via profile: `make scanner-ngrok` (needs NGROK_AUTHTOKEN).
+    ngrok:
+        image: ngrok/ngrok:latest
+        container_name: fib-ngrok
+        profiles:
+            - ngrok
+        command: ['http', 'fib-scanner:80', '--log', 'stdout']
+        environment:
+            - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN:-}
+        depends_on:
+            - scanner
+        networks:
+            - shopware
+
     ingress:
         image: nginx:alpine
         container_name: fib-ingress

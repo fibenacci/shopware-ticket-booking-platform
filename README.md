@@ -34,10 +34,11 @@ that `make up` starts automatically. Make sure `*.docker` resolves to
 use the `127.0.0.1` fallback ports.
 
 | Service | URL | Fallback / notes |
-|---|---|---|
+| --- | --- | --- |
 | Storefront (homepage with booking calendar) | http://booking.docker | http://127.0.0.1:8090 |
 | Administration | http://booking.docker/admin | login `admin` / `shopware` |
-| Scanner app (operators) | http://scanner.booking.docker | login `scanner` / `fib-scanner-demo!` (demo); camera needs a secure context → use http://127.0.0.1:8096 |
+| Scanner app (operators) | http://scanner.booking.docker | login `scanner` / `fib-scanner-demo!` (demo); camera needs a secure context → use http://127.0.0.1:8096 or `make scanner-ngrok` |
+| Scanner via public HTTPS (phone camera) | `make scanner-ngrok` prints the tunnel URL | needs `NGROK_AUTHTOKEN` in `.env.local`; stop via `make scanner-ngrok-stop` |
 | Customer ticket area | http://booking.docker/account/fib-booking/tickets | requires storefront login |
 | Mailpit (mail UI) | http://mail.booking.docker | http://127.0.0.1:8095 |
 | Adminer (DB UI) | http://adminer.booking.docker | server `mariadb`, `root` / `root` |
@@ -47,7 +48,7 @@ use the `127.0.0.1` fallback ports.
 API endpoints (selection):
 
 | API | URL |
-|---|---|
+| --- | --- |
 | Booking Store API | `POST /store-api/fib-booking/availability` · `…/hold` · `…/calendar` |
 | Storefront JSON (widget/calendar) | `POST /fib-booking/availability` · `…/hold` · `…/cart/add` · `…/calendar` |
 | Wallet downloads (signed links) | `GET /fib-booking/wallet/{ticketId}/apple.pkpass` · `…/google` |

@@ -50,10 +50,11 @@ npm test                # api.js: token extraction/validation, session handling
 ## Test coverage map
 
 | Layer | Suite |
-|---|---|
+| --- | --- |
 | Domain/unit (45 tests) | crypto (cipher/signer/JWT), cart, rules, flow, cache, request parser, CMS resolver |
-| Integration (14 tests) | migrations (1717/1718/1719), number ranges, **scan verdict matrix + audit**, **slot availability + calendar red-day logic** |
-| Storefront E2E (2 specs) | homepage calendar smoke, API booking flow |
+| Integration — FibBookingSystem (14 tests) | migrations (1717/1718/1719), number ranges, **scan verdict matrix + audit**, **slot availability + calendar red-day logic** |
+| Integration — FibBookingDemoData (7 tests) | seeded scanner access (least-privilege role/user, idempotency), seeded homepage layout (calendar element, scanner link, category assignment) |
+| Storefront E2E (2 specs) | homepage calendar smoke (incl. scanner entry point), API booking flow |
 | Scanner app (17 tests) | QR token parsing, in-memory session handling |
 
 **Known gap**: administration component tests (CMS element/block) — requires

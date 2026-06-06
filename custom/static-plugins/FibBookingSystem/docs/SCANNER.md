@@ -17,6 +17,19 @@ Deploy `dist/` behind **HTTPS on the same origin as the Shopware Admin API**
 `'self'`). A sub-path on the shop domain (e.g. `/scanner/`) or a dedicated
 subdomain with a reverse proxy to `/api` both work.
 
+### Testing with a real phone (ngrok)
+
+```bash
+# one-time: put NGROK_AUTHTOKEN=<token> into .env.local
+make scanner-ngrok        # prints a public https://…ngrok… URL
+make scanner-ngrok-stop
+```
+
+The HTTPS tunnel provides the secure context, so camera scanning works on a
+real device; `/api` is proxied same-origin through the scanner nginx.
+⚠️ The tunnel is publicly reachable — change the demo scanner credentials
+before sharing the URL.
+
 ## Login & permissions
 
 The app authenticates against the Shopware Admin API (OAuth password grant).

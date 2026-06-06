@@ -37,7 +37,7 @@ network).
 |------------|--------------------------------------------------------|
 | Storefront | http://booking.docker (or http://127.0.0.1:8090)       |
 | Admin      | http://booking.docker/admin (admin / shopware)         |
-| Scanner    | http://scanner.booking.docker — camera testing needs a secure context: use http://127.0.0.1:8096 |
+| Scanner    | http://scanner.booking.docker — camera testing needs a secure context: use http://127.0.0.1:8096 or `make scanner-ngrok` (public HTTPS tunnel for real phones, needs `NGROK_AUTHTOKEN` in `.env.local`) |
 | Mailpit    | http://mail.booking.docker (or http://127.0.0.1:8095)  |
 | Adminer    | http://adminer.booking.docker                          |
 | Watchers   | http://watch-storefront.booking.docker / watch-admin.… |

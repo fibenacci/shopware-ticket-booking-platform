@@ -37,6 +37,9 @@ Current state:
 - Vue 3 operator scanner app in `apps/scanner/` (see [docs/SCANNER.md](docs/SCANNER.md))
 - sliding-window rate limits on all booking/wallet/scan endpoints
 - documented threat model (see [docs/SECURITY.md](docs/SECURITY.md))
+- operator-defined booking slots ("Termine") with per-slot capacity (`fib_booking_slot`, generator command `fib-booking:slots:generate`)
+- booking calendar as CMS element/block for shopping experiences — red sold-out days, package selection, direct checkout (see [docs/CALENDAR.md](docs/CALENDAR.md))
+- Store API routes (`/store-api/fib-booking/availability|hold|calendar`) following the abstract-route/decoration pattern
 
 Tests (from the project root, see also `make test` / `make e2e`):
 
