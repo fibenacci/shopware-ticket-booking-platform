@@ -1,0 +1,10 @@
+parameters:
+    level: 6
+    treatPhpDocTypesAsCertain: false
+    paths:
+        - ../custom/static-plugins/FibBookingSystem/src
+        - ../custom/static-plugins/FibBookingDemoData/src
+    excludePaths:
+        - ../custom/static-plugins/*/src/Resources/*
+    bootstrapFiles:
+        - ../vendor/autoload.php

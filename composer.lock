@@ -1962,7 +1962,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom/static-plugins/FibBookingSystem",
-                "reference": "12fa608b9427c0970c8f9716b1e321d7a3f46004"
+                "reference": "099667e640c725fe9045bd19a415242fd6e882ad"
             },
             "require": {
                 "chillerlan/php-qrcode": "^5.0",
@@ -1983,8 +1983,17 @@
                     "en-GB": "FIB Booking System"
                 },
                 "description": {
-                    "de-DE": "Technisch sauberes Reservierungs- und Buchungssystem fuer Shopware.",
-                    "en-GB": "Clean reservation and booking system for Shopware."
+                    "de-DE": "Komplette Buchungs- und Ticketing-Plattform fuer Shopware 6: buchbare Termine mit Kapazitaeten, Holds, Reservierungen, QR-Code-Tickets, Wallet-Paesse und Scanner-App.",
+                    "en-GB": "Complete booking and ticketing platform for Shopware 6: bookable time slots with capacities, holds, reservations, QR code tickets, wallet passes and a scanner app."
+                },
+                "plugin-icon": "src/Resources/config/plugin.png",
+                "manufacturerLink": {
+                    "de-DE": "https://fibenacci.de",
+                    "en-GB": "https://fibenacci.de"
+                },
+                "supportLink": {
+                    "de-DE": "https://fibenacci.de",
+                    "en-GB": "https://fibenacci.de"
                 }
             },
             "autoload": {
@@ -2008,7 +2017,13 @@
             "license": [
                 "proprietary"
             ],
-            "description": "Booking and reservation system plugin for Shopware 6.",
+            "authors": [
+                {
+                    "name": "Fibenacci",
+                    "homepage": "https://fibenacci.de"
+                }
+            ],
+            "description": "Complete booking and ticketing platform for Shopware 6: bookable time slots with capacities, holds, reservations, QR code tickets, wallet passes and a scanner app.",
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -11992,7 +12007,7 @@
             "dist": {
                 "type": "path",
                 "url": "custom/static-plugins/FibBookingDemoData",
-                "reference": "fdf7dc9781834d62972eb5b2e4b5324043f8063c"
+                "reference": "a7e42bb98f087a3690cfa5a848e3b03d5c385aa8"
             },
             "require": {
                 "fib/fib-booking-system": "*",
@@ -12006,8 +12021,17 @@
                     "en-GB": "FIB Booking Demo Data"
                 },
                 "description": {
-                    "de-DE": "Demo-Daten fuer das FIB Buchungssystem (nur Dev/CI).",
-                    "en-GB": "Demo data for the FIB Booking System (dev/CI only)."
+                    "de-DE": "Demo-Daten fuer das FIB Buchungssystem in Entwicklung und CI: buchbare Demo-Produkte, Buchungsressourcen, Kalender-Slots, Paket-Produkte und eine bestaetigte Reservierung.",
+                    "en-GB": "Demo data for the FIB Booking System used in development and CI: bookable demo products, booking resources, calendar slots, package products and a confirmed reservation."
+                },
+                "plugin-icon": "src/Resources/config/plugin.png",
+                "manufacturerLink": {
+                    "de-DE": "https://fibenacci.de",
+                    "en-GB": "https://fibenacci.de"
+                },
+                "supportLink": {
+                    "de-DE": "https://fibenacci.de",
+                    "en-GB": "https://fibenacci.de"
                 }
             },
             "autoload": {
@@ -12018,7 +12042,13 @@
             "license": [
                 "proprietary"
             ],
-            "description": "Demo data for the FIB Booking System — bookable products, resources, reservations and tickets. Dev/CI only.",
+            "authors": [
+                {
+                    "name": "Fibenacci",
+                    "homepage": "https://fibenacci.de"
+                }
+            ],
+            "description": "Demo data for the FIB Booking System used in development and CI: bookable demo products, booking resources, calendar slots, package products and a confirmed reservation.",
             "transport-options": {
                 "symlink": true,
                 "relative": true

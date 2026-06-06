@@ -48,7 +48,8 @@ node_modules/
 ###< friendsofphp/php-cs-fixer ###
 
 ###> phpstan/phpstan ###
-phpstan.neon
+# anchored to the repo root on purpose — .build/phpstan.neon must stay tracked
+/phpstan.neon
 ###< phpstan/phpstan ###
 
 ###> phpunit/phpunit ###
