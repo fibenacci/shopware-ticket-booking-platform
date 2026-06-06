@@ -20,6 +20,11 @@ test.describe('FIB booking calendar on the homepage', () => {
     // The calendar JS renders the month grid client-side.
     await expect(page.locator('.fib-booking-calendar-grid .fib-booking-day').first()).toBeVisible();
 
+    // Operator entry point: the seeded scanner-app link below the calendar.
+    const scannerLink = page.locator('a', { hasText: 'Open ticket scanner' });
+    await expect(scannerLink).toHaveCount(1);
+    expect(await scannerLink.getAttribute('href')).toContain('scanner.');
+
     // Month endpoint returns bookable days for the configured resource.
     const month = new Date();
     const monthKey = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;

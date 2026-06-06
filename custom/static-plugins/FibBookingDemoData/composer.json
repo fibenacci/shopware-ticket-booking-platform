@@ -9,6 +9,11 @@
       "FibBookingDemoData\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "FibBookingDemoData\\Tests\\": "tests/"
+    }
+  },
   "extra": {
     "shopware-plugin-class": "FibBookingDemoData\\FibBookingDemoData",
     "label": {

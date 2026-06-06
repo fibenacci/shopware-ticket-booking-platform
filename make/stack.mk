@@ -13,6 +13,11 @@ preflight: ## Prepare local files (env, lock files, vendor scaffold)
 		echo "composer.lock or bin/ missing — bootstrapping project via $(CLI_IMAGE)"; \
 		$(MAKE) composer-install; \
 	fi
+	@if [ ! -f $(PLUGIN_DIR)/apps/scanner/dist/index.html ]; then \
+		echo "Scanner app build missing — building via node:22-alpine (no host node needed)"; \
+		docker run --rm -v "$$(pwd)/$(PLUGIN_DIR)/apps/scanner":/app -w /app node:22-alpine \
+			sh -c "npm ci --no-audit --no-fund && npm run build"; \
+	fi
 
 composer-install: ## Run composer install via the shopware-cli image (no host PHP needed)
 	@docker run --rm -v "$$(pwd)":/app -w /app --entrypoint sh $(CLI_IMAGE) \
@@ -40,6 +45,7 @@ up: preflight ## Start the full local stack (proxy + compose + setup)
 	@printf "║  🌐  %-16shttp://%-39s║\n" "Frontend:" "$(DOMAIN)  (or http://127.0.0.1:8090)"
 	@printf "║  🔐  %-16shttp://%-39s║\n" "Admin:" "$(DOMAIN)/admin"
 	@printf "║  📧  %-16shttp://%-39s║\n" "Mailpit:" "mail.$(DOMAIN)"
+	@printf "║  📷  %-16shttp://%-39s║\n" "Scanner:" "scanner.$(DOMAIN)  (camera: 127.0.0.1:8096)"
 	@printf "║  🗄   %-16shttp://%-39s║\n" "Adminer:" "adminer.$(DOMAIN)"
 	@printf "║                                                                  ║\n"
 	@printf "║  👤  %-16s%-46s║\n" "Username:" "admin"

@@ -27,12 +27,20 @@ plugin updates run.
 
 ## Services
 
+All HTTP traffic flows through a central **ingress** container
+(`docker/ingress.conf`) behind the dinghy proxy — one entry point for
+`booking.docker` and every subdomain, proxying to explicit container names
+(compose service aliases collide with other stacks on the shared proxy
+network).
+
 | Service    | URL                                                    |
 |------------|--------------------------------------------------------|
 | Storefront | http://booking.docker (or http://127.0.0.1:8090)       |
 | Admin      | http://booking.docker/admin (admin / shopware)         |
+| Scanner    | http://scanner.booking.docker — camera testing needs a secure context: use http://127.0.0.1:8096 |
 | Mailpit    | http://mail.booking.docker (or http://127.0.0.1:8095)  |
 | Adminer    | http://adminer.booking.docker                          |
+| Watchers   | http://watch-storefront.booking.docker / watch-admin.… |
 
 ## Key targets
 

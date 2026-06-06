@@ -193,6 +193,7 @@ jobs:
                     name: junit-results
                     path: |
                         custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml
+                        custom/static-plugins/FibBookingDemoData/build/junit-phpunit.xml
                         custom/static-plugins/FibBookingSystem/test-results/junit.xml
                     if-no-files-found: ignore
 
@@ -247,6 +248,19 @@ jobs:
                 with:
                     name: PHPUnit
                     path: 'junit-results/custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml'
+                    reporter: java-junit
+                    list-tests: failed
+                    list-suites: all
+                    fail-on-error: false
+                    fail-on-empty: false
+
+            -   id: phpunit-demodata-report
+                name: Publish PHPUnit (DemoData) report
+                if: ${{ needs.tests.result == 'success' || needs.tests.result == 'failure' }}
+                uses: dorny/test-reporter@v3
+                with:
+                    name: PHPUnit — DemoData
+                    path: 'junit-results/custom/static-plugins/FibBookingDemoData/build/junit-phpunit.xml'
                     reporter: java-junit
                     list-tests: failed
                     list-suites: all

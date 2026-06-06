@@ -226,6 +226,7 @@ class BookingDemoDataSeeder
                 'email' => (string) ($user['email'] ?? 'scanner@example.invalid'),
                 'localeId' => $localeId,
                 'admin' => false,
+                'active' => true,
                 'aclRoles' => [
                     ['id' => $roleId],
                 ],

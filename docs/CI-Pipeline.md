@@ -1,8 +1,8 @@
 # CI Pipeline
 
-`.github/workflows/ci.yml` runs on every PR and push to `trunk`. The pipeline
-mirrors the UGG unified-shop structure: parallel checks feed two gates, the
-gates feed the test stack, results get published, a strict final gate reports.
+`.github/workflows/ci.yml` runs on every PR and push to `trunk`: parallel
+checks feed two gates, the gates feed the test stack, results get published,
+a strict final gate reports.
 
 ```
 Static Quality ──┐

@@ -33,7 +33,7 @@ but gets 403 on every other Admin API endpoint):
 |---|---|
 | Role | `Booking Scanner` — privileges: `fib_booking.ticket_scan` only |
 | User | `scanner` / `fib-scanner-demo!` (**demo credentials** — change/disable in production, defined in the demo-data seeds JSON) |
-| Entry point | "Open ticket scanner" button on the seeded homepage (links to the dev server `http://localhost:5173`; adjust the URL in the CMS layout for production) |
+| Entry point | "Open ticket scanner" button on the seeded homepage → `http://scanner.booking.docker` (served by the dev-stack ingress; the build is auto-created by `make up`). Camera testing needs a secure context — use `http://127.0.0.1:8096`. Adjust the URL in the CMS layout / seeds for production. |
 
 Token handling: access + refresh tokens are kept **in memory only**. Closing
 the tab ends the session; nothing is persisted on the device.

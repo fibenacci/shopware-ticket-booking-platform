@@ -40,27 +40,54 @@ services:
     mailpit:
         image: axllent/mailpit:latest
         container_name: fib-mailpit
-        environment:
-            - VIRTUAL_HOST=mail.booking.docker
-            - VIRTUAL_PORT=8025
         ports:
             - '127.0.0.1:8095:8025'
         networks:
             - shopware
-            - proxy
+
+    scanner:
+        image: nginx:alpine
+        container_name: fib-scanner
+        ports:
+            # localhost fallback — also the URL for CAMERA scanning in dev:
+            # browsers only grant camera access in secure contexts (https or
+            # localhost), so use http://127.0.0.1:8096 when testing the camera.
+            - '127.0.0.1:8096:80'
+        volumes:
+            - ./custom/static-plugins/FibBookingSystem/apps/scanner/dist:/usr/share/nginx/html:ro
+            - ./docker/scanner-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        depends_on:
+            shopware:
+                condition: service_healthy
+        networks:
+            - shopware
 
     adminer:
         image: adminer:latest
         container_name: fib-adminer
         environment:
             - ADMINER_DEFAULT_SERVER=mariadb
-            - VIRTUAL_HOST=adminer.booking.docker
-            - VIRTUAL_PORT=8080
         networks:
             - shopware
-            - proxy
         depends_on:
             - mariadb
+
+    ingress:
+        image: nginx:alpine
+        container_name: fib-ingress
+        environment:
+            - VIRTUAL_HOST=booking.docker,*.booking.docker
+        volumes:
+            - ./docker/ingress.conf:/etc/nginx/conf.d/default.conf:ro
+            - ./docker/502-watcher.html:/usr/share/nginx/html/502-watcher.html:ro
+        depends_on:
+            shopware:
+                condition: service_healthy
+        networks:
+            shopware:
+                aliases:
+                    - ingress.booking.docker
+            proxy:
 
     shopware:
         image: dockware/dev:6.7.1.0
@@ -80,7 +107,9 @@ services:
         environment:
             - XDEBUG_ENABLED=${XDEBUG_ENABLED:-0}
             - DATABASE_URL=mysql://root:root@mariadb:3306/shopware
-            - VIRTUAL_HOST=booking.docker,*.booking.docker
+            # Used by docker/setup-dev.sh to derive the sales channel domain;
+            # HTTP routing happens in the ingress container (docker/ingress.conf).
+            - VIRTUAL_HOST=booking.docker
         ports:
             - '127.0.0.1:8090:80'
         volumes:
@@ -101,7 +130,6 @@ services:
             shopware:
                 aliases:
                     - booking.docker
-            proxy:
 
 volumes:
     mariadb_data:

@@ -38,10 +38,10 @@
             "monthsAhead": 3,
             "assignToHomepage": true,
             "scannerLink": {
-                "url": "http://localhost:5173",
+                "url": "http://scanner.booking.docker",
                 "headline": "Operator area",
                 "label": "Open ticket scanner",
-                "hint": "Sign in with a scanner account (dedicated ACL role — see docs/SCANNER.md)."
+                "hint": "Sign in with a scanner account (dedicated ACL role — see docs/SCANNER.md). For camera access use http://127.0.0.1:8096 (browsers require a secure context)."
             }
         }
     },
