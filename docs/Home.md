@@ -13,6 +13,10 @@ reservation and booking system with holds, reservations, tickets and QR codes.
 | [Deployment](Deployment) | Docker production deployment (image, compose, releases) |
 | [Plugin: FibBookingSystem](Plugin-FibBookingSystem) | Plugin overview (from the plugin README) |
 | [Plugin: Architecture Plan](Plugin-Architecture-Plan) | Architecture and implementation plan of the plugin |
+| [Plugin: Ticketing Plan](Plugin-Ticketing-Plan) | Ticketing platform plan (wallet, scanner, security) |
+| [Plugin: Wallet](Plugin-Wallet) | Apple/Google Wallet setup and operations |
+| [Plugin: Scanner](Plugin-Scanner) | Operator scanner app (Vue) |
+| [Plugin: Security](Plugin-Security) | Threat model and hardening |
 
 ## Sources
 

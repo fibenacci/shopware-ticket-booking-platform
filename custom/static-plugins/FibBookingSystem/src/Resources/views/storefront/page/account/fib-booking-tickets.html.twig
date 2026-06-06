@@ -1,0 +1,54 @@
+{% sw_extends '@Storefront/storefront/page/account/_page.html.twig' %}
+
+{% block page_account_main_content %}
+    <div class="account-fib-booking-tickets">
+        <h1 class="h3">{{ 'fibBooking.account.ticketsHeadline'|trans|sw_sanitize }}</h1>
+
+        {% if tickets is empty %}
+            <div class="alert alert-info" role="alert">
+                {{ 'fibBooking.account.noTickets'|trans|sw_sanitize }}
+            </div>
+        {% endif %}
+
+        {% for ticket in tickets %}
+            <div class="card mb-3 fib-booking-ticket-card" data-ticket-number="{{ ticket.ticketNumber }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h2 class="h5 mb-1">{{ ticket.resourceName }}</h2>
+                            <p class="mb-1 text-muted">
+                                {{ ticket.startsAt|format_datetime('medium', 'short') }}
+                                &ndash; {{ ticket.endsAt|format_datetime('medium', 'short') }}
+                            </p>
+                            <p class="mb-1">
+                                <strong>{{ 'fibBooking.account.ticketNumber'|trans|sw_sanitize }}:</strong> {{ ticket.ticketNumber }}<br>
+                                <strong>{{ 'fibBooking.account.bookingNumber'|trans|sw_sanitize }}:</strong> {{ ticket.bookingNumber }}<br>
+                                <strong>{{ 'fibBooking.account.quantity'|trans|sw_sanitize }}:</strong> {{ ticket.quantity }}
+                            </p>
+                            <span class="badge {{ ticket.status == 'scanned' ? 'bg-secondary' : 'bg-success' }}">
+                                {{ ('fibBooking.account.status.' ~ ticket.status)|trans|sw_sanitize }}
+                            </span>
+                        </div>
+
+                        <div class="d-flex flex-column gap-2 fib-booking-wallet-buttons">
+                            {% if ticket.appleParams %}
+                                <a class="btn btn-dark btn-sm"
+                                   rel="nofollow noopener"
+                                   href="{{ path('frontend.fib_booking.wallet.apple', { ticketId: ticket.ticketId, exp: ticket.appleParams.exp, sig: ticket.appleParams.sig }) }}">
+                                    {{ 'fibBooking.account.addToAppleWallet'|trans|sw_sanitize }}
+                                </a>
+                            {% endif %}
+                            {% if ticket.googleParams %}
+                                <a class="btn btn-outline-dark btn-sm"
+                                   rel="nofollow noopener"
+                                   href="{{ path('frontend.fib_booking.wallet.google', { ticketId: ticket.ticketId, exp: ticket.googleParams.exp, sig: ticket.googleParams.sig }) }}">
+                                    {{ 'fibBooking.account.addToGoogleWallet'|trans|sw_sanitize }}
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

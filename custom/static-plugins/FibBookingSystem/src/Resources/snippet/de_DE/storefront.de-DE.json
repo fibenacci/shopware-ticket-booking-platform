@@ -5,6 +5,20 @@
     },
     "quantity": {
       "label": "Anzahl"
+    },
+    "account": {
+      "ticketsHeadline": "Meine Tickets",
+      "noTickets": "Du hast noch keine Tickets.",
+      "ticketNumber": "Ticketnummer",
+      "bookingNumber": "Buchungsnummer",
+      "quantity": "Gäste",
+      "addToAppleWallet": "Zu Apple Wallet hinzufügen",
+      "addToGoogleWallet": "Zu Google Wallet hinzufügen",
+      "status": {
+        "issued": "Gültig",
+        "sent": "Gültig",
+        "scanned": "Bereits verwendet"
+      }
     }
   }
 }

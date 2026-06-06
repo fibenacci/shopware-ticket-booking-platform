@@ -29,3 +29,4 @@ include make/database.mk  # domain, demo data, messenger
 include make/quality.mk   # phpstan, php-cs-fixer
 include make/tests.mk     # phpunit (unit + integration)
 include make/e2e.mk       # playwright
+include make/scanner.mk   # vue scanner app

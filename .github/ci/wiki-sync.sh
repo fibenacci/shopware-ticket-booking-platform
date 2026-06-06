@@ -13,9 +13,13 @@ echo "▶ Assembling wiki pages..."
 mkdir -p "$STAGING"
 # Project docs map 1:1 to wiki pages
 cp docs/*.md "$STAGING"/
-# Plugin docs get a Plugin- prefix
+# Plugin docs get a Plugin- prefix; SNAKE_CASE.md → Title-Case page names
 cp "$PLUGIN_DIR/README.md" "$STAGING/Plugin-FibBookingSystem.md"
-cp "$PLUGIN_DIR/docs/ARCHITECTURE_PLAN.md" "$STAGING/Plugin-Architecture-Plan.md"
+for doc in "$PLUGIN_DIR"/docs/*.md; do
+    base="$(basename "$doc" .md)"
+    page="$(echo "$base" | tr '[:upper:]' '[:lower:]' | tr '_' ' ' | awk '{for (i=1; i<=NF; i++) $i=toupper(substr($i,1,1)) substr($i,2)}1' | tr ' ' '-')"
+    cp "$doc" "$STAGING/Plugin-$page.md"
+done
 ls -la "$STAGING"/
 
 echo "▶ Cloning wiki repository..."

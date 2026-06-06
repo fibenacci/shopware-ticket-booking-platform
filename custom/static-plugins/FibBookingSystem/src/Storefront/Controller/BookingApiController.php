@@ -9,6 +9,7 @@ use Exception;
 use FibBookingSystem\Checkout\Cart\BookingLineItemFactory;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\Core\Domain\Reservation\BookingHoldService;
+use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
 use InvalidArgumentException;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -26,6 +27,7 @@ class BookingApiController extends StorefrontController
         private readonly BookingHoldService $holdService,
         private readonly BookingLineItemFactory $lineItemFactory,
         private readonly CartService $cartService,
+        private readonly BookingRateLimiter $rateLimiter,
     ) {
     }
 
@@ -37,6 +39,8 @@ class BookingApiController extends StorefrontController
     )]
     public function availability(Request $request): JsonResponse
     {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, $request->getClientIp());
+
         try {
             $payload = $this->decodeJsonPayload($request);
             $result = $this->availabilityService->check(
@@ -63,6 +67,8 @@ class BookingApiController extends StorefrontController
     )]
     public function hold(Request $request, SalesChannelContext $context): JsonResponse
     {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
+
         try {
             $payload = $this->decodeJsonPayload($request);
             $customer = $context->getCustomer();
@@ -97,6 +103,8 @@ class BookingApiController extends StorefrontController
     )]
     public function addToCart(Request $request, SalesChannelContext $context): JsonResponse
     {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
+
         try {
             $payload = $this->decodeJsonPayload($request);
             $lineItem = $this->lineItemFactory->createProductLineItem(

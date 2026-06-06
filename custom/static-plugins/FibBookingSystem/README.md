@@ -31,6 +31,12 @@ Current state:
 - Rule Builder rule `fibBookingLineItemInCart`
 - PHPUnit unit and integration tests
 - Playwright E2E test template for the storefront API flow
+- scan API v2 with verdicts (`valid` / `already_scanned` / `expired` / `revoked` / `not_found`), ACL privilege and full audit trail (`fib_booking_scan_log`)
+- Apple Wallet (`.pkpass`) + Google Wallet passes via signed, expiring download links (see [docs/WALLET.md](docs/WALLET.md))
+- customer account ticket area (`/account/fib-booking/tickets`) with wallet buttons
+- Vue 3 operator scanner app in `apps/scanner/` (see [docs/SCANNER.md](docs/SCANNER.md))
+- sliding-window rate limits on all booking/wallet/scan endpoints
+- documented threat model (see [docs/SECURITY.md](docs/SECURITY.md))
 
 Tests (from the project root, see also `make test` / `make e2e`):
 

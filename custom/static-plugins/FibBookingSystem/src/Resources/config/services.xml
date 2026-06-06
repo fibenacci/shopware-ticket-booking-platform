@@ -56,14 +56,96 @@
             <argument type="service" id="event_dispatcher"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
             <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Security\TokenCipher">
+            <argument>%kernel.secret%</argument>
+        </service>
+
+        <service id="fib_booking.rate_limiter.storage" class="Symfony\Component\RateLimiter\Storage\CacheStorage">
+            <argument type="service" id="cache.app"/>
+        </service>
+
+        <service id="fib_booking.rate_limiter.read" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_read</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">120</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+
+        <service id="fib_booking.rate_limiter.write" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_write</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">30</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+
+        <service id="fib_booking.rate_limiter.wallet" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_wallet</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">20</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+
+        <service id="fib_booking.rate_limiter.scan" class="Symfony\Component\RateLimiter\RateLimiterFactory">
+            <argument type="collection">
+                <argument key="id">fib_booking_scan</argument>
+                <argument key="policy">sliding_window</argument>
+                <argument key="limit">120</argument>
+                <argument key="interval">1 minute</argument>
+            </argument>
+            <argument type="service" id="fib_booking.rate_limiter.storage"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter">
+            <argument type="service" id="fib_booking.rate_limiter.read"/>
+            <argument type="service" id="fib_booking.rate_limiter.write"/>
+            <argument type="service" id="fib_booking.rate_limiter.wallet"/>
+            <argument type="service" id="fib_booking.rate_limiter.scan"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Wallet\WalletLinkSigner">
+            <argument>%kernel.secret%</argument>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Wallet\AppleWalletPassGenerator">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument>%kernel.project_dir%</argument>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Wallet\GoogleWalletLinkGenerator">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Wallet\WalletPassService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\AppleWalletPassGenerator"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\GoogleWalletLinkGenerator"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletLinkSigner"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\TicketScanService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
 
         <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketMailSubscriber">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="Shopware\Core\Content\Mail\Service\MailService"/>
             <argument type="service" id="mail_template.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
             <tag name="kernel.event_subscriber"/>
         </service>
 
@@ -90,6 +172,17 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService"/>
             <argument type="service" id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
             <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Storefront\Controller\BookingWalletController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
@@ -97,7 +190,8 @@
         </service>
 
         <service id="FibBookingSystem\Api\Controller\BookingTicketScanController" public="true">
-            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketScanService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>

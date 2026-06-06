@@ -1962,11 +1962,13 @@
             "dist": {
                 "type": "path",
                 "url": "custom/static-plugins/FibBookingSystem",
-                "reference": "7d2396a4daaaa3ab619c1146ffa8b8824a5ec7d5"
+                "reference": "12fa608b9427c0970c8f9716b1e321d7a3f46004"
             },
             "require": {
                 "chillerlan/php-qrcode": "^5.0",
                 "ext-gd": "*",
+                "ext-openssl": "*",
+                "ext-zip": "*",
                 "shopware/core": "~6.5.0 || ~6.6.0 || ~6.7.0",
                 "shopware/storefront": "~6.5.0 || ~6.6.0 || ~6.7.0"
             },

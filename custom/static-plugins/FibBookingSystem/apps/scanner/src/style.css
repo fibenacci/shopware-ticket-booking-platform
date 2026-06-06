@@ -1,0 +1,98 @@
+:root {
+    color-scheme: dark;
+    --bg: #14161c;
+    --card: #1c1f28;
+    --text: #f2f4f8;
+    --muted: #9aa3b5;
+    --accent: #4f8cff;
+    --valid: #1f9d55;
+    --warn: #d97706;
+    --bad: #dc2626;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.app { max-width: 560px; margin: 0 auto; padding: 12px; }
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.app-header h1 { font-size: 1.1rem; margin: 8px 0; }
+
+.card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.camera-card { padding: 8px; }
+
+.camera {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+    background: #000;
+    object-fit: cover;
+}
+
+label { display: block; margin-bottom: 12px; font-size: 0.9rem; color: var(--muted); }
+
+input {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #333a4d;
+    background: #11131a;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+button {
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; cursor: wait; }
+
+.btn-link { background: none; color: var(--muted); font-size: 0.9rem; }
+
+.error { color: var(--bad); }
+.muted { color: var(--muted); font-size: 0.85rem; }
+
+.result { border-left: 6px solid var(--muted); }
+.result .verdict-label { display: block; font-size: 1.3rem; margin-bottom: 6px; }
+.verdict-valid { border-color: var(--valid); }
+.verdict-valid .verdict-label { color: var(--valid); }
+.verdict-warn { border-color: var(--warn); }
+.verdict-warn .verdict-label { color: var(--warn); }
+.verdict-bad { border-color: var(--bad); }
+.verdict-bad .verdict-label { color: var(--bad); }
+
+.history ul { list-style: none; margin: 0; padding: 0; }
+.history li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #2a2f3d;
+    font-size: 0.85rem;
+}
+.history h2 { font-size: 1rem; margin: 0 0 8px; }

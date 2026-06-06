@@ -7,6 +7,7 @@ namespace FibBookingSystem\Core\Domain\Ticket;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use RuntimeException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -22,6 +23,7 @@ class BookingTicketService
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly QrCodeGenerator $qrCodeGenerator,
         private readonly NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
+        private readonly TokenCipher $tokenCipher,
     ) {
     }
 
@@ -73,6 +75,7 @@ class BookingTicketService
                 'reservation_id' => Uuid::fromHexToBytes($reservationId),
                 'ticket_number' => $ticketNumber,
                 'scan_token_hash' => hash('sha256', $scanToken),
+                'scan_token_cipher' => $this->tokenCipher->encrypt($scanToken),
                 'status' => 'issued',
                 'issued_at' => $this->formatDateTime($issuedAt),
                 'expires_at' => $expiresAt ? $this->formatDateTime($expiresAt) : null,
@@ -96,38 +99,6 @@ class BookingTicketService
         ], [
             'id' => Uuid::fromHexToBytes($ticketId),
         ]);
-    }
-
-    public function markScanned(string $scanToken): bool
-    {
-        return $this->connection->transactional(function () use ($scanToken): bool {
-            $ticket = $this->connection->fetchAssociative(
-                'SELECT id, status, expires_at
-                 FROM fib_booking_ticket
-                 WHERE scan_token_hash = :scanTokenHash
-                 FOR UPDATE',
-                ['scanTokenHash' => hash('sha256', $scanToken)],
-            );
-
-            if ($ticket === false || !in_array($ticket['status'], ['issued', 'sent'], true)) {
-                return false;
-            }
-
-            if ($ticket['expires_at'] !== null && new DateTimeImmutable((string) $ticket['expires_at']) < new DateTimeImmutable()) {
-                return false;
-            }
-
-            $now = new DateTimeImmutable();
-            $this->connection->update('fib_booking_ticket', [
-                'status' => 'scanned',
-                'scanned_at' => $this->formatDateTime($now),
-                'updated_at' => $this->formatDateTime($now),
-            ], [
-                'id' => $ticket['id'],
-            ]);
-
-            return true;
-        });
     }
 
     private function createQrPayload(string $ticketNumber, string $scanToken): string

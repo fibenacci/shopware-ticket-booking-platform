@@ -17,10 +17,11 @@
 # Tooling caches
 .phpunit.cache/
 .php-cs-fixer.cache
-/custom/static-plugins/*/node_modules/
+node_modules/
 /custom/static-plugins/*/playwright-report/
 /custom/static-plugins/*/test-results/
 /custom/static-plugins/*/.phpunit.cache/
+/custom/static-plugins/*/apps/*/dist/
 
 ###> shopware/core ###
 .env.local

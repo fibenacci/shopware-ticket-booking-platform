@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
+
+    <card>
+        <title>Wallet — General</title>
+        <title lang="de-DE">Wallet — Allgemein</title>
+
+        <input-field>
+            <name>walletOrganizationName</name>
+            <label>Organization name (shown on passes)</label>
+            <label lang="de-DE">Organisationsname (auf den Pässen sichtbar)</label>
+        </input-field>
+
+        <input-field>
+            <name>walletIconPath</name>
+            <label>Custom pass icon path (PNG, optional)</label>
+            <label lang="de-DE">Eigenes Pass-Icon (PNG, optional)</label>
+            <helpText>Absolute path or path relative to the project root. Falls back to the bundled icon.</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Apple Wallet</title>
+
+        <input-field>
+            <name>appleWalletPassTypeId</name>
+            <label>Pass Type Identifier (e.g. pass.com.example.booking)</label>
+        </input-field>
+
+        <input-field>
+            <name>appleWalletTeamId</name>
+            <label>Apple Team Identifier</label>
+        </input-field>
+
+        <input-field>
+            <name>appleWalletCertificatePath</name>
+            <label>Pass certificate path (.p12)</label>
+            <helpText>Absolute path on the server. Keep the file outside the web root with restrictive permissions.</helpText>
+        </input-field>
+
+        <input-field type="password">
+            <name>appleWalletCertificatePassword</name>
+            <label>Pass certificate password</label>
+        </input-field>
+
+        <input-field>
+            <name>appleWalletWwdrPath</name>
+            <label>Apple WWDR intermediate certificate path (.pem)</label>
+        </input-field>
+    </card>
+
+    <card>
+        <title>Google Wallet</title>
+
+        <input-field>
+            <name>googleWalletIssuerId</name>
+            <label>Issuer ID</label>
+        </input-field>
+
+        <input-field type="textarea">
+            <name>googleWalletServiceAccountJson</name>
+            <label>Service account key (JSON)</label>
+            <helpText>Content of the Google service account key file. Stored in the system configuration — restrict admin access accordingly.</helpText>
+        </input-field>
+    </card>
+</config>

@@ -4,38 +4,62 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Api\Controller;
 
-use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
+use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
+use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
+use Shopware\Core\Framework\Api\Context\AdminApiSource;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route(defaults: ['_routeScope' => ['api']])]
 class BookingTicketScanController extends AbstractController
 {
-    public function __construct(private readonly BookingTicketService $ticketService)
-    {
+    public function __construct(
+        private readonly TicketScanService $scanService,
+        private readonly BookingRateLimiter $rateLimiter,
+    ) {
     }
 
     #[Route(
         path: '/api/_action/fib-booking/ticket/scan',
         name: 'api.action.fib_booking.ticket.scan',
+        defaults: ['_acl' => ['fib_booking.ticket_scan']],
         methods: ['POST'],
     )]
-    public function scan(RequestDataBag $dataBag, Context $context): JsonResponse
+    public function scan(Request $request, RequestDataBag $dataBag, Context $context): JsonResponse
     {
-        unset($context);
+        $actor = $this->resolveActor($context);
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::SCAN, ($actor ?? 'anonymous') . '|' . $request->getClientIp());
 
         $scanToken = $dataBag->get('scanToken');
 
-        if (!is_string($scanToken) || $scanToken === '') {
-            throw new BadRequestHttpException('Missing required parameter "scanToken".');
+        // Tokens are produced by bin2hex(random_bytes(32)) — anything else is
+        // rejected before touching the database.
+        if (!is_string($scanToken) || !preg_match('/^[0-9a-f]{64}$/', $scanToken)) {
+            throw new BadRequestHttpException('Missing or malformed parameter "scanToken".');
         }
 
-        return new JsonResponse([
-            'valid' => $this->ticketService->markScanned($scanToken),
-        ]);
+        $result = $this->scanService->scan($scanToken, $actor, 'admin-api');
+
+        $response = new JsonResponse($result->toArray());
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('X-Robots-Tag', 'noindex');
+
+        return $response;
+    }
+
+    private function resolveActor(Context $context): ?string
+    {
+        $source = $context->getSource();
+
+        if ($source instanceof AdminApiSource) {
+            return $source->getUserId() ?? ($source->getIntegrationId() !== null ? 'integration:' . $source->getIntegrationId() : null);
+        }
+
+        return null;
     }
 }

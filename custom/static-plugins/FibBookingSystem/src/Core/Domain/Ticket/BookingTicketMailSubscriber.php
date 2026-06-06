@@ -6,6 +6,7 @@ namespace FibBookingSystem\Core\Domain\Ticket;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Wallet\WalletPassService;
 use Shopware\Core\Content\Mail\Service\AbstractMailService;
 use Shopware\Core\Content\MailTemplate\MailTemplateCollection;
 use Shopware\Core\Framework\Context;
@@ -26,6 +27,7 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         private readonly Connection $connection,
         private readonly AbstractMailService $mailService,
         private readonly EntityRepository $mailTemplateRepository,
+        private readonly WalletPassService $walletService,
     ) {
     }
 
@@ -72,6 +74,10 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
                 'qrPayload' => $ticket->getQrPayload(),
                 'qrCodeDataUri' => $ticket->getQrCodeDataUri(),
             ],
+            'wallet' => $this->buildWalletTemplateData(
+                $ticket->getId(),
+                $reservation['sales_channel_id'] ?? null,
+            ),
         ];
 
         $this->mailService->send($data, $context, $templateData);
@@ -105,6 +111,53 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         );
 
         return $data === false ? null : $data;
+    }
+
+    /**
+     * Builds absolute, signed wallet URLs for the ticket mail. Returns null
+     * values for providers that are not configured — the mail template can
+     * simply check for presence.
+     *
+     * @return array{appleUrl: string|null, googleUrl: string|null, accountUrl: string|null}
+     */
+    private function buildWalletTemplateData(string $ticketId, mixed $salesChannelIdBytes): array
+    {
+        $baseUrl = is_string($salesChannelIdBytes) ? $this->fetchSalesChannelBaseUrl($salesChannelIdBytes) : null;
+
+        if ($baseUrl === null) {
+            return ['appleUrl' => null, 'googleUrl' => null, 'accountUrl' => null];
+        }
+
+        $appleUrl = null;
+        if ($this->walletService->isAppleAvailable()) {
+            $params = $this->walletService->createSignedParams(WalletPassService::PROVIDER_APPLE, $ticketId);
+            $appleUrl = sprintf('%s/fib-booking/wallet/%s/apple.pkpass?exp=%d&sig=%s', $baseUrl, $ticketId, $params['exp'], $params['sig']);
+        }
+
+        $googleUrl = null;
+        if ($this->walletService->isGoogleAvailable()) {
+            $params = $this->walletService->createSignedParams(WalletPassService::PROVIDER_GOOGLE, $ticketId);
+            $googleUrl = sprintf('%s/fib-booking/wallet/%s/google?exp=%d&sig=%s', $baseUrl, $ticketId, $params['exp'], $params['sig']);
+        }
+
+        return [
+            'appleUrl' => $appleUrl,
+            'googleUrl' => $googleUrl,
+            'accountUrl' => $baseUrl . '/account/fib-booking/tickets',
+        ];
+    }
+
+    private function fetchSalesChannelBaseUrl(string $salesChannelIdBytes): ?string
+    {
+        $url = $this->connection->fetchOne(
+            "SELECT url FROM sales_channel_domain
+             WHERE sales_channel_id = :salesChannelId AND url LIKE 'http%'
+             ORDER BY url LIKE 'https%' DESC
+             LIMIT 1",
+            ['salesChannelId' => $salesChannelIdBytes],
+        );
+
+        return is_string($url) && $url !== '' ? rtrim($url, '/') : null;
     }
 
     private function fetchTemplateId(Context $context): ?string
