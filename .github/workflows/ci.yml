@@ -1,0 +1,157 @@
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches:
+            - trunk
+            - main
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    PHP_VERSION: '8.3'
+    PHP_EXTENSIONS: gd, intl, mbstring, pdo_mysql, zip, curl, dom, fileinfo, opcache, redis
+
+jobs:
+    quality:
+        name: Static Quality (CS-Fixer + PHPStan)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ env.PHP_VERSION }}
+                    extensions: ${{ env.PHP_EXTENSIONS }}
+                    tools: composer:v2
+                    coverage: none
+            -   uses: actions/cache@v4
+                with:
+                    path: ~/.composer/cache
+                    key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+                    restore-keys: composer-${{ runner.os }}-
+            -   name: Install dependencies
+                run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+            -   name: PHP-CS-Fixer
+                run: make php-cs-fixer-check
+            -   name: PHPStan
+                run: make phpstan
+
+    unit-tests:
+        name: PHPUnit (unit)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ env.PHP_VERSION }}
+                    extensions: ${{ env.PHP_EXTENSIONS }}
+                    tools: composer:v2
+                    coverage: none
+            -   uses: actions/cache@v4
+                with:
+                    path: ~/.composer/cache
+                    key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+                    restore-keys: composer-${{ runner.os }}-
+            -   name: Install dependencies
+                run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+            -   name: Run unit tests
+                run: make test-unit
+
+    composer-audit:
+        name: Composer Audit
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ env.PHP_VERSION }}
+                    tools: composer:v2
+                    coverage: none
+            -   name: composer audit (PHP dependencies)
+                run: composer audit --locked --format=plain --abandoned=ignore
+
+    integration-tests:
+        name: PHPUnit (integration)
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        services:
+            database:
+                image: mariadb:11.4
+                env:
+                    MYSQL_ROOT_PASSWORD: root
+                    MYSQL_DATABASE: shopware
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mariadb-admin ping -uroot -proot --silent"
+                    --health-interval=5s
+                    --health-timeout=5s
+                    --health-retries=12
+        env:
+            APP_ENV: test
+            APP_URL: http://localhost
+            APP_SECRET: ci-secret
+            DATABASE_URL: mysql://root:root@127.0.0.1:3306/shopware
+            LOCK_DSN: flock
+            MAILER_DSN: 'null://null'
+            SHOPWARE_ES_ENABLED: '0'
+            SHOPWARE_HTTP_CACHE_ENABLED: '0'
+            MESSENGER_TRANSPORT_DSN: 'sync://'
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ env.PHP_VERSION }}
+                    extensions: ${{ env.PHP_EXTENSIONS }}
+                    tools: composer:v2
+                    coverage: none
+            -   uses: actions/cache@v4
+                with:
+                    path: ~/.composer/cache
+                    key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+                    restore-keys: composer-${{ runner.os }}-
+            -   name: Install dependencies
+                run: composer install --no-interaction --prefer-dist --no-progress
+            -   name: Bootstrap Shopware (install + plugin)
+                run: .github/ci/bootstrap-shopware.sh
+            -   name: Run integration tests
+                run: make test-integration
+
+    docker-build:
+        name: Docker Image Build (smoke)
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: docker/setup-buildx-action@v3
+            -   name: Build production image (no push)
+                uses: docker/build-push-action@v6
+                with:
+                    context: .
+                    file: Dockerfile
+                    push: false
+                    cache-from: type=gha
+                    cache-to: type=gha,mode=max
+
+    report-ci:
+        name: Report CI
+        needs: [quality, unit-tests, composer-audit, integration-tests, docker-build]
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v4
+            -   name: Check CI results
+                run: |
+                    .github/ci/gate.sh "One or more required CI jobs failed or were skipped." \
+                        "quality=${{ needs.quality.result }}" \
+                        "unit-tests=${{ needs.unit-tests.result }}" \
+                        "composer-audit=${{ needs.composer-audit.result }}" \
+                        "integration-tests=${{ needs.integration-tests.result }}" \
+                        "docker-build=${{ needs.docker-build.result }}"

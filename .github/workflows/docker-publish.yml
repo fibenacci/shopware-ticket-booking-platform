@@ -1,0 +1,57 @@
+name: Build & Push Docker Image
+
+# Builds the production image (Dockerfile) and pushes it to GHCR.
+# compose.prod.yaml on the target host pulls this image.
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - trunk
+            - main
+        tags:
+            - 'v*'
+
+env:
+    IMAGE: ghcr.io/${{ github.repository_owner }}/fib-booking-system
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            -   name: Checkout
+                uses: actions/checkout@v4
+
+            -   name: Log in to GHCR
+                uses: docker/login-action@v3
+                with:
+                    registry: ghcr.io
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
+
+            -   name: Set up Buildx
+                uses: docker/setup-buildx-action@v3
+
+            -   name: Docker metadata (tags)
+                id: meta
+                uses: docker/metadata-action@v5
+                with:
+                    images: ${{ env.IMAGE }}
+                    tags: |
+                        type=ref,event=tag
+                        type=raw,value=latest,enable={{is_default_branch}}
+                        type=sha
+
+            -   name: Build & push
+                uses: docker/build-push-action@v6
+                with:
+                    context: .
+                    file: Dockerfile
+                    push: true
+                    tags: ${{ steps.meta.outputs.tags }}
+                    labels: ${{ steps.meta.outputs.labels }}
+                    cache-from: type=gha
+                    cache-to: type=gha,mode=max

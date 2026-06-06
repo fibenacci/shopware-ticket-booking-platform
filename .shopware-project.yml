@@ -1,0 +1,10 @@
+# shopware-cli project configuration.
+# `deployment` is consumed by shopware/deployment-helper, which runs inside the
+# production container at start (docker-base /setup): system install on first
+# boot, migrations + plugin install/update/activation on every deploy.
+deployment:
+    extension-management:
+        enabled: true
+        exclude: []
+    cache:
+        always_clear: true

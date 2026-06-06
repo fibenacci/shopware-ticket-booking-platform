@@ -1,0 +1,33 @@
+name: Sync Docs to Wiki
+
+# Publishes project docs (docs/) and plugin docs
+# (custom/static-plugins/FibBookingSystem/{README.md,docs/}) to the GitHub wiki.
+# The wiki is the rendered, structured view — the repository is the source of
+# truth. NOTE: the wiki must be initialized once (create any page in the UI)
+# before this workflow can push to it.
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - trunk
+        paths:
+            - 'docs/**'
+            - 'custom/static-plugins/FibBookingSystem/README.md'
+            - 'custom/static-plugins/FibBookingSystem/docs/**'
+            - '.github/ci/wiki-sync.sh'
+            - '.github/workflows/wiki-sync.yml'
+
+permissions:
+    contents: write
+
+jobs:
+    sync-wiki:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            -   uses: actions/checkout@v4
+            -   name: Sync docs to wiki
+                env:
+                    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                run: .github/ci/wiki-sync.sh

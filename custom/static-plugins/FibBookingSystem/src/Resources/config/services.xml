@@ -1,0 +1,135 @@
+<?xml version="1.0" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+
+    <services>
+        <defaults autowire="true" autoconfigure="true"/>
+
+        <service id="FibBookingSystem\Core\Content\BookingResource\BookingResourceDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_resource"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\BookingReservation\BookingReservationDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_reservation"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\BookingTicket\BookingTicketDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_ticket"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_product_config"/>
+        </service>
+
+        <service id="FibBookingSystem\Extension\Content\Product\ProductBookingConfigExtension">
+            <tag name="shopware.entity.extension"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\BookingHold\BookingHoldDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_hold"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Availability\AvailabilityService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldExpirationService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="event_dispatcher"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketMailSubscriber">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="Shopware\Core\Content\Mail\Service\MailService"/>
+            <argument type="service" id="mail_template.repository"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="FibBookingSystem\Cache\BookingCacheSubscriber">
+            <argument type="service" id="Shopware\Core\Framework\Adapter\Cache\CacheInvalidator"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="FibBookingSystem\Storefront\Subscriber\ProductBookingConfigCriteriaSubscriber">
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="FibBookingSystem\Rule\BookingLineItemInCartRule">
+            <tag name="shopware.rule.definition"/>
+        </service>
+
+        <service id="FibBookingSystem\Flow\Action\IssueBookingTicketAction">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <tag name="flow.action" key="action.fib_booking.issue_ticket"/>
+        </service>
+
+        <service id="FibBookingSystem\Storefront\Controller\BookingApiController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService"/>
+            <argument type="service" id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Api\Controller\BookingTicketScanController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
+
+        <service id="FibBookingSystem\Checkout\Cart\BookingCartProcessor">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <tag name="shopware.cart.processor" priority="4100"/>
+        </service>
+
+        <service id="FibBookingSystem\Checkout\Order\BookingOrderPlacedSubscriber">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="FibBookingSystem\Checkout\Payment\BookingPaymentStateSubscriber">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <service id="FibBookingSystem\ScheduledTask\ExpireBookingHoldsTask">
+            <tag name="shopware.scheduled.task"/>
+        </service>
+
+        <service id="FibBookingSystem\ScheduledTask\ExpireBookingHoldsTaskHandler">
+            <argument type="service" id="scheduled_task.repository"/>
+            <argument type="service" id="logger"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldExpirationService"/>
+            <tag name="messenger.message_handler"/>
+        </service>
+    </services>
+</container>

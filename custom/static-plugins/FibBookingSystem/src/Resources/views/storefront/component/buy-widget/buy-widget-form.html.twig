@@ -1,0 +1,63 @@
+{% sw_extends '@Storefront/storefront/component/buy-widget/buy-widget-form.html.twig' %}
+
+{% block buy_widget_buy_form_inner %}
+    {% set bookingConfig = product.extensions.fibBookingConfig ?? null %}
+    {% set bookingEnabled = bookingConfig and bookingConfig.enabled %}
+    {% set bookingResourceId = bookingConfig ? bookingConfig.resourceId : null %}
+    {% set bookingSlotMinutes = bookingConfig ? bookingConfig.slotMinutes : 60 %}
+
+    {% if bookingEnabled and bookingResourceId %}
+        <form class="buy-widget fib-booking-widget"
+              data-fib-booking-widget="true"
+              data-fib-booking-widget-options="{{ {
+                  productId: product.id,
+                  resourceId: bookingResourceId,
+                  slotMinutes: bookingSlotMinutes,
+                  holdRoute: path('frontend.fib_booking.hold'),
+                  cartAddRoute: path('frontend.fib_booking.cart.add')
+              }|json_encode|e('html_attr') }}"
+              data-product-id="{{ product.id }}"
+              data-resource-id="{{ bookingResourceId }}"
+              data-slot-minutes="{{ bookingSlotMinutes }}">
+            <div class="row g-2 buy-widget-container">
+                <div class="col-12">
+                    <label class="form-label" for="fib-booking-start-{{ product.id }}">
+                        {{ 'fibBooking.start.label'|trans|default('Termin') }}
+                    </label>
+                    <input id="fib-booking-start-{{ product.id }}"
+                           class="form-control"
+                           type="datetime-local"
+                           name="startsAt"
+                           required>
+                </div>
+
+                <div class="col-4">
+                    <label class="form-label" for="fib-booking-quantity-{{ product.id }}">
+                        {{ 'fibBooking.quantity.label'|trans|default('Anzahl') }}
+                    </label>
+                    <input id="fib-booking-quantity-{{ product.id }}"
+                           class="form-control"
+                           type="number"
+                           name="quantity"
+                           min="{{ product.minPurchase }}"
+                           max="{{ product.calculatedMaxPurchase }}"
+                           step="{{ product.purchaseSteps }}"
+                           value="{{ product.minPurchase }}"
+                           required>
+                </div>
+
+                <div class="col-8 d-flex align-items-end">
+                    <button class="btn btn-primary btn-buy w-100" type="submit">
+                        {{ 'detail.addProduct'|trans|sw_sanitize }}
+                    </button>
+                </div>
+
+                <div class="col-12">
+                    <div class="alert alert-danger d-none fib-booking-widget-error" role="alert"></div>
+                </div>
+            </div>
+        </form>
+    {% else %}
+        {{ parent() }}
+    {% endif %}
+{% endblock %}

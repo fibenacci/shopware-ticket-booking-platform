@@ -1,0 +1,114 @@
+services:
+    mariadb:
+        image: mariadb:11.4
+        container_name: fib-mariadb
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: shopware
+        ports:
+            - '3306'
+        volumes:
+            - mariadb_data:/var/lib/mysql
+        command: --max_allowed_packet=1073741824
+        healthcheck:
+            test: ['CMD', 'mariadb-admin', 'ping', '-uroot', '-proot', '--silent']
+            interval: 5s
+            timeout: 5s
+            retries: 12
+            start_period: 10s
+        networks:
+            shopware:
+                aliases:
+                    - db.booking.docker
+
+    redis:
+        image: redis:7-alpine
+        container_name: fib-redis
+        command: ['redis-server', '--requirepass', 'redis']
+        ports:
+            - '6379'
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ['CMD', 'redis-cli', '-a', 'redis', 'ping']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        networks:
+            - shopware
+
+    mailpit:
+        image: axllent/mailpit:latest
+        container_name: fib-mailpit
+        environment:
+            - VIRTUAL_HOST=mail.booking.docker
+            - VIRTUAL_PORT=8025
+        ports:
+            - '127.0.0.1:8095:8025'
+        networks:
+            - shopware
+            - proxy
+
+    adminer:
+        image: adminer:latest
+        container_name: fib-adminer
+        environment:
+            - ADMINER_DEFAULT_SERVER=mariadb
+            - VIRTUAL_HOST=adminer.booking.docker
+            - VIRTUAL_PORT=8080
+        networks:
+            - shopware
+            - proxy
+        depends_on:
+            - mariadb
+
+    shopware:
+        image: dockware/dev:6.7.1.0
+        container_name: fib-shopware
+        env_file: '.env.local'
+        depends_on:
+            mariadb:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        healthcheck:
+            test: ['CMD', 'php', '-v']
+            interval: 5s
+            timeout: 5s
+            retries: 24
+            start_period: 30s
+        environment:
+            - XDEBUG_ENABLED=${XDEBUG_ENABLED:-0}
+            - DATABASE_URL=mysql://root:root@mariadb:3306/shopware
+            - VIRTUAL_HOST=booking.docker,*.booking.docker
+        ports:
+            - '127.0.0.1:8090:80'
+        volumes:
+            - ./bin:/var/www/html/bin
+            - ./config:/var/www/html/config
+            - ./custom:/var/www/html/custom
+            - ./public:/var/www/html/public
+            - ./src:/var/www/html/src
+            - ./vendor:/var/www/html/vendor
+            - ./composer.json:/var/www/html/composer.json
+            - ./composer.lock:/var/www/html/composer.lock
+            - ./symfony.lock:/var/www/html/symfony.lock
+            - ./.env:/var/www/html/.env
+            - ./.env.local:/var/www/html/.env.local
+            - ./.build:/var/www/html/.build
+            - ./docker/setup-dev.sh:/setup-dev.sh
+        networks:
+            shopware:
+                aliases:
+                    - booking.docker
+            proxy:
+
+volumes:
+    mariadb_data:
+    redis_data:
+
+networks:
+    shopware:
+        driver: bridge
+    proxy:
+        external: true

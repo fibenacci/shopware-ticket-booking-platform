@@ -1,2 +1,55 @@
 /.idea
 /vendor/
+/var/
+/node_modules/
+/.env.local
+/.env.*.local
+
+# Runtime artifacts in mounted dirs
+/public/bundles/
+/public/theme/
+/public/media/
+/public/thumbnail/
+/public/sitemap/
+/files/
+/install.lock
+
+# Tooling caches
+.phpunit.cache/
+.php-cs-fixer.cache
+/custom/static-plugins/*/node_modules/
+/custom/static-plugins/*/playwright-report/
+/custom/static-plugins/*/test-results/
+/custom/static-plugins/*/.phpunit.cache/
+
+###> shopware/core ###
+.env.local
+.env.local.php
+.env.*.local
+/public/bundles/*
+/public/media/*
+/public/theme/*
+/public/thumbnail/*
+/public/sitemap/*
+/files/*
+!/files/.htaccess
+/var/*
+!/var/.htaccess
+/auth.json
+/install.lock
+/public/asset-manifest.json
+###< shopware/core ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+###> phpstan/phpstan ###
+phpstan.neon
+###< phpstan/phpstan ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

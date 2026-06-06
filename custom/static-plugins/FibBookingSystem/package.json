@@ -1,0 +1,8 @@
+{
+    "name": "fib-booking-system-e2e",
+    "private": true,
+    "devDependencies": {
+        "@playwright/test": "latest",
+        "@types/node": "latest"
+    }
+}

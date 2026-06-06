@@ -1,0 +1,10 @@
+{
+  "fibBooking": {
+    "start": {
+      "label": "Date"
+    },
+    "quantity": {
+      "label": "Quantity"
+    }
+  }
+}

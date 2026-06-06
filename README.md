@@ -1,17 +1,121 @@
-# Shopware 6 project template
+# FIB Booking System — Shopware 6 Shop
 
-This repository contains the project template that enables you to start a new project.
+Shopware 6.7 project (based on `shopware/production`) containing the
+**FibBookingSystem** plugin (`custom/static-plugins/FibBookingSystem`) — a
+reservation and booking system with holds, reservations, tickets and QR codes.
 
-## Installation and usage instructions
+## Quickstart
 
-You can use `composer create-project shopware/production <project-name>` to create a new Shopware project.
-
-If you want to use a specific version of Shopware, you can specify the version in the command like this:
+Requirements: Docker Desktop. No local PHP/Composer needed.
 
 ```bash
-composer create-project shopware/production:6.6.0.0 <project-name>
+make up
 ```
 
-Please refer to the
-[documentation](https://developer.shopware.com/docs/guides/installation/template)
-for instructions on how to use this template.
+That's it. The first run bootstraps everything:
+
+1. Creates `.env.local` from `.env.example`
+2. Runs `composer install` via the `shopware-cli` image (scaffolds `bin/`, `config/`, `vendor/`, …)
+3. Starts the stack (MariaDB, Redis, Mailpit, Adminer, Shopware via dockware)
+4. Fresh-installs Shopware (`system:install --basic-setup`), installs + activates **FibBookingSystem**, compiles the theme
+
+| Service    | URL                                                    |
+|------------|--------------------------------------------------------|
+| Storefront | http://booking.docker (or http://127.0.0.1:8090)       |
+| Admin      | http://booking.docker/admin (admin / shopware)         |
+| Mailpit    | http://mail.booking.docker (or http://127.0.0.1:8095)  |
+| Adminer    | http://adminer.booking.docker                          |
+
+`*.booking.docker` domains are served by the [dinghy HTTP proxy](https://github.com/codekitchen/dinghy-http-proxy)
+that `make up` starts automatically. Make sure `*.docker` resolves to
+`127.0.0.1` (e.g. via `dnsmasq` — `address=/.docker/127.0.0.1`). Without it,
+use the `127.0.0.1` fallback ports.
+
+## Daily workflow
+
+```bash
+make help               # all targets
+make up                 # start (idempotent — also applies migrations/plugin updates)
+make logs               # follow shopware logs
+make shell              # bash inside the shopware container
+make cache / make theme # clear cache / compile theme
+make watch-storefront   # storefront watcher (hot reload)
+make demodata           # generate demo products/categories/customers
+make down               # stop + remove containers (DB volume survives)
+make down-volumes       # clean slate including database
+```
+
+## Tests & quality
+
+```bash
+make test               # all PHPUnit tests (unit + integration)
+make test-unit          # unit only (no DB needed)
+make test-integration   # integration (boots Shopware kernel, needs running stack)
+make phpstan            # static analysis (.build/phpstan.neon)
+make php-cs-fixer       # code style auto-fix (.build/php-cs-fixer.php)
+make php-cs-fixer-check # code style check (CI mode)
+```
+
+E2E (Playwright, against the running stack):
+
+```bash
+make e2e-install        # one-time: npm install + chromium
+FIB_BOOKING_PRODUCT_ID=... FIB_BOOKING_RESOURCE_ID=... make e2e
+```
+
+## CI
+
+`.github/workflows/ci.yml` runs on every PR / push to `trunk`:
+
+- **Static Quality** — PHP-CS-Fixer (dry-run) + PHPStan
+- **PHPUnit (unit)** — fast, no database
+- **PHPUnit (integration)** — full Shopware install against a MariaDB service
+- **Composer Audit** — known vulnerability check against `composer.lock`
+- **Docker Image Build** — smoke-builds the production image (no push)
+
+## Docker deployment
+
+The production image follows the [official Shopware docker pattern](https://developer.shopware.com/docs/guides/hosting/installation-updates/docker.html):
+
+- `Dockerfile` — stage 1 builds the project with `shopware-cli project ci`
+  (composer `--no-dev`, asset build), stage 2 is the slim
+  `shopware/docker-base` runtime (PHP-FPM + Caddy on port 8000).
+- `.shopware-project.yml` — deployment-helper config: on every container
+  start migrations run and extensions (FibBookingSystem) are
+  installed/updated/activated automatically.
+- `.github/workflows/docker-publish.yml` — builds and pushes
+  `ghcr.io/<owner>/fib-booking-system` on pushes to `trunk` and `v*` tags.
+
+Deploy on a host:
+
+```bash
+# .env.prod: APP_URL, APP_SECRET, DB_PASSWORD, DB_ROOT_PASSWORD, REDIS_PASSWORD, SHOPWARE_IMAGE
+docker compose -f compose.prod.yaml --env-file .env.prod up -d
+```
+
+The `init` service runs the deployment-helper (install/migrations/plugins),
+then `web` (HTTP), `worker` (messenger queue) and `scheduler` (scheduled
+tasks) start.
+
+## Documentation
+
+Structured docs live in [`docs/`](docs/Home.md) and are synced to the GitHub
+wiki on every push to `trunk` (`.github/workflows/wiki-sync.yml`) — including
+the plugin docs. The repository is the source of truth; don't edit the wiki
+directly.
+
+## Project layout
+
+```
+custom/static-plugins/FibBookingSystem/   # the booking plugin (source of truth)
+compose.yaml                              # local dev stack
+compose.prod.yaml                         # production deployment
+Dockerfile                                # production image
+docker/setup-dev.sh                       # idempotent dev setup (run by make up)
+make/*.mk                                 # Makefile modules (stack, assets, quality, tests, e2e)
+docs/                                     # project docs (synced to GitHub wiki)
+.build/                                   # phpstan + php-cs-fixer configs
+.github/workflows/ci.yml                  # CI pipeline
+.github/workflows/docker-publish.yml      # image publish pipeline
+.github/workflows/wiki-sync.yml           # docs → wiki sync
+```

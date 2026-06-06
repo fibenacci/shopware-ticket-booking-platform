@@ -4,11 +4,18 @@
     "type": "project",
     "require": {
         "composer-runtime-api": "^2.0",
+        "fib/fib-booking-system": "*",
         "shopware/administration": "*",
         "shopware/core": "~v6.7.0",
+        "shopware/deployment-helper": "*",
         "shopware/elasticsearch": "*",
         "shopware/storefront": "*",
         "symfony/flex": "~2"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "*",
+        "phpstan/phpstan": "*",
+        "phpunit/phpunit": "*"
     },
     "repositories": [
         {
@@ -49,7 +56,9 @@
         "sort-packages": true
     },
     "scripts": {
-        "auto-scripts": [],
+        "auto-scripts": {
+            "assets:install": "symfony-cmd"
+        },
         "post-install-cmd": [
             "@auto-scripts"
         ],
