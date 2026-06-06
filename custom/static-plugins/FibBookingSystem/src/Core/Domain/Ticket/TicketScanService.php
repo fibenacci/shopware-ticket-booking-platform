@@ -31,12 +31,14 @@ class TicketScanService
 
         return $this->connection->transactional(function () use ($tokenHash, $scannedBy, $source): TicketScanResult {
             $ticket = $this->connection->fetchAssociative(
-                'SELECT ticket.id, ticket.ticket_number, ticket.status, ticket.expires_at, ticket.scanned_at,
-                        reservation.booking_number
-                 FROM fib_booking_ticket ticket
-                 LEFT JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-                 WHERE ticket.scan_token_hash = :tokenHash
-                 FOR UPDATE',
+                <<<'SQL'
+                    SELECT ticket.id, ticket.ticket_number, ticket.status, ticket.expires_at, ticket.scanned_at,
+                    reservation.booking_number
+                    FROM fib_booking_ticket ticket
+                    LEFT JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
+                    WHERE ticket.scan_token_hash = :tokenHash
+                    FOR UPDATE
+                SQL,
                 ['tokenHash' => $tokenHash],
             );
 

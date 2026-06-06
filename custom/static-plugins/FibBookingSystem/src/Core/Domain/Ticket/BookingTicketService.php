@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
-use RuntimeException;
+use FibBookingSystem\FibBookingException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
@@ -34,20 +34,24 @@ class BookingTicketService
     {
         return $this->connection->transactional(function () use ($reservationId, $context, $payload, $expiresAt): BookingTicket {
             $reservation = $this->connection->fetchAssociative(
-                'SELECT reservation.id, reservation.booking_number, `order`.sales_channel_id
-                 FROM fib_booking_reservation reservation
-                 LEFT JOIN `order` ON `order`.id = reservation.order_id AND `order`.version_id = reservation.order_version_id
-                 WHERE reservation.id = :reservationId
-                 FOR UPDATE',
+                <<<'SQL'
+                    SELECT reservation.id, reservation.booking_number, `order`.sales_channel_id
+                    FROM fib_booking_reservation reservation
+                    LEFT JOIN `order` ON `order`.id = reservation.order_id AND `order`.version_id = reservation.order_version_id
+                    WHERE reservation.id = :reservationId
+                    FOR UPDATE
+                SQL,
                 ['reservationId' => Uuid::fromHexToBytes($reservationId)],
             );
 
             if ($reservation === false) {
-                throw new RuntimeException('The requested booking reservation does not exist.');
+                throw FibBookingException::reservationNotFound($reservationId);
             }
 
             $existingTicket = $this->connection->fetchAssociative(
-                'SELECT id, ticket_number FROM fib_booking_ticket WHERE reservation_id = :reservationId AND status IN (:issued, :sent)',
+                <<<'SQL'
+                    SELECT id, ticket_number FROM fib_booking_ticket WHERE reservation_id = :reservationId AND status IN (:issued, :sent)
+                SQL,
                 [
                     'reservationId' => Uuid::fromHexToBytes($reservationId),
                     'issued' => 'issued',
@@ -56,7 +60,7 @@ class BookingTicketService
             );
 
             if ($existingTicket !== false) {
-                throw new RuntimeException('A valid ticket already exists for this reservation.');
+                throw FibBookingException::ticketAlreadyExists($reservationId);
             }
 
             $ticketId = Uuid::randomHex();

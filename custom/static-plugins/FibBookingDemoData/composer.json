@@ -1,0 +1,27 @@
+{
+  "name": "fib/fib-booking-demo-data",
+  "description": "Demo data for the FIB Booking System — bookable products, resources, reservations and tickets. Dev/CI only.",
+  "version": "1.0.0",
+  "type": "shopware-platform-plugin",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "FibBookingDemoData\\": "src/"
+    }
+  },
+  "extra": {
+    "shopware-plugin-class": "FibBookingDemoData\\FibBookingDemoData",
+    "label": {
+      "de-DE": "FIB Booking Demo-Daten",
+      "en-GB": "FIB Booking Demo Data"
+    },
+    "description": {
+      "de-DE": "Demo-Daten fuer das FIB Buchungssystem (nur Dev/CI).",
+      "en-GB": "Demo data for the FIB Booking System (dev/CI only)."
+    }
+  },
+  "require": {
+    "fib/fib-booking-system": "*",
+    "shopware/core": "~6.5.0 || ~6.6.0 || ~6.7.0"
+  }
+}

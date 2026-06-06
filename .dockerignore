@@ -1,5 +1,7 @@
 .git
 .github
+# CI image (built from .github/ci/Dockerfile) needs the Symfony drop-in:
+!.github/ci/symfony-ci-overrides.yaml
 .idea
 .build
 vendor

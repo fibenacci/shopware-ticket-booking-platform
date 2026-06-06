@@ -4,6 +4,7 @@ $finder = (new PhpCsFixer\Finder())
     ->in([
         __DIR__ . '/../custom/static-plugins/FibBookingSystem/src',
         __DIR__ . '/../custom/static-plugins/FibBookingSystem/tests',
+        __DIR__ . '/../custom/static-plugins/FibBookingDemoData/src',
     ])
 ;
 

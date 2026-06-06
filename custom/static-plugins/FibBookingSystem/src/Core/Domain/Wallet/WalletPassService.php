@@ -82,15 +82,17 @@ class WalletPassService
         }
 
         $row = $this->connection->fetchAssociative(
-            'SELECT LOWER(HEX(ticket.id)) AS ticket_id, ticket.ticket_number, ticket.status, ticket.scan_token_cipher,
-                    reservation.booking_number, reservation.starts_at, reservation.ends_at, reservation.quantity,
-                    reservation.customer_id, resource.name AS resource_name,
-                    customer.first_name, customer.last_name
-             FROM fib_booking_ticket ticket
-             INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-             INNER JOIN fib_booking_resource resource ON resource.id = reservation.resource_id
-             LEFT JOIN customer ON customer.id = reservation.customer_id
-             WHERE ticket.id = :ticketId',
+            <<<'SQL'
+                SELECT LOWER(HEX(ticket.id)) AS ticket_id, ticket.ticket_number, ticket.status, ticket.scan_token_cipher,
+                reservation.booking_number, reservation.starts_at, reservation.ends_at, reservation.quantity,
+                reservation.customer_id, resource.name AS resource_name,
+                customer.first_name, customer.last_name
+                FROM fib_booking_ticket ticket
+                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
+                INNER JOIN fib_booking_resource resource ON resource.id = reservation.resource_id
+                LEFT JOIN customer ON customer.id = reservation.customer_id
+                WHERE ticket.id = :ticketId
+            SQL,
             ['ticketId' => Uuid::fromHexToBytes($ticketId)],
         );
 
@@ -140,10 +142,12 @@ class WalletPassService
         }
 
         return (bool) $this->connection->fetchOne(
-            'SELECT 1
-             FROM fib_booking_ticket ticket
-             INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-             WHERE ticket.id = :ticketId AND reservation.customer_id = :customerId',
+            <<<'SQL'
+                SELECT 1
+                FROM fib_booking_ticket ticket
+                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
+                WHERE ticket.id = :ticketId AND reservation.customer_id = :customerId
+            SQL,
             [
                 'ticketId' => Uuid::fromHexToBytes($ticketId),
                 'customerId' => Uuid::fromHexToBytes($customerId),

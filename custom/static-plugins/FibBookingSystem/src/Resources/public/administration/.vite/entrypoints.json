@@ -1,0 +1,23 @@
+{
+  "base": "/bundles/fibbookingsystem/administration/",
+  "entryPoints": {
+    "fib-booking-system": {
+      "css": [],
+      "dynamic": [],
+      "js": [
+        "/bundles/fibbookingsystem/administration/assets/fib-booking-system-cVkVoasQ.js"
+      ],
+      "legacy": false,
+      "preload": []
+    }
+  },
+  "legacy": false,
+  "metadatas": {},
+  "version": [
+    "7.1.0",
+    7,
+    1,
+    0
+  ],
+  "viteServer": null
+}

@@ -1,0 +1,49 @@
+/* Booking calendar (CMS element) */
+.fib-booking-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.fib-booking-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: #f1f3f5;
+    color: #adb5bd;
+    user-select: none;
+    font-size: 0.9rem;
+}
+
+.fib-booking-day--free {
+    background: #d3f9d8;
+    color: #2b8a3e;
+}
+
+.fib-booking-day--partial {
+    background: #fff3bf;
+    color: #e67700;
+}
+
+/* sold out — the red marking required by the booking flow */
+.fib-booking-day--full {
+    background: #ffe3e3;
+    color: #c92a2a;
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+
+.fib-booking-day--selectable {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.fib-booking-day--selectable:hover {
+    outline: 2px solid #4dabf7;
+}
+
+.fib-booking-day--selected {
+    outline: 2px solid #1971c2;
+}

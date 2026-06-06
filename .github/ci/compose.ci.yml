@@ -1,0 +1,36 @@
+# CI stack — single container, built from .github/ci/Dockerfile.
+#
+# The image bakes everything (composer install + plugin:install + demo data +
+# storefront build + Symfony CI overrides) at build time, so the running
+# container has nothing to set up beyond starting MariaDB / php-fpm / nginx.
+#
+# No bind mounts on purpose: the image IS the project state. To iterate on
+# code, run `make ci-bootstrap` again — Docker's layer cache reuses every
+# layer whose inputs didn't change.
+#
+# Container name fib-shopware-ci is deliberately DIFFERENT from the local dev
+# stack (fib-shopware) so a local CI rehearsal never kills the dev container.
+
+services:
+    shopware:
+        build:
+            context: ../..
+            dockerfile: .github/ci/Dockerfile
+        image: fib-booking-shop-ci:latest
+        container_name: fib-shopware-ci
+        ports:
+            - '127.0.0.1:${STOREFRONT_PORT:-8080}:80'
+        environment:
+            - XDEBUG_ENABLED=0
+            - SHOPWARE_ES_ENABLED=0
+            - SHOPWARE_ES_INDEXING_ENABLED=0
+            - SHOPWARE_ADMIN_ES_ENABLED=0
+            - SHOPWARE_ES_THROW_EXCEPTION=0
+        healthcheck:
+            # Full-app readiness — the image already has the shop installed,
+            # so curl-on-/ is the right gate.
+            test: ['CMD-SHELL', 'curl -sf http://localhost/ >/dev/null']
+            interval: 5s
+            timeout: 5s
+            retries: 24
+            start_period: 20s

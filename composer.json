@@ -13,6 +13,7 @@
         "symfony/flex": "~2"
     },
     "require-dev": {
+        "fib/fib-booking-demo-data": "*",
         "friendsofphp/php-cs-fixer": "*",
         "phpstan/phpstan": "*",
         "phpunit/phpunit": "*"

@@ -22,6 +22,7 @@ node_modules/
 /custom/static-plugins/*/test-results/
 /custom/static-plugins/*/.phpunit.cache/
 /custom/static-plugins/*/apps/*/dist/
+/custom/static-plugins/*/build/
 
 ###> shopware/core ###
 .env.local

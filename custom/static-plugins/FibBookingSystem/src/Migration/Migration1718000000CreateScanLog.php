@@ -27,28 +27,41 @@ class Migration1718000000CreateScanLog extends MigrationStep
 
     public function update(Connection $connection): void
     {
-        $connection->executeStatement('
-            ALTER TABLE `fib_booking_ticket`
-                ADD COLUMN IF NOT EXISTS `scan_token_cipher` VARCHAR(512) NULL AFTER `scan_token_hash`;
-        ');
+        // MySQL 8 has no "ADD COLUMN IF NOT EXISTS" (MariaDB-only) — probe the
+        // information schema for idempotency instead.
+        $columnExists = (bool) $connection->fetchOne(
+            <<<'SQL'
+                SELECT 1 FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'fib_booking_ticket'
+                AND COLUMN_NAME = 'scan_token_cipher'
+            SQL,
+        );
 
-        $connection->executeStatement('
-            CREATE TABLE IF NOT EXISTS `fib_booking_scan_log` (
+        if (!$columnExists) {
+            $connection->executeStatement(<<<'SQL'
+                    ALTER TABLE `fib_booking_ticket`
+                    ADD COLUMN `scan_token_cipher` VARCHAR(512) NULL AFTER `scan_token_hash`;
+                SQL);
+        }
+
+        $connection->executeStatement(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS `fib_booking_scan_log` (
                 `id` BINARY(16) NOT NULL,
                 `ticket_id` BINARY(16) NULL,
                 `verdict` VARCHAR(32) NOT NULL,
                 `token_fingerprint` CHAR(12) NULL,
                 `scanned_by` VARCHAR(64) NULL,
-                `source` VARCHAR(32) NOT NULL DEFAULT \'api\',
+                `source` VARCHAR(32) NOT NULL DEFAULT 'api',
                 `created_at` DATETIME(3) NOT NULL,
                 PRIMARY KEY (`id`),
                 KEY `idx.fib_booking_scan_log.ticket_id` (`ticket_id`),
                 KEY `idx.fib_booking_scan_log.created_at` (`created_at`),
                 KEY `idx.fib_booking_scan_log.verdict` (`verdict`),
                 CONSTRAINT `fk.fib_booking_scan_log.ticket_id` FOREIGN KEY (`ticket_id`)
-                    REFERENCES `fib_booking_ticket` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ');
+                REFERENCES `fib_booking_ticket` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            SQL);
     }
 
     public function updateDestructive(Connection $connection): void

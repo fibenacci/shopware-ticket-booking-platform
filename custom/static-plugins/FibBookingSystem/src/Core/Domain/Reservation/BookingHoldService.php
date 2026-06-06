@@ -9,7 +9,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
-use RuntimeException;
+use FibBookingSystem\FibBookingException;
 use Shopware\Core\Framework\Uuid\Uuid;
 
 class BookingHoldService
@@ -48,7 +48,7 @@ class BookingHoldService
             $availability = $this->availabilityService->check($resourceId, $startsAt, $endsAt, $quantity);
 
             if (!$availability->isAvailable()) {
-                throw new RuntimeException('The requested booking window is no longer available.');
+                throw FibBookingException::windowUnavailable();
             }
 
             $holdId = Uuid::randomHex();
@@ -77,12 +77,14 @@ class BookingHoldService
     private function lockResource(string $resourceId): void
     {
         $resource = $this->connection->fetchOne(
-            'SELECT id FROM fib_booking_resource WHERE id = :resourceId FOR UPDATE',
+            <<<'SQL'
+                SELECT id FROM fib_booking_resource WHERE id = :resourceId FOR UPDATE
+            SQL,
             ['resourceId' => Uuid::fromHexToBytes($resourceId)],
         );
 
         if ($resource === false) {
-            throw new RuntimeException('The requested booking resource does not exist.');
+            throw FibBookingException::resourceNotFound();
         }
     }
 

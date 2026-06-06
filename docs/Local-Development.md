@@ -44,10 +44,15 @@ make logs               # follow shopware logs
 make shell              # bash inside the shopware container
 make cache / make theme # clear cache / compile theme
 make watch-storefront   # storefront watcher (hot reload)
-make demodata           # generate demo products/categories/customers
+make demodata           # generic Shopware demo data (products/categories/customers)
+make seed-booking       # booking demo data: bookable products, resources, reservation + QR ticket
 make down               # remove containers (DB volume survives)
 make down-volumes       # clean slate including database
 ```
+
+`make seed-booking` runs `fib-booking:demodata` from the **FibBookingDemoData**
+plugin (dev/CI only). It is idempotent (deterministic ids) and prints
+`FIB_BOOKING_PRODUCT_ID` / `FIB_BOOKING_RESOURCE_ID` for the Playwright suite.
 
 ## Configuration
 

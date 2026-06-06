@@ -1,4 +1,4 @@
-name: CI
+name: Shopware CI
 
 on:
     pull_request:
@@ -9,16 +9,17 @@ on:
     workflow_dispatch:
 
 concurrency:
-    group: ci-${{ github.ref }}
+    group: shopware-ci-${{ github.ref }}
     cancel-in-progress: true
 
 env:
     PHP_VERSION: '8.3'
-    PHP_EXTENSIONS: gd, intl, mbstring, pdo_mysql, zip, curl, dom, fileinfo, opcache, redis
+    PHP_EXTENSIONS: gd, intl, mbstring, pdo_mysql, zip, curl, dom, fileinfo, opcache
+    NODE_VERSION: '22'
 
 jobs:
     quality:
-        name: Static Quality (CS-Fixer + PHPStan)
+        name: Static Quality
         runs-on: ubuntu-latest
         timeout-minutes: 15
         steps:
@@ -41,27 +42,39 @@ jobs:
             -   name: PHPStan
                 run: make phpstan
 
-    unit-tests:
-        name: PHPUnit (unit)
+    lint:
+        name: JS/TS Lint
         runs-on: ubuntu-latest
-        timeout-minutes: 15
+        timeout-minutes: 10
         steps:
             -   uses: actions/checkout@v4
-            -   uses: shivammathur/setup-php@v2
+            -   uses: actions/setup-node@v4
                 with:
-                    php-version: ${{ env.PHP_VERSION }}
-                    extensions: ${{ env.PHP_EXTENSIONS }}
-                    tools: composer:v2
-                    coverage: none
-            -   uses: actions/cache@v4
-                with:
-                    path: ~/.composer/cache
-                    key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-                    restore-keys: composer-${{ runner.os }}-
-            -   name: Install dependencies
-                run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
-            -   name: Run unit tests
-                run: make test-unit
+                    node-version: ${{ env.NODE_VERSION }}
+                    cache: npm
+                    cache-dependency-path: |
+                        custom/static-plugins/FibBookingSystem/apps/scanner/package-lock.json
+                        custom/static-plugins/FibBookingSystem/package-lock.json
+
+            -   id: scanner_build
+                name: Scanner app — install + production build (type/syntax gate)
+                working-directory: custom/static-plugins/FibBookingSystem/apps/scanner
+                run: |
+                    npm ci
+                    npm run build
+
+            -   id: node_syntax
+                name: Plugin storefront JS — syntax check
+                run: |
+                    find custom/static-plugins/*/src/Resources/app -name '*.js' -not -path '*/node_modules/*' -print0 \
+                        | xargs -0 -n1 node --check
+
+            -   name: Gate — fail on any lint finding
+                if: always()
+                run: |
+                    .github/scripts/gate.sh "Lint failures — see the steps above." \
+                        "Scanner app build=${{ steps.scanner_build.outcome }}" \
+                        "Plugin JS syntax=${{ steps.node_syntax.outcome }}"
 
     composer-audit:
         name: Composer Audit
@@ -77,81 +90,205 @@ jobs:
             -   name: composer audit (PHP dependencies)
                 run: composer audit --locked --format=plain --abandoned=ignore
 
-    integration-tests:
-        name: PHPUnit (integration)
+    npm-audit:
+        name: NPM Audit
         runs-on: ubuntu-latest
-        timeout-minutes: 30
-        services:
-            database:
-                image: mariadb:11.4
-                env:
-                    MYSQL_ROOT_PASSWORD: root
-                    MYSQL_DATABASE: shopware
-                ports:
-                    - 3306:3306
-                options: >-
-                    --health-cmd="mariadb-admin ping -uroot -proot --silent"
-                    --health-interval=5s
-                    --health-timeout=5s
-                    --health-retries=12
-        env:
-            APP_ENV: test
-            APP_URL: http://localhost
-            APP_SECRET: ci-secret
-            DATABASE_URL: mysql://root:root@127.0.0.1:3306/shopware
-            LOCK_DSN: flock
-            MAILER_DSN: 'null://null'
-            SHOPWARE_ES_ENABLED: '0'
-            SHOPWARE_HTTP_CACHE_ENABLED: '0'
-            MESSENGER_TRANSPORT_DSN: 'sync://'
+        timeout-minutes: 10
         steps:
             -   uses: actions/checkout@v4
-            -   uses: shivammathur/setup-php@v2
+            -   uses: actions/setup-node@v4
                 with:
-                    php-version: ${{ env.PHP_VERSION }}
-                    extensions: ${{ env.PHP_EXTENSIONS }}
-                    tools: composer:v2
-                    coverage: none
+                    node-version: ${{ env.NODE_VERSION }}
+                    cache: npm
+                    cache-dependency-path: |
+                        custom/static-plugins/FibBookingSystem/apps/scanner/package-lock.json
+                        custom/static-plugins/FibBookingSystem/package-lock.json
+
+            -   id: npm_audit_scanner
+                name: npm audit — scanner app
+                working-directory: custom/static-plugins/FibBookingSystem/apps/scanner
+                run: npm audit --audit-level=high
+            -   id: npm_audit_e2e
+                name: npm audit — Playwright suite
+                working-directory: custom/static-plugins/FibBookingSystem
+                run: npm audit --audit-level=high
+            -   name: Gate — fail on any high npm advisory
+                if: always()
+                run: |
+                    .github/scripts/gate.sh "High-severity npm advisories found — see the steps above." \
+                        "npm audit scanner app=${{ steps.npm_audit_scanner.outcome }}" \
+                        "npm audit Playwright suite=${{ steps.npm_audit_e2e.outcome }}"
+
+    shopware-validate:
+        name: Shopware Extension Validate
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: shopware/shopware-cli-action@v3
+            -   name: Validate maintained plugins
+                run: .github/scripts/validate-plugins.sh
+
+    security-gate:
+        name: Security Gate
+        needs: [npm-audit, composer-audit]
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -   run: echo "✅ npm audit + composer audit passed."
+
+    quality-gate:
+        name: Quality Gate
+        needs: [quality, lint, shopware-validate]
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            -   run: echo "✅ static quality + JS/TS lint + shopware-validate passed."
+
+    tests:
+        name: PHPUnit + Playwright
+        needs: [quality-gate, security-gate]
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        env:
+            COMPOSE_PROJECT_NAME: fib-booking-shop-tests
+            STOREFRONT_PORT: '8080'
+        steps:
+            -   uses: actions/checkout@v4
+
+            -   uses: actions/setup-node@v4
+                with:
+                    node-version: ${{ env.NODE_VERSION }}
+                    cache: npm
+                    cache-dependency-path: |
+                        custom/static-plugins/FibBookingSystem/package-lock.json
+
             -   uses: actions/cache@v4
                 with:
-                    path: ~/.composer/cache
-                    key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-                    restore-keys: composer-${{ runner.os }}-
-            -   name: Install dependencies
-                run: composer install --no-interaction --prefer-dist --no-progress
-            -   name: Bootstrap Shopware (install + plugin)
-                run: .github/ci/bootstrap-shopware.sh
-            -   name: Run integration tests
-                run: make test-integration
+                    path: ~/.cache/ms-playwright
+                    key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('custom/static-plugins/FibBookingSystem/package-lock.json') }}
+                    restore-keys: playwright-${{ runner.os }}-${{ runner.arch }}-
 
-    docker-build:
-        name: Docker Image Build (smoke)
+            -   name: Bootstrap CI stack
+                run: make ci-bootstrap
+
+            -   id: phpunit
+                name: Run PHPUnit
+                run: make ci-phpunit
+
+            -   id: e2e_booking
+                name: Booking Playwright suite
+                run: make ci-e2e
+
+            -   name: Upload JUnit results
+                if: always()
+                uses: actions/upload-artifact@v4
+                with:
+                    name: junit-results
+                    path: |
+                        custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml
+                        custom/static-plugins/FibBookingSystem/test-results/junit.xml
+                    if-no-files-found: ignore
+
+            -   name: Upload Playwright reports
+                if: always()
+                uses: actions/upload-artifact@v4
+                with:
+                    name: playwright-reports
+                    path: |
+                        custom/static-plugins/FibBookingSystem/playwright-report
+                        custom/static-plugins/FibBookingSystem/test-results
+                    if-no-files-found: ignore
+
+            -   name: Tear down stack (with logs)
+                if: failure()
+                run: make ci-teardown WITH_LOGS=1
+
+            -   name: Tear down stack
+                if: success() || cancelled()
+                run: make ci-teardown
+
+            -   name: Gate — fail on any failed test suite
+                if: always()
+                run: |
+                    .github/scripts/gate.sh "One or more test suites failed — see the suite steps above and the published reports." \
+                        "PHPUnit=${{ steps.phpunit.outcome }}" \
+                        "Booking Playwright suite=${{ steps.e2e_booking.outcome }}"
+
+    publish-results:
+        name: Publish Test Results
+        needs: [tests, quality-gate, security-gate]
+        if: ${{ !cancelled() }}
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        permissions:
+            contents: read
+            checks: write
+            pull-requests: write
         steps:
             -   uses: actions/checkout@v4
-            -   uses: docker/setup-buildx-action@v3
-            -   name: Build production image (no push)
-                uses: docker/build-push-action@v6
+
+            -   name: Download JUnit results
+                continue-on-error: true
+                uses: actions/download-artifact@v4
                 with:
-                    context: .
-                    file: Dockerfile
-                    push: false
-                    cache-from: type=gha
-                    cache-to: type=gha,mode=max
+                    name: junit-results
+                    path: junit-results
+
+            -   id: phpunit-report
+                name: Publish PHPUnit report
+                if: ${{ needs.tests.result == 'success' || needs.tests.result == 'failure' }}
+                uses: dorny/test-reporter@v1
+                with:
+                    name: PHPUnit
+                    path: 'junit-results/custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml'
+                    reporter: java-junit
+                    list-tests: failed
+                    list-suites: all
+                    fail-on-error: false
+                    fail-on-empty: false
+
+            -   id: e2e-booking-report
+                name: Publish Booking Playwright report
+                if: ${{ needs.tests.result == 'success' || needs.tests.result == 'failure' }}
+                uses: dorny/test-reporter@v1
+                with:
+                    name: Playwright — Booking
+                    path: 'junit-results/custom/static-plugins/FibBookingSystem/test-results/junit.xml'
+                    reporter: java-junit
+                    list-tests: failed
+                    list-suites: all
+                    fail-on-error: false
+                    fail-on-empty: false
+
+            -   name: Update PR description with test results
+                if: ${{ github.event_name == 'pull_request' }}
+                uses: actions/github-script@v7
+                env:
+                    PHPUNIT_REPORT_URL: ${{ steps.phpunit-report.outputs.url_html }}
+                    E2E_BOOKING_REPORT_URL: ${{ steps.e2e-booking-report.outputs.url_html }}
+                    TESTS_RESULT: ${{ needs.tests.result }}
+                    QUALITY_GATE_RESULT: ${{ needs.quality-gate.result }}
+                    SECURITY_GATE_RESULT: ${{ needs.security-gate.result }}
+                with:
+                    github-token: ${{ secrets.GITHUB_TOKEN }}
+                    script: |
+                        const updatePr = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/update-pr-test-results.js`);
+                        await updatePr({ github, context, core });
 
     report-ci:
         name: Report CI
-        needs: [quality, unit-tests, composer-audit, integration-tests, docker-build]
+        needs: [quality-gate, security-gate, tests, publish-results]
         if: always()
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v4
             -   name: Check CI results
                 run: |
-                    .github/ci/gate.sh "One or more required CI jobs failed or were skipped." \
-                        "quality=${{ needs.quality.result }}" \
-                        "unit-tests=${{ needs.unit-tests.result }}" \
-                        "composer-audit=${{ needs.composer-audit.result }}" \
-                        "integration-tests=${{ needs.integration-tests.result }}" \
-                        "docker-build=${{ needs.docker-build.result }}"
+                    if [ "${{ needs.publish-results.result }}" = "failure" ]; then
+                        echo "::warning::publish-results failed — reports/PR comment may be missing."
+                    fi
+                    GATE_STRICT=1 .github/scripts/gate.sh \
+                        "One or more required CI jobs failed, were cancelled, or were skipped (upstream gate red)." \
+                        "quality-gate (quality + lint + shopware-validate)=${{ needs.quality-gate.result }}" \
+                        "security-gate (npm-audit + composer-audit)=${{ needs.security-gate.result }}" \
+                        "tests=${{ needs.tests.result }}"

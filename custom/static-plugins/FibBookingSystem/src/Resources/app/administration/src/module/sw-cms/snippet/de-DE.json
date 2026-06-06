@@ -1,0 +1,23 @@
+{
+    "fib-booking": {
+        "cms": {
+            "elements": {
+                "calendar": {
+                    "label": "Terminkalender",
+                    "configured": "Terminkalender (Ressource konfiguriert)",
+                    "notConfigured": "Terminkalender — bitte eine Buchungsressource wählen",
+                    "config": {
+                        "resourceLabel": "Buchungsressource",
+                        "resourceHelp": "Der Kalender zeigt die buchbaren Termine (Slots) dieser Ressource. Ausgebuchte Tage werden rot markiert.",
+                        "monthsAheadLabel": "Buchbare Monate im Voraus"
+                    }
+                }
+            },
+            "blocks": {
+                "calendar": {
+                    "label": "Terminkalender"
+                }
+            }
+        }
+    }
+}

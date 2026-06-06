@@ -94,8 +94,26 @@ apps/scanner/                    # Vue 3 + Vite scanner app (standalone)
 5. **P5 — Hardening**: rate limiters, validation sweep, security docs.
    **Status: done.**
 
-Open follow-ups: admin module (resource/reservation CRUD), Apple pass push
-updates, scanner offline strategy decision, ticket revocation UI.
+6. **P6 — Booking calendar (CMS element)**: operator-defined slots
+   ("Termine") with per-slot capacity, month calendar with red sold-out days,
+   package products sharing one resource, slot generator command, CMS
+   element/block for shopping experiences. See [CALENDAR.md](CALENDAR.md).
+   **Status: done.**
+
+Open follow-ups: admin module (resource/reservation/slot CRUD UI), Apple pass
+push updates, scanner offline strategy decision, ticket revocation UI.
+
+## Architecture notes (Shopware patterns)
+
+- **Store API routes** (`Core/Content/Booking/SalesChannel/`):
+  `AbstractBookingAvailabilityRoute` / `AbstractBookingHoldRoute` with the
+  decoration pattern; storefront controllers delegate to them. Headless
+  consumers use `/store-api/fib-booking/*`.
+- **Domain exceptions**: `FibBookingException extends HttpException` with
+  stable error codes (`FIB_BOOKING__*`) and static factories.
+- **Demo data** lives in a separate dev/CI-only plugin
+  (`FibBookingDemoData`) seeding exclusively through DAL repositories:
+  `bin/console fib-booking:demodata`.
 
 Status tracking lives in this file; details per feature in
 `docs/WALLET.md`, `docs/SCANNER.md`, `docs/SECURITY.md`.

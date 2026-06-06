@@ -4,27 +4,33 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Storefront\Controller;
 
-use DateTimeImmutable;
-use Exception;
 use FibBookingSystem\Checkout\Cart\BookingLineItemFactory;
-use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
-use FibBookingSystem\Core\Domain\Reservation\BookingHoldService;
+use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute;
+use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute;
+use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute;
+use FibBookingSystem\Core\Content\Booking\SalesChannel\BookingRequestParser;
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
-use InvalidArgumentException;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Throwable;
 
+/**
+ * Storefront JSON endpoints for the booking widget. Availability and hold
+ * creation delegate to the Store API routes (Shopware abstract-route pattern)
+ * — headless consumers use /store-api/fib-booking/* directly.
+ */
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class BookingApiController extends StorefrontController
 {
     public function __construct(
-        private readonly AvailabilityService $availabilityService,
-        private readonly BookingHoldService $holdService,
+        private readonly AbstractBookingAvailabilityRoute $availabilityRoute,
+        private readonly AbstractBookingHoldRoute $holdRoute,
+        private readonly AbstractBookingCalendarRoute $calendarRoute,
         private readonly BookingLineItemFactory $lineItemFactory,
         private readonly CartService $cartService,
         private readonly BookingRateLimiter $rateLimiter,
@@ -32,25 +38,41 @@ class BookingApiController extends StorefrontController
     }
 
     #[Route(
-        path: '/fib-booking/availability',
-        name: 'frontend.fib_booking.availability',
-        defaults: ['XmlHttpRequest' => true],
+        path: '/fib-booking/calendar',
+        name: 'frontend.fib_booking.calendar',
+        defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
-    public function availability(Request $request): JsonResponse
+    public function calendar(Request $request, SalesChannelContext $context): JsonResponse
     {
-        $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, $request->getClientIp());
-
         try {
-            $payload = $this->decodeJsonPayload($request);
-            $result = $this->availabilityService->check(
-                $this->requireString($payload, 'resourceId'),
-                $this->requireDateTime($payload, 'startsAt'),
-                $this->requireDateTime($payload, 'endsAt'),
-                $this->requirePositiveInt($payload, 'quantity'),
-            );
+            $response = $this->calendarRoute->load($request, $context);
 
-            return $this->noStoreJson($result->jsonSerialize());
+            return $this->noStoreJson($response->getCalendar());
+        } catch (TooManyRequestsHttpException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            return $this->noStoreJson([
+                'days' => [],
+                'error' => $exception->getMessage(),
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
+    }
+
+    #[Route(
+        path: '/fib-booking/availability',
+        name: 'frontend.fib_booking.availability',
+        defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
+        methods: ['POST'],
+    )]
+    public function availability(Request $request, SalesChannelContext $context): JsonResponse
+    {
+        try {
+            $response = $this->availabilityRoute->check($request, $context);
+
+            return $this->noStoreJson($response->getAvailability());
+        } catch (TooManyRequestsHttpException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             return $this->noStoreJson([
                 'available' => false,
@@ -62,31 +84,17 @@ class BookingApiController extends StorefrontController
     #[Route(
         path: '/fib-booking/hold',
         name: 'frontend.fib_booking.hold',
-        defaults: ['XmlHttpRequest' => true],
+        defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
     public function hold(Request $request, SalesChannelContext $context): JsonResponse
     {
-        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
-
         try {
-            $payload = $this->decodeJsonPayload($request);
-            $customer = $context->getCustomer();
-            $hold = $this->holdService->createHold(
-                $this->requireString($payload, 'resourceId'),
-                $this->requireDateTime($payload, 'startsAt'),
-                $this->requireDateTime($payload, 'endsAt'),
-                $this->requirePositiveInt($payload, 'quantity'),
-                $context->getSalesChannelId(),
-                $customer ? $customer->getId() : null,
-                $payload,
-            );
+            $response = $this->holdRoute->create($request, $context);
 
-            return $this->noStoreJson([
-                'id' => $hold->getId(),
-                'token' => $hold->getToken(),
-                'expiresAt' => $hold->getExpiresAt()->format(DATE_ATOM),
-            ]);
+            return $this->noStoreJson($response->getHold());
+        } catch (TooManyRequestsHttpException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             return $this->noStoreJson([
                 'success' => false,
@@ -98,7 +106,7 @@ class BookingApiController extends StorefrontController
     #[Route(
         path: '/fib-booking/cart/add',
         name: 'frontend.fib_booking.cart.add',
-        defaults: ['XmlHttpRequest' => true],
+        defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
         methods: ['POST'],
     )]
     public function addToCart(Request $request, SalesChannelContext $context): JsonResponse
@@ -106,12 +114,12 @@ class BookingApiController extends StorefrontController
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
 
         try {
-            $payload = $this->decodeJsonPayload($request);
+            $payload = BookingRequestParser::payload($request);
             $lineItem = $this->lineItemFactory->createProductLineItem(
-                $this->requireString($payload, 'productId'),
-                $this->requireString($payload, 'holdId'),
+                BookingRequestParser::uuid($payload, 'productId'),
+                BookingRequestParser::uuid($payload, 'holdId'),
                 $this->requireString($payload, 'holdToken'),
-                $this->requirePositiveInt($payload, 'quantity'),
+                BookingRequestParser::positiveInt($payload, 'quantity'),
             );
 
             $cart = $this->cartService->getCart($context->getToken(), $context);
@@ -131,6 +139,20 @@ class BookingApiController extends StorefrontController
     }
 
     /**
+     * @param array<string, mixed> $payload
+     */
+    private function requireString(array $payload, string $field): string
+    {
+        $value = $payload[$field] ?? null;
+
+        if (!is_string($value) || $value === '') {
+            throw \FibBookingSystem\FibBookingException::invalidPayload($field, 'expected a non-empty string');
+        }
+
+        return $value;
+    }
+
+    /**
      * @param array<string, mixed> $data
      */
     private function noStoreJson(array $data, int $status = JsonResponse::HTTP_OK): JsonResponse
@@ -140,61 +162,5 @@ class BookingApiController extends StorefrontController
         $response->headers->set('Pragma', 'no-cache');
 
         return $response;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function decodeJsonPayload(Request $request): array
-    {
-        $payload = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
-
-        if (!is_array($payload)) {
-            throw new InvalidArgumentException('Expected a JSON object.');
-        }
-
-        return $payload;
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private function requireString(array $payload, string $key): string
-    {
-        $value = $payload[$key] ?? null;
-
-        if (!is_string($value) || $value === '') {
-            throw new InvalidArgumentException(sprintf('Missing required string "%s".', $key));
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private function requireDateTime(array $payload, string $key): DateTimeImmutable
-    {
-        $value = $this->requireString($payload, $key);
-
-        try {
-            return new DateTimeImmutable($value);
-        } catch (Exception) {
-            throw new InvalidArgumentException(sprintf('Expected "%s" as ISO-8601 datetime.', $key));
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private function requirePositiveInt(array $payload, string $key): int
-    {
-        $value = $payload[$key] ?? null;
-
-        if (!is_int($value) || $value < 1) {
-            throw new InvalidArgumentException(sprintf('Expected "%s" as positive integer.', $key));
-        }
-
-        return $value;
     }
 }

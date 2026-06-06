@@ -30,3 +30,4 @@ include make/quality.mk   # phpstan, php-cs-fixer
 include make/tests.mk     # phpunit (unit + integration)
 include make/e2e.mk       # playwright
 include make/scanner.mk   # vue scanner app
+include make/ci.mk        # CI pipeline helpers (.github/ci)

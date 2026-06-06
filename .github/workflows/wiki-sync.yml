@@ -15,7 +15,7 @@ on:
             - 'docs/**'
             - 'custom/static-plugins/FibBookingSystem/README.md'
             - 'custom/static-plugins/FibBookingSystem/docs/**'
-            - '.github/ci/wiki-sync.sh'
+            - '.github/scripts/wiki-sync.sh'
             - '.github/workflows/wiki-sync.yml'
 
 permissions:
@@ -30,4 +30,4 @@ jobs:
             -   name: Sync docs to wiki
                 env:
                     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                run: .github/ci/wiki-sync.sh
+                run: .github/scripts/wiki-sync.sh

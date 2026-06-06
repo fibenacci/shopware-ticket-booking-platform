@@ -1,0 +1,21 @@
+# CI-only Symfony config drop-in.
+#
+# Baked into the CI image at config/packages/zz-ci-overrides.yaml by
+# .github/ci/Dockerfile. The `zz-` prefix guarantees this file is loaded LAST
+# by Symfony's alphabetical config loader, so it wins over project config.
+#
+# Result: under any APP_ENV the kernel uses filesystem cache, mock-file
+# sessions and sync messenger transports — the CI container needs no Redis or
+# RabbitMQ sidecar. PHPUnit's test env keeps its own overrides; this file is
+# functionally equivalent for the envs Playwright hits via HTTP.
+framework:
+    cache:
+        app: cache.adapter.filesystem
+        system: cache.adapter.filesystem
+    session:
+        storage_factory_id: session.storage.factory.mock_file
+    messenger:
+        transports:
+            async: 'sync://'
+            low_priority: 'sync://'
+            failed: 'sync://'

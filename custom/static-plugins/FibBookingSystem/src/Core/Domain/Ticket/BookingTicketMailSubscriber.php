@@ -97,16 +97,18 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
     private function fetchReservationMailData(string $reservationId): ?array
     {
         $data = $this->connection->fetchAssociative(
-            'SELECT reservation.booking_number,
-                    reservation.starts_at,
-                    reservation.ends_at,
-                    customer.email,
-                    customer.first_name,
-                    customer.last_name,
-                    customer.sales_channel_id
-             FROM fib_booking_reservation reservation
-             LEFT JOIN customer customer ON customer.id = reservation.customer_id
-             WHERE reservation.id = :reservationId',
+            <<<'SQL'
+                SELECT reservation.booking_number,
+                reservation.starts_at,
+                reservation.ends_at,
+                customer.email,
+                customer.first_name,
+                customer.last_name,
+                customer.sales_channel_id
+                FROM fib_booking_reservation reservation
+                LEFT JOIN customer customer ON customer.id = reservation.customer_id
+                WHERE reservation.id = :reservationId
+            SQL,
             ['reservationId' => Uuid::fromHexToBytes($reservationId)],
         );
 
@@ -150,10 +152,12 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
     private function fetchSalesChannelBaseUrl(string $salesChannelIdBytes): ?string
     {
         $url = $this->connection->fetchOne(
-            "SELECT url FROM sales_channel_domain
-             WHERE sales_channel_id = :salesChannelId AND url LIKE 'http%'
-             ORDER BY url LIKE 'https%' DESC
-             LIMIT 1",
+            <<<'SQL'
+                SELECT url FROM sales_channel_domain
+                WHERE sales_channel_id = :salesChannelId AND url LIKE 'http%'
+                ORDER BY url LIKE 'https%' DESC
+                LIMIT 1
+            SQL,
             ['salesChannelId' => $salesChannelIdBytes],
         );
 

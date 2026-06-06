@@ -167,9 +167,55 @@
             <tag name="flow.action" key="action.fib_booking.issue_ticket"/>
         </service>
 
-        <service id="FibBookingSystem\Storefront\Controller\BookingApiController" public="true">
+        <service id="FibBookingSystem\Core\Content\BookingSlot\BookingSlotDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_slot"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Availability\BookingCalendarService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\Cms\FibBookingCalendarCmsElementResolver">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <tag name="shopware.cms.data_resolver"/>
+        </service>
+
+        <service id="FibBookingSystem\Command\GenerateBookingSlotsCommand">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <tag name="console.command"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingCalendarRoute" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Availability\BookingCalendarService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingCalendarRoute"/>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingAvailabilityRoute" public="true">
             <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingHoldRoute" public="true">
             <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingAvailabilityRoute"/>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingHoldRoute"/>
+
+        <service id="FibBookingSystem\Storefront\Controller\BookingApiController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute"/>
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute"/>
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute"/>
             <argument type="service" id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
             <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>

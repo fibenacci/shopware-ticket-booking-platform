@@ -1,0 +1,34 @@
+{
+    "resources": [
+        { "key": "main_stage", "name": "Main Stage", "technicalName": "fib_demo_resource_0", "capacity": 10 },
+        { "key": "workshop_room", "name": "Workshop Room A", "technicalName": "fib_demo_resource_1", "capacity": 10 },
+        { "key": "escape_room", "name": "Escape Room Alpha", "technicalName": "fib_demo_resource_2", "capacity": 10 }
+    ],
+    "products": [
+        {"name": "Demo Concert Ticket", "productNumber": "FIB-DEMO-1", "grossPrice": 49.0, "resource": "main_stage", "slotMinutes": 60 },
+        { "name": "Demo Workshop Seat", "productNumber": "FIB-DEMO-2", "grossPrice": 59.0, "resource": "workshop_room", "slotMinutes": 60 },
+        { "name": "Demo Escape Room Slot", "productNumber": "FIB-DEMO-3", "grossPrice": 69.0, "resource": "escape_room", "slotMinutes": 60 }
+    ],
+    "packages": {
+        "resource": { "key": "event_hall", "name": "Demo Event Hall", "technicalName": "fib_demo_event_hall", "capacity": 20 },
+        "products": [
+            { "name": "Starter Package", "productNumber": "FIB-PKG-STARTER", "grossPrice": 29.0 },
+            { "name": "Premium Package", "productNumber": "FIB-PKG-PREMIUM", "grossPrice": 59.0 },
+            { "name": "Luxury Package", "productNumber": "FIB-PKG-LUXURY", "grossPrice": 99.0 }
+        ],
+        "slots": {
+            "daysAhead": 14,
+            "times": ["18:00", "20:30"],
+            "durationMinutes": 120,
+            "capacity": 20
+        }
+    },
+    "reservation": {
+        "resource": "main_stage",
+        "bookingNumber": "B-DEMO-1",
+        "startsAtOffsetDays": 1,
+        "startTime": "18:00",
+        "durationMinutes": 120,
+        "quantity": 2
+    }
+}

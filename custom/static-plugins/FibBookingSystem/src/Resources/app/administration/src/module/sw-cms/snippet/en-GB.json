@@ -1,0 +1,23 @@
+{
+    "fib-booking": {
+        "cms": {
+            "elements": {
+                "calendar": {
+                    "label": "Booking calendar",
+                    "configured": "Booking calendar (resource configured)",
+                    "notConfigured": "Booking calendar — please select a booking resource",
+                    "config": {
+                        "resourceLabel": "Booking resource",
+                        "resourceHelp": "The calendar shows the bookable dates (slots) of this resource. Sold-out days are marked red.",
+                        "monthsAheadLabel": "Bookable months ahead"
+                    }
+                }
+            },
+            "blocks": {
+                "calendar": {
+                    "label": "Booking calendar"
+                }
+            }
+        }
+    }
+}

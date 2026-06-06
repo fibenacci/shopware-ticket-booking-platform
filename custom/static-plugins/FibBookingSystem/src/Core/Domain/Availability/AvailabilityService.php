@@ -34,6 +34,19 @@ class AvailabilityService
             return new AvailabilityResult(false, 0, 0, $quantity);
         }
 
+        // Operator-defined slots ("Termine") take precedence: when the
+        // resource has slots, bookings are accepted only ON a slot and the
+        // slot's own capacity wins over the resource capacity.
+        $slotCapacity = $this->fetchSlotCapacity($resourceBytes, $startsAt, $endsAt);
+
+        if ($slotCapacity === null && $this->hasActiveSlots($resourceBytes)) {
+            return new AvailabilityResult(false, 0, 0, $quantity);
+        }
+
+        if ($slotCapacity !== null) {
+            $capacity = $slotCapacity;
+        }
+
         $reservedQuantity = $this->fetchReservedQuantity($resourceBytes, $startsAt, $endsAt);
 
         return new AvailabilityResult(
@@ -47,23 +60,57 @@ class AvailabilityService
     private function fetchCapacity(string $resourceBytes): ?int
     {
         $capacity = $this->connection->fetchOne(
-            'SELECT capacity FROM fib_booking_resource WHERE id = :resourceId AND active = 1',
+            <<<'SQL'
+                SELECT capacity FROM fib_booking_resource WHERE id = :resourceId AND active = 1
+            SQL,
             ['resourceId' => $resourceBytes],
         );
 
         return $capacity === false ? null : (int) $capacity;
     }
 
+    private function fetchSlotCapacity(string $resourceBytes, DateTimeInterface $startsAt, DateTimeInterface $endsAt): ?int
+    {
+        $capacity = $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT capacity FROM fib_booking_slot
+                WHERE resource_id = :resourceId
+                AND starts_at = :startsAt
+                AND ends_at = :endsAt
+                AND active = 1
+            SQL,
+            [
+                'resourceId' => $resourceBytes,
+                'startsAt' => $this->formatDateTime($startsAt),
+                'endsAt' => $this->formatDateTime($endsAt),
+            ],
+        );
+
+        return $capacity === false ? null : (int) $capacity;
+    }
+
+    private function hasActiveSlots(string $resourceBytes): bool
+    {
+        return (bool) $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT 1 FROM fib_booking_slot WHERE resource_id = :resourceId AND active = 1 LIMIT 1
+            SQL,
+            ['resourceId' => $resourceBytes],
+        );
+    }
+
     private function fetchReservedQuantity(string $resourceBytes, DateTimeInterface $startsAt, DateTimeInterface $endsAt): int
     {
         $holdQuantity = (int) $this->connection->fetchOne(
-            'SELECT COALESCE(SUM(quantity), 0)
-             FROM fib_booking_hold
-             WHERE resource_id = :resourceId
-               AND status = :status
-               AND expires_at > UTC_TIMESTAMP(3)
-               AND starts_at < :endsAt
-               AND ends_at > :startsAt',
+            <<<'SQL'
+                SELECT COALESCE(SUM(quantity), 0)
+                FROM fib_booking_hold
+                WHERE resource_id = :resourceId
+                AND status = :status
+                AND expires_at > UTC_TIMESTAMP(3)
+                AND starts_at < :endsAt
+                AND ends_at > :startsAt
+            SQL,
             [
                 'resourceId' => $resourceBytes,
                 'status' => self::ACTIVE_HOLD_STATUS,
@@ -73,12 +120,14 @@ class AvailabilityService
         );
 
         $reservationQuantity = (int) $this->connection->fetchOne(
-            'SELECT COALESCE(SUM(quantity), 0)
-             FROM fib_booking_reservation
-             WHERE resource_id = :resourceId
-               AND status IN (:pendingPayment, :confirmed, :completed)
-               AND starts_at < :endsAt
-               AND ends_at > :startsAt',
+            <<<'SQL'
+                SELECT COALESCE(SUM(quantity), 0)
+                FROM fib_booking_reservation
+                WHERE resource_id = :resourceId
+                AND status IN (:pendingPayment, :confirmed, :completed)
+                AND starts_at < :endsAt
+                AND ends_at > :startsAt
+            SQL,
             [
                 'resourceId' => $resourceBytes,
                 'pendingPayment' => 'pending_payment',

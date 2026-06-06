@@ -65,13 +65,26 @@ FIB_BOOKING_PRODUCT_ID=... FIB_BOOKING_RESOURCE_ID=... make e2e
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every PR / push to `trunk`:
+`.github/workflows/ci.yml` runs on every PR / push to `trunk` (structure
+mirrors the UGG unified shop — gates feed the test stack):
 
-- **Static Quality** — PHP-CS-Fixer (dry-run) + PHPStan
-- **PHPUnit (unit)** — fast, no database
-- **PHPUnit (integration)** — full Shopware install against a MariaDB service
-- **Composer Audit** — known vulnerability check against `composer.lock`
-- **Docker Image Build** — smoke-builds the production image (no push)
+- **Static Quality** (CS-Fixer + PHPStan) · **JS/TS Lint** (scanner build +
+  plugin JS) · **Shopware Extension Validate** → **Quality Gate**
+- **Composer Audit** · **NPM Audit** → **Security Gate**
+- **PHPUnit + Playwright** — pre-baked CI stack (`.github/ci/`) with seeded
+  demo data (FibBookingDemoData)
+- **Publish Test Results** (checks + PR description) → **Report CI** (strict gate)
+
+Rehearse locally: `make ci-bootstrap && make ci-phpunit && make ci-e2e && make ci-teardown`.
+
+## Demo data
+
+```bash
+make seed-booking    # bookable products, resources, confirmed reservation + QR ticket
+```
+
+Provided by the dev/CI-only plugin `custom/static-plugins/FibBookingDemoData`
+(`bin/console fib-booking:demodata`, idempotent, deterministic ids).
 
 ## Docker deployment
 

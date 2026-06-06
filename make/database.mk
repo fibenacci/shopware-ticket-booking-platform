@@ -9,10 +9,13 @@ fix-domain: ## Point the sales channel at $(DOMAIN)
 	@docker exec fib-shopware bin/console cache:clear
 	@echo "✅ Sales channel domain updated to $(DOMAIN)"
 
-demodata: ## Generate demo data (products, categories, customers)
+demodata: ## Generate generic Shopware demo data (products, categories, customers)
 	@docker exec -e APP_ENV=prod fib-shopware bin/console framework:demodata || { echo "❌ Demo data generation failed"; exit 1; }
 	@docker exec fib-shopware bin/console dal:refresh:index
 	@echo "✅ Demo data generated"
+
+seed-booking: ## Seed booking demo data (bookable products, resources, reservation + ticket)
+	@docker exec fib-shopware bin/console fib-booking:demodata || { echo "❌ Booking demo data seeding failed"; exit 1; }
 
 messenger-consume: ## Drain messenger queues once (300s / 256MB limit)
 	@docker exec fib-shopware bin/console messenger:consume async low_priority failed --time-limit=300 --memory-limit=256M -v

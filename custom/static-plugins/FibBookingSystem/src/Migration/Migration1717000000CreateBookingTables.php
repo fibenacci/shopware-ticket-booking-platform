@@ -17,8 +17,8 @@ class Migration1717000000CreateBookingTables extends MigrationStep
 
     public function update(Connection $connection): void
     {
-        $connection->executeStatement('
-            CREATE TABLE IF NOT EXISTS `fib_booking_resource` (
+        $connection->executeStatement(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS `fib_booking_resource` (
                 `id` BINARY(16) NOT NULL,
                 `product_id` BINARY(16) NULL,
                 `name` VARCHAR(255) NOT NULL,
@@ -33,12 +33,12 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 KEY `idx.fib_booking_resource.product_id` (`product_id`),
                 CONSTRAINT `json.fib_booking_resource.configuration` CHECK (JSON_VALID(`configuration`)),
                 CONSTRAINT `fk.fib_booking_resource.product_id` FOREIGN KEY (`product_id`)
-                    REFERENCES `product` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ');
+                REFERENCES `product` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            SQL);
 
-        $connection->executeStatement('
-            CREATE TABLE IF NOT EXISTS `fib_booking_hold` (
+        $connection->executeStatement(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS `fib_booking_hold` (
                 `id` BINARY(16) NOT NULL,
                 `resource_id` BINARY(16) NOT NULL,
                 `sales_channel_id` BINARY(16) NULL,
@@ -58,16 +58,16 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 KEY `idx.fib_booking_hold.expires_at` (`expires_at`, `status`),
                 CONSTRAINT `json.fib_booking_hold.payload` CHECK (JSON_VALID(`payload`)),
                 CONSTRAINT `fk.fib_booking_hold.resource_id` FOREIGN KEY (`resource_id`)
-                    REFERENCES `fib_booking_resource` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                REFERENCES `fib_booking_resource` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_hold.sales_channel_id` FOREIGN KEY (`sales_channel_id`)
-                    REFERENCES `sales_channel` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+                REFERENCES `sales_channel` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_hold.customer_id` FOREIGN KEY (`customer_id`)
-                    REFERENCES `customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ');
+                REFERENCES `customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            SQL);
 
-        $connection->executeStatement('
-            CREATE TABLE IF NOT EXISTS `fib_booking_reservation` (
+        $connection->executeStatement(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS `fib_booking_reservation` (
                 `id` BINARY(16) NOT NULL,
                 `resource_id` BINARY(16) NOT NULL,
                 `order_id` BINARY(16) NULL,
@@ -91,20 +91,20 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 KEY `idx.fib_booking_reservation.order_line_item_id` (`order_line_item_id`, `order_line_item_version_id`),
                 CONSTRAINT `json.fib_booking_reservation.payload` CHECK (JSON_VALID(`payload`)),
                 CONSTRAINT `fk.fib_booking_reservation.resource_id` FOREIGN KEY (`resource_id`)
-                    REFERENCES `fib_booking_resource` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+                REFERENCES `fib_booking_resource` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_reservation.order_id` FOREIGN KEY (`order_id`, `order_version_id`)
-                    REFERENCES `order` (`id`, `version_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+                REFERENCES `order` (`id`, `version_id`) ON DELETE SET NULL ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_reservation.order_line_item_id` FOREIGN KEY (`order_line_item_id`, `order_line_item_version_id`)
-                    REFERENCES `order_line_item` (`id`, `version_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+                REFERENCES `order_line_item` (`id`, `version_id`) ON DELETE SET NULL ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_reservation.customer_id` FOREIGN KEY (`customer_id`)
-                    REFERENCES `customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+                REFERENCES `customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_reservation.hold_id` FOREIGN KEY (`hold_id`)
-                    REFERENCES `fib_booking_hold` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ');
+                REFERENCES `fib_booking_hold` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            SQL);
 
-        $connection->executeStatement('
-            CREATE TABLE IF NOT EXISTS `fib_booking_ticket` (
+        $connection->executeStatement(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS `fib_booking_ticket` (
                 `id` BINARY(16) NOT NULL,
                 `reservation_id` BINARY(16) NOT NULL,
                 `ticket_number` VARCHAR(64) NOT NULL,
@@ -124,12 +124,12 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 KEY `idx.fib_booking_ticket.status` (`status`),
                 CONSTRAINT `json.fib_booking_ticket.payload` CHECK (JSON_VALID(`payload`)),
                 CONSTRAINT `fk.fib_booking_ticket.reservation_id` FOREIGN KEY (`reservation_id`)
-                    REFERENCES `fib_booking_reservation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ');
+                REFERENCES `fib_booking_reservation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            SQL);
 
-        $connection->executeStatement('
-            CREATE TABLE IF NOT EXISTS `fib_booking_product_config` (
+        $connection->executeStatement(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS `fib_booking_product_config` (
                 `id` BINARY(16) NOT NULL,
                 `product_id` BINARY(16) NOT NULL,
                 `product_version_id` BINARY(16) NOT NULL,
@@ -142,11 +142,11 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 UNIQUE KEY `uniq.fib_booking_product_config.product` (`product_id`, `product_version_id`),
                 KEY `idx.fib_booking_product_config.resource_id` (`resource_id`),
                 CONSTRAINT `fk.fib_booking_product_config.product_id` FOREIGN KEY (`product_id`, `product_version_id`)
-                    REFERENCES `product` (`id`, `version_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                REFERENCES `product` (`id`, `version_id`) ON DELETE CASCADE ON UPDATE CASCADE,
                 CONSTRAINT `fk.fib_booking_product_config.resource_id` FOREIGN KEY (`resource_id`)
-                    REFERENCES `fib_booking_resource` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        ');
+                REFERENCES `fib_booking_resource` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            SQL);
 
         $this->createNumberRanges($connection);
         $this->createTicketMailTemplate($connection);
@@ -194,28 +194,28 @@ class Migration1717000000CreateBookingTables extends MigrationStep
         string $germanName,
         string $englishName,
     ): void {
-        $connection->executeStatement('
-            INSERT IGNORE INTO `number_range_type` (`id`, `technical_name`, `global`, `created_at`)
-            VALUES (UNHEX(:typeId), :technicalName, 1, UTC_TIMESTAMP(3))
-        ', [
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `number_range_type` (`id`, `technical_name`, `global`, `created_at`)
+                VALUES (UNHEX(:typeId), :technicalName, 1, UTC_TIMESTAMP(3))
+            SQL, [
             'typeId' => $typeId,
             'technicalName' => $technicalName,
         ]);
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `number_range` (`id`, `type_id`, `global`, `pattern`, `start`, `created_at`)
-            VALUES (UNHEX(:numberRangeId), UNHEX(:typeId), 1, :pattern, :start, UTC_TIMESTAMP(3))
-        ', [
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `number_range` (`id`, `type_id`, `global`, `pattern`, `start`, `created_at`)
+                VALUES (UNHEX(:numberRangeId), UNHEX(:typeId), 1, :pattern, :start, UTC_TIMESTAMP(3))
+            SQL, [
             'numberRangeId' => $numberRangeId,
             'typeId' => $typeId,
             'pattern' => $pattern,
             'start' => $start,
         ]);
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `number_range_state` (`id`, `number_range_id`, `last_value`, `created_at`)
-            VALUES (UNHEX(:stateId), UNHEX(:numberRangeId), :lastValue, UTC_TIMESTAMP(3))
-        ', [
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `number_range_state` (`id`, `number_range_id`, `last_value`, `created_at`)
+                VALUES (UNHEX(:stateId), UNHEX(:numberRangeId), :lastValue, UTC_TIMESTAMP(3))
+            SQL, [
             'stateId' => $numberRangeStateId,
             'numberRangeId' => $numberRangeId,
             'lastValue' => $start - 1,
@@ -238,23 +238,23 @@ class Migration1717000000CreateBookingTables extends MigrationStep
             return;
         }
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `number_range_type_translation`
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `number_range_type_translation`
                 (`number_range_type_id`, `language_id`, `type_name`, `created_at`)
-            VALUES
+                VALUES
                 (UNHEX(:typeId), :languageId, :name, UTC_TIMESTAMP(3))
-        ', [
+            SQL, [
             'typeId' => $typeId,
             'languageId' => $languageId,
             'name' => $name,
         ]);
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `number_range_translation`
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `number_range_translation`
                 (`number_range_id`, `language_id`, `name`, `description`, `created_at`)
-            VALUES
+                VALUES
                 (UNHEX(:numberRangeId), :languageId, :name, :description, UTC_TIMESTAMP(3))
-        ', [
+            SQL, [
             'numberRangeId' => $numberRangeId,
             'languageId' => $languageId,
             'name' => $name,
@@ -267,15 +267,15 @@ class Migration1717000000CreateBookingTables extends MigrationStep
         $mailTemplateTypeId = $this->stableId('mail-template-type.ticket');
         $mailTemplateId = $this->stableId('mail-template.ticket');
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `mail_template_type` (`id`, `technical_name`, `available_entities`, `created_at`)
-            VALUES (
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `mail_template_type` (`id`, `technical_name`, `available_entities`, `created_at`)
+                VALUES (
                 UNHEX(:typeId),
                 :technicalName,
                 :availableEntities,
                 UTC_TIMESTAMP(3)
-            )
-        ', [
+                )
+            SQL, [
             'typeId' => $mailTemplateTypeId,
             'technicalName' => 'fib_booking_ticket_mail',
             'availableEntities' => json_encode([
@@ -284,10 +284,10 @@ class Migration1717000000CreateBookingTables extends MigrationStep
             ], JSON_THROW_ON_ERROR),
         ]);
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `mail_template` (`id`, `mail_template_type_id`, `system_default`, `created_at`)
-            VALUES (UNHEX(:templateId), UNHEX(:typeId), 1, UTC_TIMESTAMP(3))
-        ', [
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `mail_template` (`id`, `mail_template_type_id`, `system_default`, `created_at`)
+                VALUES (UNHEX(:templateId), UNHEX(:typeId), 1, UTC_TIMESTAMP(3))
+            SQL, [
             'templateId' => $mailTemplateId,
             'typeId' => $mailTemplateTypeId,
         ]);
@@ -331,23 +331,23 @@ class Migration1717000000CreateBookingTables extends MigrationStep
             return;
         }
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `mail_template_type_translation`
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `mail_template_type_translation`
                 (`mail_template_type_id`, `language_id`, `name`, `created_at`)
-            VALUES
+                VALUES
                 (UNHEX(:typeId), :languageId, :name, UTC_TIMESTAMP(3))
-        ', [
+            SQL, [
             'typeId' => $mailTemplateTypeId,
             'languageId' => $languageId,
             'name' => $typeName,
         ]);
 
-        $connection->executeStatement('
-            INSERT IGNORE INTO `mail_template_translation`
+        $connection->executeStatement(<<<'SQL'
+                INSERT IGNORE INTO `mail_template_translation`
                 (`mail_template_id`, `language_id`, `sender_name`, `subject`, `description`, `content_html`, `content_plain`, `created_at`)
-            VALUES
+                VALUES
                 (UNHEX(:templateId), :languageId, :senderName, :subject, :description, :contentHtml, :contentPlain, UTC_TIMESTAMP(3))
-        ', [
+            SQL, [
             'templateId' => $mailTemplateId,
             'languageId' => $languageId,
             'senderName' => '{{ salesChannel.name }}',
@@ -360,13 +360,13 @@ class Migration1717000000CreateBookingTables extends MigrationStep
 
     private function fetchLanguageId(Connection $connection, string $localeCode): ?string
     {
-        $languageId = $connection->fetchOne('
-            SELECT `language`.`id`
-            FROM `language`
-            INNER JOIN `locale` ON `locale`.`id` = `language`.`locale_id`
-            WHERE `locale`.`code` = :localeCode
-            LIMIT 1
-        ', [
+        $languageId = $connection->fetchOne(<<<'SQL'
+                SELECT `language`.`id`
+                FROM `language`
+                INNER JOIN `locale` ON `locale`.`id` = `language`.`locale_id`
+                WHERE `locale`.`code` = :localeCode
+                LIMIT 1
+            SQL, [
             'localeCode' => $localeCode,
         ]);
 

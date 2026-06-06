@@ -1,0 +1,9 @@
+{% block sw_cms_element_fib_booking_calendar %}
+    <div class="sw-cms-el-fib-booking-calendar">
+        <div class="sw-cms-el-fib-booking-calendar__mock">
+            <sw-icon name="regular-calendar" size="40px"></sw-icon>
+            <p v-if="hasResource">{{ $tc('fib-booking.cms.elements.calendar.configured') }}</p>
+            <p v-else>{{ $tc('fib-booking.cms.elements.calendar.notConfigured') }}</p>
+        </div>
+    </div>
+{% endblock %}

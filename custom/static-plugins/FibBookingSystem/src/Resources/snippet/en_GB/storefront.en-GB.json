@@ -6,6 +6,14 @@
     "quantity": {
       "label": "Quantity"
     },
+    "calendar": {
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "slotsHeadline": "Available times",
+      "packageLabel": "Package",
+      "bookNow": "Book now",
+      "notConfigured": "The booking calendar is not configured yet."
+    },
     "account": {
       "ticketsHeadline": "My tickets",
       "noTickets": "You don't have any tickets yet.",

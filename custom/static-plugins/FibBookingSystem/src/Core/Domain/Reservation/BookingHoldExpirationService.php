@@ -15,10 +15,12 @@ class BookingHoldExpirationService
     public function expireOverdueHolds(): int
     {
         return $this->connection->executeStatement(
-            "UPDATE fib_booking_hold
-             SET status = 'expired', updated_at = UTC_TIMESTAMP(3)
-             WHERE status = 'active'
-               AND expires_at <= UTC_TIMESTAMP(3)",
+            <<<'SQL'
+                UPDATE fib_booking_hold
+                SET status = 'expired', updated_at = UTC_TIMESTAMP(3)
+                WHERE status = 'active'
+                AND expires_at <= UTC_TIMESTAMP(3)
+            SQL,
         );
     }
 }

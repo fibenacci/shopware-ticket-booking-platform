@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
-use RuntimeException;
+use FibBookingSystem\FibBookingException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
@@ -30,10 +30,12 @@ class BookingReservationService
     {
         return $this->connection->transactional(function () use ($orderId, $context): int {
             $order = $this->connection->fetchAssociative(
-                'SELECT `order`.`id`, `order`.`version_id`, `order`.`sales_channel_id`, `order`.`order_customer_id`, `order_customer`.`customer_id`
-                 FROM `order`
-                 LEFT JOIN `order_customer` ON `order_customer`.`id` = `order`.`order_customer_id`
-                 WHERE `order`.`id` = :orderId',
+                <<<'SQL'
+                    SELECT `order`.`id`, `order`.`version_id`, `order`.`sales_channel_id`, `order`.`order_customer_id`, `order_customer`.`customer_id`
+                    FROM `order`
+                    LEFT JOIN `order_customer` ON `order_customer`.`id` = `order`.`order_customer_id`
+                    WHERE `order`.`id` = :orderId
+                SQL,
                 ['orderId' => Uuid::fromHexToBytes($orderId)],
             );
 
@@ -42,9 +44,11 @@ class BookingReservationService
             }
 
             $lineItems = $this->connection->fetchAllAssociative(
-                'SELECT `id`, `version_id`, `payload`
-                 FROM `order_line_item`
-                 WHERE `order_id` = :orderId',
+                <<<'SQL'
+                    SELECT `id`, `version_id`, `payload`
+                    FROM `order_line_item`
+                    WHERE `order_id` = :orderId
+                SQL,
                 ['orderId' => Uuid::fromHexToBytes($orderId)],
             );
 
@@ -69,10 +73,12 @@ class BookingReservationService
     public function confirmReservationsForOrder(string $orderId, Context $context): int
     {
         $reservationIds = $this->connection->fetchFirstColumn(
-            "SELECT LOWER(HEX(id))
-             FROM fib_booking_reservation
-             WHERE order_id = :orderId
-               AND status IN ('pending_payment', 'draft')",
+            <<<'SQL'
+                SELECT LOWER(HEX(id))
+                FROM fib_booking_reservation
+                WHERE order_id = :orderId
+                AND status IN ('pending_payment', 'draft')
+            SQL,
             ['orderId' => Uuid::fromHexToBytes($orderId)],
         );
 
@@ -82,7 +88,9 @@ class BookingReservationService
     public function confirmReservationsForOrderTransaction(string $orderTransactionId, Context $context): int
     {
         $orderId = $this->connection->fetchOne(
-            'SELECT LOWER(HEX(order_id)) FROM order_transaction WHERE id = :transactionId',
+            <<<'SQL'
+                SELECT LOWER(HEX(order_id)) FROM order_transaction WHERE id = :transactionId
+            SQL,
             ['transactionId' => Uuid::fromHexToBytes($orderTransactionId)],
         );
 
@@ -117,7 +125,9 @@ class BookingReservationService
             }
 
             $bookingNumber = $this->connection->fetchOne(
-                'SELECT booking_number FROM fib_booking_reservation WHERE id = :reservationId',
+                <<<'SQL'
+                    SELECT booking_number FROM fib_booking_reservation WHERE id = :reservationId
+                SQL,
                 ['reservationId' => Uuid::fromHexToBytes($reservationId)],
             );
 
@@ -130,7 +140,7 @@ class BookingReservationService
 
             try {
                 $this->ticketService->issueTicket($reservationId, $context);
-            } catch (RuntimeException) {
+            } catch (FibBookingException) {
                 // A valid ticket may already exist after a retry or duplicated state event.
             }
 
@@ -182,11 +192,13 @@ class BookingReservationService
         array $bookingPayload,
     ): bool {
         $hold = $this->connection->fetchAssociative(
-            'SELECT *
-             FROM fib_booking_hold
-             WHERE id = :holdId
-               AND token = :holdToken
-             FOR UPDATE',
+            <<<'SQL'
+                SELECT *
+                FROM fib_booking_hold
+                WHERE id = :holdId
+                AND token = :holdToken
+                FOR UPDATE
+            SQL,
             [
                 'holdId' => Uuid::fromHexToBytes($bookingPayload['holdId']),
                 'holdToken' => $bookingPayload['holdToken'],
@@ -202,7 +214,9 @@ class BookingReservationService
         }
 
         $existingReservationId = $this->connection->fetchOne(
-            'SELECT id FROM fib_booking_reservation WHERE hold_id = :holdId',
+            <<<'SQL'
+                SELECT id FROM fib_booking_reservation WHERE hold_id = :holdId
+            SQL,
             ['holdId' => Uuid::fromHexToBytes($bookingPayload['holdId'])],
         );
 

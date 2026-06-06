@@ -1,0 +1,61 @@
+{% block element_fib_booking_calendar %}
+    {% set calendarData = element.data %}
+
+    <div class="cms-element-fib-booking-calendar{% if element.config.sizingMode.value == 'boxed' %} container{% endif %}">
+        {% if calendarData and calendarData.resourceId %}
+            <div class="fib-booking-calendar"
+                 data-fib-booking-calendar="true"
+                 data-fib-booking-calendar-options="{{ {
+                     resourceId: calendarData.resourceId,
+                     resourceName: calendarData.resourceName,
+                     packages: calendarData.packages,
+                     monthsAhead: element.config.monthsAhead.value|default(3),
+                     calendarUrl: path('frontend.fib_booking.calendar'),
+                     holdUrl: path('frontend.fib_booking.hold'),
+                     cartUrl: path('frontend.fib_booking.cart.add'),
+                     checkoutUrl: path('frontend.checkout.cart.page'),
+                 }|json_encode }}">
+
+                <div class="fib-booking-calendar-header d-flex justify-content-between align-items-center mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm fib-booking-calendar-prev" aria-label="{{ 'fibBooking.calendar.previousMonth'|trans|striptags }}">&laquo;</button>
+                    <strong class="fib-booking-calendar-month" aria-live="polite"></strong>
+                    <button type="button" class="btn btn-outline-secondary btn-sm fib-booking-calendar-next" aria-label="{{ 'fibBooking.calendar.nextMonth'|trans|striptags }}">&raquo;</button>
+                </div>
+
+                <div class="fib-booking-calendar-grid" role="grid"></div>
+
+                <div class="fib-booking-calendar-slots mt-3 d-none">
+                    <h3 class="h6">{{ 'fibBooking.calendar.slotsHeadline'|trans|sw_sanitize }}</h3>
+                    <div class="fib-booking-calendar-slot-list d-flex flex-wrap gap-2"></div>
+                </div>
+
+                {% if calendarData.packages|length > 0 %}
+                    <div class="fib-booking-calendar-packages mt-3">
+                        <label class="form-label" for="fib-booking-package-select">{{ 'fibBooking.calendar.packageLabel'|trans|sw_sanitize }}</label>
+                        <select id="fib-booking-package-select" class="form-select fib-booking-calendar-package">
+                            {% for package in calendarData.packages %}
+                                <option value="{{ package.productId }}">{{ package.name ?? package.productNumber }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+
+                <div class="fib-booking-calendar-actions mt-3 d-none">
+                    <div class="input-group">
+                        <input type="number" class="form-control fib-booking-calendar-quantity" value="1" min="1" max="99"
+                               aria-label="{{ 'fibBooking.quantity.label'|trans|striptags }}">
+                        <button type="button" class="btn btn-primary fib-booking-calendar-book">
+                            {{ 'fibBooking.calendar.bookNow'|trans|sw_sanitize }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="alert alert-danger d-none mt-3 fib-booking-calendar-error" role="alert"></div>
+            </div>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                {{ 'fibBooking.calendar.notConfigured'|trans|sw_sanitize }}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

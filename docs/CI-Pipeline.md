@@ -1,42 +1,78 @@
 # CI Pipeline
 
-`.github/workflows/ci.yml` runs on every PR and push to `trunk`.
+`.github/workflows/ci.yml` runs on every PR and push to `trunk`. The pipeline
+mirrors the UGG unified-shop structure: parallel checks feed two gates, the
+gates feed the test stack, results get published, a strict final gate reports.
+
+```
+Static Quality ──┐
+JS/TS Lint ──────┼─► Quality Gate ──┐
+Shopware Extension Validate ─┘      ├─► PHPUnit + Playwright ─► Publish Test Results ─► Report CI
+Composer Audit ──┬─► Security Gate ─┘
+NPM Audit ───────┘
+```
 
 ## Jobs
 
-| Job | Checks | Duration (approx.) |
-|---|---|---|
-| **Static Quality** | PHP-CS-Fixer (dry-run) + PHPStan level 6 | ~2 min |
-| **PHPUnit (unit)** | Plugin unit suite, no database | ~2 min |
-| **PHPUnit (integration)** | Full Shopware install against a MariaDB service, plugin installed + activated, integration suite | ~8 min |
-| **Composer Audit** | Known vulnerabilities in `composer.lock` | ~1 min |
-| **Docker Image Build** | Smoke build of the production image (no push) | ~10 min |
-| **Report CI** | Gate — red as soon as any job fails | — |
+| Job | Checks |
+|---|---|
+| **Static Quality** | PHP-CS-Fixer (dry-run) + PHPStan level 6 |
+| **JS/TS Lint** | Scanner app production build (type/syntax gate) + `node --check` over plugin storefront JS |
+| **Composer Audit** | Known vulnerabilities in `composer.lock` |
+| **NPM Audit** | High advisories in scanner app + Playwright suite |
+| **Shopware Extension Validate** | `shopware-cli extension validate` over all plugins |
+| **Quality Gate / Security Gate** | Aggregate gates — tests only run when both are green |
+| **PHPUnit + Playwright** | Pre-baked CI stack (see below): PHPUnit unit+integration inside the container, booking Playwright suite against the storefront with seeded demo data |
+| **Publish Test Results** | `dorny/test-reporter` checks + test-result block in the PR description |
+| **Report CI** | Strict final gate (failure/cancelled/skipped ⇒ red) |
 
-Reusable shell scripts live in `.github/ci/`:
+## The CI stack (`.github/ci/`)
 
-- `bootstrap-shopware.sh` — Shopware install + plugin activation (integration job)
-- `gate.sh` — generic job-result gate (report-ci job)
-- `wiki-sync.sh` — assembles and pushes wiki pages
+The test job builds a **pre-baked image** (`.github/ci/Dockerfile`, based on
+`dockware/shopware:6.7.10.2`): composer install, plugin install/activation
+(FibBookingSystem + FibBookingDemoData), **demo data seeding**
+(`fib-booking:demodata`) and the storefront build all happen at image build
+time — Docker layer cache makes repeat runs cheap. The running container
+needs zero setup.
+
+| Script | Purpose |
+|---|---|
+| `bootstrap.sh` | build + `up --wait` + point sales channel at `localhost:8080` |
+| `phpunit.sh` | run plugin suites in the container, `docker cp` JUnit XML out |
+| `playwright.sh` | resolve demo-data ids from the container, run the E2E suite |
+| `teardown.sh` / `cleanup-stack.sh` | stop the stack (optionally dump logs) |
+| `symfony-ci-overrides.yaml` | filesystem cache + mock sessions + sync messenger — no Redis/RabbitMQ sidecars |
+
+Shared helpers live in `.github/scripts/`: `gate.sh` (outcome aggregation),
+`validate-plugins.sh`, `update-pr-test-results.js`, `wiki-sync.sh`.
+
+## Demo data in CI
+
+The **FibBookingDemoData** plugin (dev/CI only, `require-dev`) seeds bookable
+products, booking resources, a confirmed reservation and a QR ticket — with
+**deterministic ids**, so re-running upserts instead of duplicating.
+`playwright.sh` re-runs the idempotent command and evals its
+`FIB_BOOKING_PRODUCT_ID=… / FIB_BOOKING_RESOURCE_ID=…` output for the E2E
+suite.
 
 ## Reproduce locally
 
-CI uses the same make targets as local development:
+The CI pipeline is fully rehearsable on a dev machine (the CI stack uses its
+own container name `fib-shopware-ci` and never touches the dev stack):
 
 ```bash
-make php-cs-fixer-check
-make phpstan
-make test-unit
-make test-integration   # needs a running stack (make up)
+make ci-bootstrap   # build + start the pre-baked stack
+make ci-phpunit     # unit + integration suites in the container
+make ci-e2e         # Playwright against http://localhost:8080
+make ci-teardown    # stop (WITH_LOGS=1 to dump logs first)
 ```
 
-## Image publishing
+Static checks use the same targets as local dev: `make php-cs-fixer-check`,
+`make phpstan`, `make test-unit`.
 
-`.github/workflows/docker-publish.yml` builds and pushes the production
-image to GHCR — on pushes to `trunk` (`latest` + `sha-…`) and on `v*` tags
-(semver tag). See [Deployment](Deployment).
+## Image publishing & wiki
 
-## Wiki sync
-
-`.github/workflows/wiki-sync.yml` syncs `docs/` and the plugin docs to this
-repository's GitHub wiki on every push to `trunk`.
+- `.github/workflows/docker-publish.yml` — builds and pushes the production
+  image to GHCR on `trunk` pushes and `v*` tags. See [Deployment](Deployment).
+- `.github/workflows/wiki-sync.yml` — syncs `docs/` + plugin docs to the
+  GitHub wiki on every push to `trunk`.

@@ -117,17 +117,19 @@ class BookingWalletController extends StorefrontController
     private function fetchCustomerTickets(string $customerId): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            "SELECT LOWER(HEX(ticket.id)) AS ticket_id, ticket.ticket_number, ticket.status,
-                    ticket.scan_token_cipher IS NOT NULL AS has_wallet_token,
-                    reservation.booking_number, reservation.starts_at, reservation.ends_at, reservation.quantity,
-                    resource.name AS resource_name
-             FROM fib_booking_ticket ticket
-             INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-             INNER JOIN fib_booking_resource resource ON resource.id = reservation.resource_id
-             WHERE reservation.customer_id = :customerId
-               AND ticket.status IN ('issued', 'sent', 'scanned')
-             ORDER BY reservation.starts_at DESC
-             LIMIT 100",
+            <<<'SQL'
+                SELECT LOWER(HEX(ticket.id)) AS ticket_id, ticket.ticket_number, ticket.status,
+                ticket.scan_token_cipher IS NOT NULL AS has_wallet_token,
+                reservation.booking_number, reservation.starts_at, reservation.ends_at, reservation.quantity,
+                resource.name AS resource_name
+                FROM fib_booking_ticket ticket
+                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
+                INNER JOIN fib_booking_resource resource ON resource.id = reservation.resource_id
+                WHERE reservation.customer_id = :customerId
+                AND ticket.status IN ('issued', 'sent', 'scanned')
+                ORDER BY reservation.starts_at DESC
+                LIMIT 100
+            SQL,
             ['customerId' => Uuid::fromHexToBytes($customerId)],
         );
 

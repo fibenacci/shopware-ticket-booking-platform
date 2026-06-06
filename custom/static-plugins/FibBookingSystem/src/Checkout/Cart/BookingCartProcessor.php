@@ -79,12 +79,14 @@ class BookingCartProcessor implements CartProcessorInterface
         }
 
         $valid = $this->connection->fetchOne(
-            "SELECT 1
-             FROM fib_booking_hold
-             WHERE id = :holdId
-               AND token = :holdToken
-               AND status = 'active'
-               AND expires_at > UTC_TIMESTAMP(3)",
+            <<<'SQL'
+                SELECT 1
+                FROM fib_booking_hold
+                WHERE id = :holdId
+                AND token = :holdToken
+                AND status = 'active'
+                AND expires_at > UTC_TIMESTAMP(3)
+            SQL,
             [
                 'holdId' => Uuid::fromHexToBytes($holdId),
                 'holdToken' => $holdToken,

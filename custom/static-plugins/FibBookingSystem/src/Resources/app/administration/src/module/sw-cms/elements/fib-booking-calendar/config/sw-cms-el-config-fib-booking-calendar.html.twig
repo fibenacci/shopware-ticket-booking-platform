@@ -1,0 +1,19 @@
+{% block sw_cms_element_fib_booking_calendar_config %}
+    <div class="sw-cms-el-config-fib-booking-calendar">
+        <sw-entity-single-select
+            v-model:value="resourceId"
+            entity="fib_booking_resource"
+            label-property="name"
+            :label="$tc('fib-booking.cms.elements.calendar.config.resourceLabel')"
+            :help-text="$tc('fib-booking.cms.elements.calendar.config.resourceHelp')"
+        ></sw-entity-single-select>
+
+        <sw-number-field
+            v-model:value="monthsAhead"
+            number-type="int"
+            :min="1"
+            :max="12"
+            :label="$tc('fib-booking.cms.elements.calendar.config.monthsAheadLabel')"
+        ></sw-number-field>
+    </div>
+{% endblock %}

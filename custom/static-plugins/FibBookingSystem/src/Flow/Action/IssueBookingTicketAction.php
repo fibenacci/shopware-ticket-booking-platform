@@ -6,7 +6,7 @@ namespace FibBookingSystem\Flow\Action;
 
 use FibBookingSystem\Core\Domain\Reservation\BookingReservationAware;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
-use RuntimeException;
+use FibBookingSystem\FibBookingException;
 use Shopware\Core\Content\Flow\Dispatching\Action\FlowAction;
 use Shopware\Core\Content\Flow\Dispatching\StorableFlow;
 
@@ -37,7 +37,7 @@ class IssueBookingTicketAction extends FlowAction
 
         try {
             $this->ticketService->issueTicket($reservationId, $flow->getContext());
-        } catch (RuntimeException) {
+        } catch (FibBookingException) {
             // The action is idempotent for retried flows and already issued tickets.
         }
     }

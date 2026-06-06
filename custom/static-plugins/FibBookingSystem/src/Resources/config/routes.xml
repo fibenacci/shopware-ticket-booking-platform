@@ -5,4 +5,5 @@
 
     <import resource="../../Storefront/Controller/*Controller.php" type="attribute"/>
     <import resource="../../Api/Controller/*Controller.php" type="attribute"/>
+    <import resource="../../Core/Content/Booking/SalesChannel/*Route.php" type="attribute"/>
 </routes>

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "53c301d6c07cdcb7f89e5e9b161d3647",
+    "content-hash": "8e2cff164aa4d2132d20109cb794d0a7",
     "packages": [
         {
             "name": "async-aws/core",
@@ -11985,6 +11985,44 @@
                 "source": "https://github.com/igorw/evenement/tree/v3.0.2"
             },
             "time": "2023-08-08T05:53:35+00:00"
+        },
+        {
+            "name": "fib/fib-booking-demo-data",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "custom/static-plugins/FibBookingDemoData",
+                "reference": "fdf7dc9781834d62972eb5b2e4b5324043f8063c"
+            },
+            "require": {
+                "fib/fib-booking-system": "*",
+                "shopware/core": "~6.5.0 || ~6.6.0 || ~6.7.0"
+            },
+            "type": "shopware-platform-plugin",
+            "extra": {
+                "shopware-plugin-class": "FibBookingDemoData\\FibBookingDemoData",
+                "label": {
+                    "de-DE": "FIB Booking Demo-Daten",
+                    "en-GB": "FIB Booking Demo Data"
+                },
+                "description": {
+                    "de-DE": "Demo-Daten fuer das FIB Buchungssystem (nur Dev/CI).",
+                    "en-GB": "Demo data for the FIB Booking System (dev/CI only)."
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "FibBookingDemoData\\": "src/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Demo data for the FIB Booking System — bookable products, resources, reservations and tickets. Dev/CI only.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "fidry/cpu-core-counter",

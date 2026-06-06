@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FibBookingSystem;
+
+use Shopware\Core\Framework\HttpException;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Domain exceptions following the Shopware HttpException pattern:
+ * one exception class per domain with stable error codes and static factories.
+ */
+class FibBookingException extends HttpException
+{
+    public const RESOURCE_NOT_FOUND = 'FIB_BOOKING__RESOURCE_NOT_FOUND';
+    public const WINDOW_UNAVAILABLE = 'FIB_BOOKING__WINDOW_UNAVAILABLE';
+    public const RESERVATION_NOT_FOUND = 'FIB_BOOKING__RESERVATION_NOT_FOUND';
+    public const TICKET_ALREADY_EXISTS = 'FIB_BOOKING__TICKET_ALREADY_EXISTS';
+    public const INVALID_PAYLOAD = 'FIB_BOOKING__INVALID_PAYLOAD';
+
+    public static function resourceNotFound(): self
+    {
+        return new self(
+            Response::HTTP_BAD_REQUEST,
+            self::RESOURCE_NOT_FOUND,
+            'The requested booking resource does not exist.',
+        );
+    }
+
+    public static function windowUnavailable(): self
+    {
+        return new self(
+            Response::HTTP_CONFLICT,
+            self::WINDOW_UNAVAILABLE,
+            'The requested booking window is no longer available.',
+        );
+    }
+
+    public static function reservationNotFound(string $reservationId): self
+    {
+        return new self(
+            Response::HTTP_BAD_REQUEST,
+            self::RESERVATION_NOT_FOUND,
+            'The requested booking reservation "{{ reservationId }}" does not exist.',
+            ['reservationId' => $reservationId],
+        );
+    }
+
+    public static function ticketAlreadyExists(string $reservationId): self
+    {
+        return new self(
+            Response::HTTP_CONFLICT,
+            self::TICKET_ALREADY_EXISTS,
+            'A valid ticket already exists for reservation "{{ reservationId }}".',
+            ['reservationId' => $reservationId],
+        );
+    }
+
+    public static function invalidPayload(string $field, string $reason): self
+    {
+        return new self(
+            Response::HTTP_BAD_REQUEST,
+            self::INVALID_PAYLOAD,
+            'Invalid booking payload for "{{ field }}": {{ reason }}',
+            ['field' => $field, 'reason' => $reason],
+        );
+    }
+}
