@@ -17,6 +17,7 @@ ARG PHP_VERSION=8.3
 FROM ghcr.io/shopware/shopware-cli:latest-php-${PHP_VERSION} AS build
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV REDIS_DSN=redis://build-dummy:6379
 
 COPY . /src
 WORKDIR /src

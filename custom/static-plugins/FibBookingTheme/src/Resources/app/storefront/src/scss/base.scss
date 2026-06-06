@@ -1,0 +1,544 @@
+// ============================================================================
+// FIB Booking Theme — glassmorphism layer (loaded AFTER @Storefront).
+//
+// Design language: deep-space background with a slowly drifting aurora,
+// frosted-glass surfaces (backdrop-filter), gradient accents and CSS-only
+// motion. Everything degrades gracefully:
+//   - @supports fallback when backdrop-filter is unavailable
+//   - prefers-reduced-motion disables all animation
+// $fib-aurora-* and $sw-color-brand-* come from theme.json config fields.
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+:root {
+    --fib-bg: #0b0d14;
+    --fib-text: #e8ecf4;
+    --fib-text-dim: rgba(232, 236, 244, 0.62);
+
+    --fib-aurora-one: #{$fib-aurora-one};
+    --fib-aurora-two: #{$fib-aurora-two};
+    --fib-aurora-three: #{$fib-aurora-three};
+
+    --fib-glass-bg: rgba(255, 255, 255, 0.055);
+    --fib-glass-bg-strong: rgba(22, 25, 38, 0.72);
+    --fib-glass-border: rgba(255, 255, 255, 0.12);
+    --fib-glass-highlight: rgba(255, 255, 255, 0.22);
+    --fib-glass-blur: 18px;
+    --fib-glass-radius: 1.25rem;
+    --fib-glass-shadow: 0 8px 32px rgba(4, 6, 12, 0.45);
+
+    --fib-gradient: linear-gradient(135deg, var(--fib-aurora-one), var(--fib-aurora-two));
+    --fib-lift: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+// ---------------------------------------------------------------------------
+// Glass recipe
+// ---------------------------------------------------------------------------
+@mixin fib-glass($bg: var(--fib-glass-bg)) {
+    background: $bg;
+    border: 1px solid var(--fib-glass-border);
+    border-radius: var(--fib-glass-radius);
+    box-shadow:
+        inset 0 1px 0 var(--fib-glass-highlight),
+        var(--fib-glass-shadow);
+
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+        -webkit-backdrop-filter: blur(var(--fib-glass-blur)) saturate(160%);
+        backdrop-filter: blur(var(--fib-glass-blur)) saturate(160%);
+    }
+
+    // No backdrop-filter → solid fallback keeps text readable.
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        background: var(--fib-glass-bg-strong);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Aurora background — pure CSS, fixed behind everything.
+// ---------------------------------------------------------------------------
+body {
+    position: relative;
+    background: var(--fib-bg);
+    color: var(--fib-text);
+    min-height: 100vh;
+}
+
+// Headings: Storefront resolves them against its own (light-theme) text
+// color at compile time — repaint them for the dark surface, slightly
+// tightened like a native UI.
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6,
+.product-detail-name,
+.cms-element-product-name {
+    color: #f4f6fb;
+    letter-spacing: -0.015em;
+}
+
+.product-detail-price {
+    color: #ffffff;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: -25%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(38% 34% at 22% 24%, color-mix(in srgb, var(--fib-aurora-one) 52%, transparent), transparent 70%),
+        radial-gradient(34% 38% at 78% 18%, color-mix(in srgb, var(--fib-aurora-two) 42%, transparent), transparent 70%),
+        radial-gradient(42% 40% at 64% 82%, color-mix(in srgb, var(--fib-aurora-three) 34%, transparent), transparent 72%);
+    filter: blur(70px);
+    animation: fib-aurora-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes fib-aurora-drift {
+    0% {
+        transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1);
+    }
+
+    50% {
+        transform: translate3d(2.5%, 2%, 0) rotate(2.5deg) scale(1.06);
+    }
+
+    100% {
+        transform: translate3d(-1.5%, 3%, 0) rotate(-2deg) scale(1.03);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Header & navigation — frosted sticky bar.
+// ---------------------------------------------------------------------------
+.header-main,
+.nav-main {
+    background: transparent;
+}
+
+header > .container,
+.header-row {
+    color: var(--fib-text);
+}
+
+.header-main {
+    @include fib-glass(rgba(13, 15, 24, 0.55));
+
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    border-radius: 0;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+
+.main-navigation-link,
+.nav-link {
+    color: var(--fib-text);
+    transition: color 0.2s var(--fib-lift);
+
+    &:hover,
+    &.active {
+        color: #ffffff;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Surfaces: cards, product boxes, CMS blocks, offcanvas, modals, dropdowns.
+// ---------------------------------------------------------------------------
+.card,
+.product-box,
+.cms-element-product-listing .card,
+.account-welcome,
+.checkout-container .checkout-main .card,
+.fib-booking-calendar,
+.fib-pass-info {
+    @include fib-glass;
+
+    overflow: hidden;
+}
+
+.card .card-body {
+    color: var(--fib-text);
+}
+
+.product-box {
+    transition:
+        transform 0.35s var(--fib-lift),
+        box-shadow 0.35s var(--fib-lift),
+        border-color 0.35s var(--fib-lift);
+
+    &:hover {
+        transform: translateY(-4px);
+        border-color: color-mix(in srgb, var(--fib-aurora-two) 55%, var(--fib-glass-border));
+        box-shadow:
+            inset 0 1px 0 var(--fib-glass-highlight),
+            0 18px 48px rgba(4, 6, 12, 0.55),
+            0 0 0 1px color-mix(in srgb, var(--fib-aurora-two) 22%, transparent);
+    }
+}
+
+.product-name,
+.product-description {
+    color: var(--fib-text);
+}
+
+.product-price {
+    color: #ffffff;
+}
+
+.offcanvas,
+.modal-content,
+.dropdown-menu {
+    @include fib-glass(var(--fib-glass-bg-strong));
+
+    color: var(--fib-text);
+}
+
+.footer-main {
+    @include fib-glass(rgba(13, 15, 24, 0.5));
+
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: 0;
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    color: var(--fib-text-dim);
+
+    a {
+        color: var(--fib-text-dim);
+
+        &:hover {
+            color: #ffffff;
+        }
+    }
+
+    .footer-headline {
+        margin-bottom: 0.75rem;
+    }
+}
+
+// Default Storefront paints the bottom bar white — invisible light text on
+// our palette. Keep it part of the glass footer instead.
+.footer-bottom {
+    background: transparent;
+    color: var(--fib-text-dim);
+    padding-top: 1.5rem;
+    padding-bottom: 1.25rem;
+}
+
+// ---------------------------------------------------------------------------
+// Buttons — gradient primary with a CSS-only shine sweep.
+// ---------------------------------------------------------------------------
+.btn {
+    border-radius: 0.875rem;
+    transition:
+        transform 0.25s var(--fib-lift),
+        box-shadow 0.25s var(--fib-lift),
+        filter 0.25s var(--fib-lift);
+}
+
+.btn-primary,
+.btn-buy {
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    background: var(--fib-gradient);
+    box-shadow:
+        0 4px 18px color-mix(in srgb, var(--fib-aurora-one) 45%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            105deg,
+            transparent 38%,
+            rgba(255, 255, 255, 0.42) 50%,
+            transparent 62%
+        );
+        transform: translateX(-130%);
+        transition: transform 0.7s var(--fib-lift);
+        pointer-events: none;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background: var(--fib-gradient);
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+
+        &::after {
+            transform: translateX(130%);
+        }
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.btn-outline-primary {
+    color: var(--fib-text);
+    border-color: var(--fib-glass-border);
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: color-mix(in srgb, var(--fib-aurora-two) 60%, transparent);
+        color: #ffffff;
+    }
+}
+
+// Accessible focus ring on glass.
+a:focus-visible,
+.btn:focus-visible,
+.form-control:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--fib-aurora-two) 80%, white);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+// ---------------------------------------------------------------------------
+// Forms on glass.
+// ---------------------------------------------------------------------------
+.form-control,
+.form-select {
+    background: var(--fib-glass-bg);
+    border-color: var(--fib-glass-border);
+    color: var(--fib-text);
+    border-radius: 0.75rem;
+
+    &:focus {
+        background: rgba(255, 255, 255, 0.09);
+        border-color: color-mix(in srgb, var(--fib-aurora-one) 65%, transparent);
+        color: #ffffff;
+        box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--fib-aurora-one) 22%, transparent);
+    }
+
+    &::placeholder {
+        color: var(--fib-text-dim);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Booking calendar (FibBookingSystem CMS element) — glass day grid.
+// Overrides the plugin's light default palette (see its base.scss):
+// day states are --free / --partial / --full / --selectable / --selected.
+// ---------------------------------------------------------------------------
+.fib-booking-calendar {
+    padding: 1.5rem;
+}
+
+.fib-booking-calendar-grid {
+    gap: 0.625rem;
+    margin-top: 1.25rem;
+}
+
+// The plugin's aspect-ratio:1 blows cells up to ~180px squares on wide
+// containers — a compact fixed height reads like a calendar again.
+.fib-booking-day {
+    aspect-ratio: auto;
+    min-height: 4.25rem;
+    font-size: 1.05rem;
+}
+
+.fib-booking-day {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+    color: var(--fib-text-dim);
+    transition:
+        background 0.2s var(--fib-lift),
+        border-color 0.2s var(--fib-lift),
+        box-shadow 0.2s var(--fib-lift),
+        transform 0.2s var(--fib-lift);
+
+    &--free {
+        background: color-mix(in srgb, var(--fib-aurora-two) 12%, transparent);
+        border-color: color-mix(in srgb, var(--fib-aurora-two) 40%, transparent);
+        color: var(--fib-text);
+    }
+
+    &--partial {
+        background: rgba(251, 191, 36, 0.12);
+        border-color: rgba(251, 191, 36, 0.45);
+        color: #fde68a;
+    }
+
+    // Sold out — unmistakably red, soft glow instead of a flat fill.
+    &--full {
+        background: rgba(220, 38, 38, 0.14);
+        border-color: rgba(248, 113, 113, 0.5);
+        color: #fda4af;
+        box-shadow: 0 0 18px rgba(220, 38, 38, 0.16);
+    }
+
+    &--selectable:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(4, 6, 12, 0.4);
+    }
+
+    &--selected {
+        background: var(--fib-gradient);
+        border-color: transparent;
+        color: #ffffff;
+        box-shadow: 0 6px 22px color-mix(in srgb, var(--fib-aurora-one) 45%, transparent);
+    }
+}
+
+// Slot buttons under the grid.
+.fib-booking-slot {
+    border-radius: 0.75rem;
+
+    &.active {
+        background: var(--fib-gradient);
+        border-color: transparent;
+        color: #ffffff;
+    }
+}
+
+// Breathing room between grid, package picker and slot list.
+.fib-booking-calendar {
+    .form-label {
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--fib-text-dim);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Layout rhythm — consistent vertical spacing across the page.
+// ---------------------------------------------------------------------------
+.content-main {
+    padding-top: 0.75rem;
+    padding-bottom: 4rem;
+}
+
+.breadcrumb {
+    padding: 1rem 0 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+// CMS blocks breathe instead of stacking edge-to-edge.
+.cms-block + .cms-block {
+    margin-top: 3rem;
+}
+
+.cms-element-text {
+    h2,
+    h3 {
+        margin-bottom: 1rem;
+    }
+
+    p {
+        margin-bottom: 1rem;
+    }
+
+    .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+// Product detail: clear steps between price, validity info and buy form.
+.product-detail-name {
+    margin: 0.5rem 0 1.5rem;
+}
+
+.product-detail-price-container {
+    margin-bottom: 0.25rem;
+}
+
+.product-detail-tax-container {
+    margin-bottom: 1.5rem;
+}
+
+.fib-pass-info {
+    margin: 0.5rem 0 1.5rem;
+
+    ul {
+        margin-bottom: 0;
+        display: grid;
+        gap: 0.5rem;
+    }
+}
+
+.buy-widget-container {
+    row-gap: 0.75rem;
+}
+
+// Pass validity bullets (buy box) pick up the accent.
+.fib-pass-info {
+    padding: 0.9rem 1.1rem;
+
+    li {
+        color: var(--fib-text);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cookie bar — ships with a white background in Storefront default.
+// ---------------------------------------------------------------------------
+.cookie-permission-container {
+    @include fib-glass(var(--fib-glass-bg-strong));
+
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    color: var(--fib-text);
+
+    .cookie-permission-content {
+        color: var(--fib-text);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Misc chrome: badges, alerts, breadcrumb, top bar.
+// ---------------------------------------------------------------------------
+.badge {
+    border-radius: 999px;
+}
+
+.alert {
+    @include fib-glass(rgba(22, 25, 38, 0.65));
+
+    color: var(--fib-text);
+}
+
+.breadcrumb {
+    background: transparent;
+}
+
+// ---------------------------------------------------------------------------
+// Motion & accessibility guards.
+// ---------------------------------------------------------------------------
+@media (prefers-reduced-motion: reduce) {
+    body::before {
+        animation: none;
+    }
+
+    .btn,
+    .btn-primary::after,
+    .product-box,
+    .fib-booking-calendar .fib-calendar-day {
+        transition: none;
+    }
+}

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "27ccd0b9fe6246ea84923cd98cdf8ce9",
+    "content-hash": "a9bd6fed2782e35a3f86718eb3255fcc",
     "packages": [
         {
             "name": "altcha-org/altcha",
@@ -2070,6 +2070,44 @@
                 }
             ],
             "description": "Complete booking and ticketing platform for Shopware 6: bookable time slots with capacities, holds, reservations, QR code tickets, wallet passes and a scanner app.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "fib/fib-booking-theme",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "custom/static-plugins/FibBookingTheme",
+                "reference": "5e6e0f3971290ab975e8896d3fc04cf2a179f245"
+            },
+            "require": {
+                "shopware/core": "*",
+                "shopware/storefront": "*"
+            },
+            "type": "shopware-platform-plugin",
+            "extra": {
+                "shopware-plugin-class": "FibBookingTheme\\FibBookingTheme",
+                "label": {
+                    "de-DE": "FIB Booking Theme",
+                    "en-GB": "FIB Booking Theme"
+                },
+                "description": {
+                    "de-DE": "Glassmorphism-Theme für die Ticketing-Plattform: Aurora-Verläufe, Frosted-Glass-Oberflächen und CSS-only-Animationen.",
+                    "en-GB": "Glassmorphism theme for the ticketing platform: aurora gradients, frosted-glass surfaces and CSS-only motion."
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "FibBookingTheme\\": "src/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Glassmorphism storefront theme for the FIB ticketing platform: aurora gradients, frosted-glass surfaces and CSS-only motion.",
             "transport-options": {
                 "symlink": true,
                 "relative": true

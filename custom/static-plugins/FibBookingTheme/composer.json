@@ -1,0 +1,27 @@
+{
+    "name": "fib/fib-booking-theme",
+    "description": "Glassmorphism storefront theme for the FIB ticketing platform: aurora gradients, frosted-glass surfaces and CSS-only motion.",
+    "version": "1.0.0",
+    "type": "shopware-platform-plugin",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "FibBookingTheme\\": "src/"
+        }
+    },
+    "require": {
+        "shopware/core": "*",
+        "shopware/storefront": "*"
+    },
+    "extra": {
+        "shopware-plugin-class": "FibBookingTheme\\FibBookingTheme",
+        "label": {
+            "de-DE": "FIB Booking Theme",
+            "en-GB": "FIB Booking Theme"
+        },
+        "description": {
+            "de-DE": "Glassmorphism-Theme für die Ticketing-Plattform: Aurora-Verläufe, Frosted-Glass-Oberflächen und CSS-only-Animationen.",
+            "en-GB": "Glassmorphism theme for the ticketing platform: aurora gradients, frosted-glass surfaces and CSS-only motion."
+        }
+    }
+}

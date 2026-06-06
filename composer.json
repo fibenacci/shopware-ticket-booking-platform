@@ -5,6 +5,7 @@
     "require": {
         "composer-runtime-api": "^2.0",
         "fib/fib-booking-system": "*",
+        "fib/fib-booking-theme": "*",
         "frosh/altcha-captcha": "*",
         "frosh/mail-platform-archive": "*",
         "frosh/platform-html-minify": "*",

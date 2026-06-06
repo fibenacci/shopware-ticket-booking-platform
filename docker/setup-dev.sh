@@ -70,6 +70,7 @@ install_plugin() {
 print_step "Installing + activating plugins..."
 install_plugin FibBookingSystem
 install_plugin FibBookingDemoData
+install_plugin FibBookingTheme
 # Open-source platform plugins — prod installs these via the deployment
 # helper (.shopware-project.yml); keep dev at parity.
 install_plugin FroshAltchaCaptcha
@@ -110,10 +111,13 @@ mysql -hmariadb -uroot -proot shopware -e "
     LIMIT 1;" 2>/dev/null || true
 print_success "Sales channel domains updated (${LOCAL_URL} + ${FALLBACK_URL})"
 
-print_step "Installing assets + compiling theme..."
+print_step "Installing assets + assigning & compiling theme..."
 bin/console assets:install --no-interaction >/dev/null
+# Idempotent: re-assigning the already-active theme just recompiles it.
+bin/console theme:change --all FibBookingTheme --no-interaction >/dev/null \
+    || print_warning "theme:change failed — storefront stays on the previous theme"
 bin/console theme:compile --no-interaction >/dev/null
-print_success "Assets installed, theme compiled"
+print_success "Assets installed, FibBookingTheme assigned + compiled"
 
 print_step "Clearing cache..."
 bin/console cache:clear --no-interaction >/dev/null

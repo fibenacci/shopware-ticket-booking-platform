@@ -6,6 +6,7 @@ $finder = (new PhpCsFixer\Finder())
         __DIR__ . '/../custom/static-plugins/FibBookingSystem/tests',
         __DIR__ . '/../custom/static-plugins/FibBookingDemoData/src',
         __DIR__ . '/../custom/static-plugins/FibBookingDemoData/tests',
+        __DIR__ . '/../custom/static-plugins/FibBookingTheme/src',
     ])
 ;
 

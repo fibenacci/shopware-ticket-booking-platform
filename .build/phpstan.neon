@@ -4,6 +4,7 @@ parameters:
     paths:
         - ../custom/static-plugins/FibBookingSystem/src
         - ../custom/static-plugins/FibBookingDemoData/src
+        - ../custom/static-plugins/FibBookingTheme/src
     excludePaths:
         - ../custom/static-plugins/*/src/Resources/*
     bootstrapFiles:

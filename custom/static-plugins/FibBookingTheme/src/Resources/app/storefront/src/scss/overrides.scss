@@ -1,0 +1,47 @@
+// Pre-Storefront variable overrides — loaded BEFORE @Storefront (see
+// theme.json "style" order), so Bootstrap/Shopware compile against the dark
+// glass palette instead of being repainted afterwards.
+
+// Deep space base — slightly blue-shifted so the aurora glow reads as light.
+$body-bg: #0b0d14;
+$body-color: #e8ecf4;
+
+$headings-color: #f4f6fb;
+$border-color: rgba(255, 255, 255, 0.12);
+
+// Apple-ish type: the platform's native UI font, tight headings.
+$font-family-base:
+    -apple-system, 'SF Pro Text', 'Segoe UI', system-ui, Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+$headings-font-weight: 650;
+
+// Soft, large radii everywhere — the glass recipe relies on them.
+$border-radius: 0.875rem;
+$border-radius-sm: 0.625rem;
+$border-radius-lg: 1.25rem;
+
+// Links/buttons pick up the configurable brand colors ($sw-color-brand-*
+// are injected by the theme system from theme.json config).
+$link-color: #9aa5ff;
+$link-hover-color: #c3caff;
+
+// Form controls on glass.
+$input-bg: rgba(255, 255, 255, 0.06);
+$input-color: #e8ecf4;
+$input-border-color: rgba(255, 255, 255, 0.14);
+$input-focus-bg: rgba(255, 255, 255, 0.09);
+$input-focus-color: #ffffff;
+$input-placeholder-color: rgba(232, 236, 244, 0.45);
+
+$card-bg: transparent;
+
+$modal-content-bg: rgba(22, 25, 38, 0.92);
+$dropdown-bg: rgba(22, 25, 38, 0.96);
+$dropdown-link-color: #e8ecf4;
+$dropdown-link-hover-bg: rgba(255, 255, 255, 0.08);
+$dropdown-link-hover-color: #ffffff;
+
+$breadcrumb-divider-color: rgba(232, 236, 244, 0.4);
+$pagination-bg: rgba(255, 255, 255, 0.05);
+$pagination-color: #e8ecf4;
+$pagination-border-color: rgba(255, 255, 255, 0.12);

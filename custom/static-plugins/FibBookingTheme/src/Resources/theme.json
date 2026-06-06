@@ -1,0 +1,74 @@
+{
+    "name": "FIB Booking Theme",
+    "author": "Fibenacci",
+    "views": [
+        "@Storefront",
+        "@Plugins",
+        "@FibBookingTheme"
+    ],
+    "style": [
+        "app/storefront/src/scss/overrides.scss",
+        "@Storefront",
+        "app/storefront/src/scss/base.scss"
+    ],
+    "script": [
+        "@Storefront"
+    ],
+    "asset": [
+        "@Storefront"
+    ],
+    "config": {
+        "inherit": [
+            "@Storefront"
+        ],
+        "blocks": {
+            "fibAurora": {
+                "label": {
+                    "en-GB": "Aurora colors",
+                    "de-DE": "Aurora-Farben"
+                }
+            }
+        },
+        "fields": {
+            "sw-color-brand-primary": {
+                "value": "#6366f1"
+            },
+            "sw-color-brand-secondary": {
+                "value": "#22d3ee"
+            },
+            "fib-aurora-one": {
+                "label": {
+                    "en-GB": "Aurora color 1",
+                    "de-DE": "Aurora-Farbe 1"
+                },
+                "type": "color",
+                "value": "#6366f1",
+                "editable": true,
+                "block": "fibAurora",
+                "order": 100
+            },
+            "fib-aurora-two": {
+                "label": {
+                    "en-GB": "Aurora color 2",
+                    "de-DE": "Aurora-Farbe 2"
+                },
+                "type": "color",
+                "value": "#22d3ee",
+                "editable": true,
+                "block": "fibAurora",
+                "order": 200
+            },
+            "fib-aurora-three": {
+                "label": {
+                    "en-GB": "Aurora color 3",
+                    "de-DE": "Aurora-Farbe 3"
+                },
+                "type": "color",
+                "value": "#f472b6",
+                "editable": true,
+                "block": "fibAurora",
+                "order": 300
+            }
+        }
+    }
+}

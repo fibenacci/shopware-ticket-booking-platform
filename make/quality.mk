@@ -1,7 +1,7 @@
 # Code quality — static analysis, code style and mess detection.
 # Order matches the CI quality job: php-cs-fixer → phpstan → phpmd.
 
-PHPMD_PATHS := custom/static-plugins/FibBookingSystem/src,custom/static-plugins/FibBookingDemoData/src
+PHPMD_PATHS := custom/static-plugins/FibBookingSystem/src,custom/static-plugins/FibBookingDemoData/src,custom/static-plugins/FibBookingTheme/src
 
 .PHONY: phpstan php-cs-fixer php-cs-fixer-check phpmd quality
 

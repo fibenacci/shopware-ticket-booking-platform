@@ -77,9 +77,11 @@ RUN set -eux; \
     bin/console database:migrate --all --no-interaction || true; \
     bin/console plugin:refresh --no-interaction; \
     # FibBookingSystem first (creates the booking tables + number ranges),
-    # then the demo data plugin which seeds against them.
+    # then the demo data plugin which seeds against them, then the theme.
     bin/console plugin:install --activate --no-interaction FibBookingSystem; \
     bin/console plugin:install --activate --no-interaction FibBookingDemoData; \
+    bin/console plugin:install --activate --no-interaction FibBookingTheme; \
+    bin/console theme:change --all FibBookingTheme --no-interaction; \
     bin/console fib-booking:demodata; \
     # node/npm come from the nvm extracted above (boot-time setup in stock dockware)
     export NVM_DIR=/var/www/.nvm; \
