@@ -67,6 +67,29 @@
     </card>
 
     <card>
+        <title>Resale</title>
+        <title lang="de-DE">Weiterverkauf</title>
+
+        <input-field type="int">
+            <name>resaleCutoffMinutes</name>
+            <label>Listing cutoff before slot start (minutes)</label>
+            <label lang="de-DE">Listing-Schluss vor Slot-Beginn (Minuten)</label>
+            <helpText>Slot-bound tickets cannot be listed for resale closer to the booked slot than this. 0 disables the cutoff. Period/unlimited passes are unaffected.</helpText>
+            <helpText lang="de-DE">Slot-gebundene Tickets können näher am gebuchten Termin nicht mehr zum Weiterverkauf eingestellt werden. 0 deaktiviert den Schluss. Zeitraum-/unbegrenzte Pässe sind nicht betroffen.</helpText>
+            <defaultValue>60</defaultValue>
+        </input-field>
+
+        <input-field type="float">
+            <name>resaleMaxFactor</name>
+            <label>Maximum resale price factor (anti-scalping)</label>
+            <label lang="de-DE">Maximaler Weiterverkaufsfaktor (Anti-Scalping)</label>
+            <helpText>Ask price may not exceed factor × the originally paid unit price (e.g. 1.2 = +20%). 0 disables the cap. Regulatory requirement in several markets.</helpText>
+            <helpText lang="de-DE">Der Angebotspreis darf Faktor × ursprünglich gezahlten Einzelpreis nicht überschreiten (z. B. 1,2 = +20%). 0 deaktiviert die Grenze. In mehreren Märkten regulatorisch vorgeschrieben.</helpText>
+            <defaultValue>0</defaultValue>
+        </input-field>
+    </card>
+
+    <card>
         <title>Wallet — General</title>
         <title lang="de-DE">Wallet — Allgemein</title>
 

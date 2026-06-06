@@ -39,6 +39,14 @@
             <tag name="shopware.entity.definition" entity="fib_booking_seat_claim"/>
         </service>
 
+        <service id="FibBookingSystem\Core\Content\BookingListing\BookingListingDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_listing"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\BookingBid\BookingBidDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_bid"/>
+        </service>
+
         <service id="FibBookingSystem\Core\Domain\Availability\AvailabilityService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
@@ -49,6 +57,18 @@
 
         <service id="FibBookingSystem\Core\Domain\Seating\SeatmapReadService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Resale\BookingResaleService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Resale\TicketTransferService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher">

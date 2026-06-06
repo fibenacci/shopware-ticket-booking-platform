@@ -72,6 +72,7 @@ class BookingTicketDefinition extends EntityDefinition
             new StringField('validity_anchor', 'validityAnchor'),
             new StringField('validity_duration', 'validityDuration'),
             new StringField('seat_label', 'seatLabel'),
+            new FkField('replaced_ticket_id', 'replacedTicketId', self::class),
             new JsonField('payload', 'payload'),
             new ManyToOneAssociationField('reservation', 'reservation_id', BookingReservationDefinition::class, 'id'),
             new CreatedAtField(),

@@ -1,12 +1,32 @@
 # Resell & Auctions (Design)
 
-> Status: **designed, not yet implemented.** This is the agreed blueprint —
-> implementation starts at phase 1 without re-opening the architecture
-> discussion.
+> Status: **phase 1 implemented** (transfer primitive + listing guardrails).
+> This is the agreed blueprint — later phases build on it without re-opening
+> the architecture discussion.
 
 Secondary market for issued tickets: owners list their ticket for resale at
 a fixed price **or** as an auction; the platform handles the transfer so the
 buyer gets a working ticket and the seller's copy is provably dead.
+
+## Legal framing: private C2C only, platform without profit
+
+These are hard constraints, not configuration:
+
+- **Private-to-private only.** End customers sell among themselves. The
+  operator never offers tickets through the resale portal — it would turn
+  the auction into a commercial activity of the operator.
+- **The platform is a neutral intermediary.** It provides the marketplace
+  and the secure transfer, nothing more. **No operator fee, no commission,
+  no margin** on resales or auctions: the buyer pays exactly the sale
+  price, the seller receives exactly the sale price (pass-through, 100%).
+- **Non-personalized tickets only.** Auctions/resale apply only where the
+  ticket is not bound to a named person. The current ticket model carries
+  no personalization; the moment a personalization feature lands, a
+  `personalized` flag MUST become a listability guardrail (personalized →
+  not listable) unless an explicit re-personalization flow exists.
+
+Consequence for the money flow below: every payout snapshot is a 1:1
+pass-through — there is deliberately no fee field in the settlement model.
 
 ## The core decision: the TICKET is the tradable good — not stock
 
@@ -82,8 +102,9 @@ This is a marketplace problem, and Shopware is a shop, not a payout engine:
   manually or via store credit. Automated split payments (Stripe Connect,
   Adyen for Platforms, PayPal Payouts) are a later phase with real
   compliance weight (KYC!) — explicitly out of V1.
-- Operator fee: percentage configurable (plugin config), deducted in the
-  payout snapshot.
+- **No operator fee** (see legal framing): the payout snapshot records the
+  full sale price for the seller — pass-through, no deduction. The platform
+  earns nothing on resales; mediation in V1 is pure escrow bookkeeping.
 
 ## Auction mechanics
 
@@ -106,6 +127,11 @@ This is a marketplace problem, and Shopware is a shop, not a payout engine:
 - Listable only: status issued/sent, not expired, not revoked, and (slot
   tickets) before a cutoff relative to slot start (`resaleCutoffMinutes`).
 - Seller must own the ticket (account-area listing flow only).
+- **C2C only**: seller and buyer are always customer accounts — there is no
+  operator-side listing path, by design (see legal framing).
+- **Non-personalized only**: a future `personalized` flag blocks listing
+  (see legal framing); today the model has no personalization, so nothing
+  to check yet.
 - Price bounds: optional operator cap (`resaleMaxFactor`, e.g. 1.2× face
   value — anti-scalping is a regulatory topic in several markets).
 - Every state change appends to the existing audit philosophy (bid log is

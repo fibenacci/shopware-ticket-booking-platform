@@ -41,6 +41,8 @@ class BookingTicketEntity extends Entity
 
     protected ?string $seatLabel = null;
 
+    protected ?string $replacedTicketId = null;
+
     /**
      * @var array<string, mixed>|null
      */
@@ -106,6 +108,16 @@ class BookingTicketEntity extends Entity
     public function setSeatLabel(?string $seatLabel): void
     {
         $this->seatLabel = $seatLabel;
+    }
+
+    public function getReplacedTicketId(): ?string
+    {
+        return $this->replacedTicketId;
+    }
+
+    public function setReplacedTicketId(?string $replacedTicketId): void
+    {
+        $this->replacedTicketId = $replacedTicketId;
     }
 
     public function getReservationId(): string
