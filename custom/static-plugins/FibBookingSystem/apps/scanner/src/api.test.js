@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { extractScanToken, isLikelyScanToken, isAuthenticated, login, logout } from './api.js';
+import {
+    DIRECTION_CHECK_OUT,
+    extractScanToken,
+    fetchScannerConfig,
+    fetchStatistics,
+    isLikelyScanToken,
+    isAuthenticated,
+    login,
+    logout,
+    scanTicket,
+} from './api.js';
 
 const VALID_TOKEN = 'a'.repeat(64);
 
@@ -88,5 +98,110 @@ describe('session handling', () => {
 
         await expect(login('operator', 'wrong')).rejects.toThrow('Invalid credentials.');
         expect(isAuthenticated()).toBe(false);
+    });
+});
+
+describe('scanTicket directions', () => {
+    afterEach(() => {
+        logout();
+        vi.unstubAllGlobals();
+    });
+
+    async function loginWithStubbedFetch(fetchMock) {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ access_token: 't', refresh_token: 'r', expires_in: 600 }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        await login('operator', 'secret');
+    }
+
+    it('defaults to check_in and sends the direction in the body', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ verdict: 'valid' }),
+        });
+        await loginWithStubbedFetch(fetchMock);
+
+        await scanTicket(VALID_TOKEN);
+
+        const [, options] = fetchMock.mock.calls.at(-1);
+        expect(JSON.parse(options.body)).toEqual({ scanToken: VALID_TOKEN, direction: 'check_in' });
+    });
+
+    it('sends check_out when requested', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ verdict: 'checked_out' }),
+        });
+        await loginWithStubbedFetch(fetchMock);
+
+        await scanTicket(VALID_TOKEN, DIRECTION_CHECK_OUT);
+
+        const [, options] = fetchMock.mock.calls.at(-1);
+        expect(JSON.parse(options.body).direction).toBe('check_out');
+    });
+
+    it('rejects an unknown direction before any request', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(scanTicket(VALID_TOKEN, 'sideways')).rejects.toThrow('Malformed scan direction.');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('fetchScannerConfig', () => {
+    afterEach(() => {
+        logout();
+        vi.unstubAllGlobals();
+    });
+
+    it('returns the server config', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ access_token: 't', refresh_token: 'r', expires_in: 600 }),
+            })
+            .mockResolvedValue({ ok: true, status: 200, json: async () => ({ checkOutEnabled: true }) });
+        vi.stubGlobal('fetch', fetchMock);
+        await login('operator', 'secret');
+
+        expect(await fetchScannerConfig()).toEqual({ checkOutEnabled: true });
+    });
+
+    it('falls back to check-in only when the endpoint errors', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ access_token: 't', refresh_token: 'r', expires_in: 600 }),
+            })
+            .mockResolvedValue({ ok: false, status: 500 });
+        vi.stubGlobal('fetch', fetchMock);
+        await login('operator', 'secret');
+
+        expect(await fetchScannerConfig()).toEqual({ checkOutEnabled: false });
+    });
+});
+
+describe('fetchStatistics', () => {
+    afterEach(() => {
+        logout();
+        vi.unstubAllGlobals();
+    });
+
+    it('marks a 403 as forbidden so the dashboard can hide itself', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ access_token: 't', refresh_token: 'r', expires_in: 600 }),
+            })
+            .mockResolvedValue({ ok: false, status: 403 });
+        vi.stubGlobal('fetch', fetchMock);
+        await login('operator', 'secret');
+
+        await expect(fetchStatistics()).rejects.toMatchObject({ forbidden: true });
     });
 });

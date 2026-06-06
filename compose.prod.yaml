@@ -25,7 +25,13 @@ x-environment: &shopware-env
     LOCK_DSN: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/2
     REDIS_DSN: redis://:${REDIS_PASSWORD}@redis:6379
     SHOPWARE_HTTP_CACHE_ENABLED: 1
-    SHOPWARE_ES_ENABLED: 0
+    # Search: defaults to MySQL. For large catalogs start the `search` profile
+    # and set SHOPWARE_ES_ENABLED=1 (see docs/Deployment.md).
+    SHOPWARE_ES_ENABLED: ${SHOPWARE_ES_ENABLED:-0}
+    SHOPWARE_ES_INDEXING_ENABLED: ${SHOPWARE_ES_ENABLED:-0}
+    OPENSEARCH_URL: ${OPENSEARCH_URL:-http://opensearch:9200}
+    SHOPWARE_ES_INDEX_PREFIX: sw
+    SHOPWARE_ES_THROW_EXCEPTION: 0
     PHP_SESSION_HANDLER: redis
     PHP_SESSION_SAVE_PATH: tcp://redis:6379/1?auth=${REDIS_PASSWORD}
     TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,REMOTE_ADDR}
@@ -44,11 +50,40 @@ x-volumes: &shopware-volumes
     - thumbnail:/var/www/html/public/thumbnail
     - sitemap:/var/www/html/public/sitemap
 
+# Hardening defaults for every service: processes may not gain privileges
+# (blocks setuid escalation) and container logs are capped so a request
+# flood can never fill the host disk.
+x-hardening: &hardening
+    security_opt:
+        - no-new-privileges:true
+    logging:
+        driver: json-file
+        options:
+            max-size: 10m
+            max-file: '3'
+
 services:
+    # Traefik never touches the Docker socket directly — this proxy exposes
+    # only the read-only API endpoints the docker provider needs. A Traefik
+    # compromise no longer equals root on the host.
+    socket-proxy:
+        <<: *hardening
+        image: tecnativa/docker-socket-proxy:latest
+        environment:
+            CONTAINERS: 1 # /containers (read) — labels for routing
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        networks:
+            - docker-socket
+        mem_limit: 64m
+        restart: always
+
     traefik:
+        <<: *hardening
         image: traefik:v3
         command:
             - '--providers.docker=true'
+            - '--providers.docker.endpoint=tcp://socket-proxy:2375'
             - '--providers.docker.exposedbydefault=false'
             - '--entrypoints.web.address=:80'
             - '--entrypoints.websecure.address=:443'
@@ -59,36 +94,96 @@ services:
             - '--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required for the ACME/TLS certificate resolver}'
             - '--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json'
             - '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web'
+            # JSON access log — forensics + CrowdSec acquisition source.
+            # Rotation: the file lives in a named volume; logrotate it on the
+            # host or rely on the `crowdsec` profile which tails it in place.
+            - '--accesslog=true'
+            - '--accesslog.filepath=/var/log/traefik/access.log'
+            - '--accesslog.format=json'
+            # Prometheus metrics on an INTERNAL entrypoint (port not published
+            # — scrapeable from inside the edge network only).
+            - '--metrics.prometheus=true'
+            - '--entrypoints.metrics.address=:8082'
+            - '--metrics.prometheus.entrypoint=metrics'
         ports:
             - '80:80'
             - '443:443'
         volumes:
-            - /var/run/docker.sock:/var/run/docker.sock:ro
             - traefik_certs:/letsencrypt
+            - traefik_logs:/var/log/traefik
+        networks:
+            - edge
+            - docker-socket
+        depends_on:
+            - socket-proxy
+        mem_limit: 512m
+        restart: always
+
+    # Opt-in behavioural IP detection: tails the Traefik access log and
+    # flags scanning/brute-force/flood patterns + community blocklist hits.
+    # Enable with: docker compose --profile crowdsec ... up -d
+    # Blocking requires a bouncer — see docs/Bot-Protection.md.
+    crowdsec:
+        <<: *hardening
+        image: crowdsecurity/crowdsec:latest
+        profiles:
+            - crowdsec
+        environment:
+            COLLECTIONS: crowdsecurity/traefik crowdsecurity/base-http-scenarios crowdsecurity/http-cve
+        configs:
+            - source: crowdsec_acquis
+              target: /etc/crowdsec/acquis.yaml
+        volumes:
+            - traefik_logs:/var/log/traefik:ro
+            - crowdsec_data:/var/lib/crowdsec/data
+            - crowdsec_config:/etc/crowdsec
+        networks:
+            - edge
+        mem_limit: 256m
         restart: always
 
     init:
+        <<: *hardening
         image: *shopware-image
         entrypoint: /setup
         environment: *shopware-env
         volumes: *shopware-volumes
+        networks:
+            - backend
         depends_on:
             db:
                 condition: service_healthy
             redis:
                 condition: service_healthy
+        mem_limit: 2g
         restart: 'no'
 
     web:
+        <<: *hardening
         image: *shopware-image
         environment: *shopware-env
         volumes: *shopware-volumes
+        networks:
+            - edge
+            - backend
         labels:
             - 'traefik.enable=true'
             - 'traefik.http.routers.shop.rule=Host(`${SHOP_DOMAIN:?SHOP_DOMAIN is required, e.g. booking.example.com}`)'
             - 'traefik.http.routers.shop.entrypoints=websecure'
             - 'traefik.http.routers.shop.tls.certresolver=letsencrypt'
+            - 'traefik.http.routers.shop.middlewares=shop-headers'
             - 'traefik.http.services.shop.loadbalancer.server.port=8000'
+            # Security headers for everything served under the shop host.
+            # frame-ancestors replaces the (ignored) <meta> CSP and prevents
+            # clickjacking; Permissions-Policy switches off powerful browser
+            # APIs the storefront never uses.
+            - 'traefik.http.middlewares.shop-headers.headers.stsSeconds=31536000'
+            - 'traefik.http.middlewares.shop-headers.headers.stsIncludeSubdomains=true'
+            - 'traefik.http.middlewares.shop-headers.headers.stsPreload=true'
+            - 'traefik.http.middlewares.shop-headers.headers.contentTypeNosniff=true'
+            - 'traefik.http.middlewares.shop-headers.headers.referrerPolicy=strict-origin-when-cross-origin'
+            - "traefik.http.middlewares.shop-headers.headers.contentSecurityPolicy=frame-ancestors 'self'"
+            - 'traefik.http.middlewares.shop-headers.headers.customResponseHeaders.Permissions-Policy=camera=(), microphone=(), geolocation=()'
             # Edge rate limit for account registration (anti bot-flood,
             # OWASP OAT-019): ~5 registrations per hour per client IP with a
             # small burst allowance. Legitimate users register once; this only
@@ -100,8 +195,31 @@ services:
             - 'traefik.http.routers.shop-register.rule=Host(`${SHOP_DOMAIN}`) && Method(`POST`) && (Path(`/account/register`) || Path(`/store-api/account/register`))'
             - 'traefik.http.routers.shop-register.entrypoints=websecure'
             - 'traefik.http.routers.shop-register.tls.certresolver=letsencrypt'
-            - 'traefik.http.routers.shop-register.middlewares=register-ratelimit'
+            - 'traefik.http.routers.shop-register.middlewares=register-ratelimit,shop-headers'
             - 'traefik.http.routers.shop-register.service=shop'
+            # Edge rate limit for Admin-API logins (token grants): blocks
+            # credential brute force against /api/oauth/token. Admin sessions
+            # refresh roughly every 10 minutes — 10/min with burst 10 never
+            # bites a legitimate operator.
+            - 'traefik.http.middlewares.oauth-ratelimit.ratelimit.average=10'
+            - 'traefik.http.middlewares.oauth-ratelimit.ratelimit.period=1m'
+            - 'traefik.http.middlewares.oauth-ratelimit.ratelimit.burst=10'
+            - 'traefik.http.routers.shop-oauth.rule=Host(`${SHOP_DOMAIN}`) && Path(`/api/oauth/token`) && Method(`POST`)'
+            - 'traefik.http.routers.shop-oauth.entrypoints=websecure'
+            - 'traefik.http.routers.shop-oauth.tls.certresolver=letsencrypt'
+            - 'traefik.http.routers.shop-oauth.middlewares=oauth-ratelimit,shop-headers'
+            - 'traefik.http.routers.shop-oauth.service=shop'
+            # Optional IP allowlist for the admin UI. Default allows everyone;
+            # set ADMIN_ALLOWED_IPS (CIDR list, e.g. office IP/VPN range) in
+            # .env.prod to take the admin off the public internet. /api stays
+            # open on purpose: payment webhooks (PayPal) call it, and it is
+            # OAuth-protected + rate limited above.
+            - 'traefik.http.middlewares.admin-allowlist.ipallowlist.sourcerange=${ADMIN_ALLOWED_IPS:-0.0.0.0/0,::/0}'
+            - 'traefik.http.routers.shop-admin.rule=Host(`${SHOP_DOMAIN}`) && PathPrefix(`/admin`)'
+            - 'traefik.http.routers.shop-admin.entrypoints=websecure'
+            - 'traefik.http.routers.shop-admin.tls.certresolver=letsencrypt'
+            - 'traefik.http.routers.shop-admin.middlewares=admin-allowlist,shop-headers'
+            - 'traefik.http.routers.shop-admin.service=shop'
         depends_on:
             init:
                 condition: service_completed_successfully
@@ -111,46 +229,70 @@ services:
             timeout: 10s
             retries: 5
             start_period: 60s
+        mem_limit: 1536m
         restart: always
 
     # Operator scanner app: static SPA + same-origin /api proxy to `web`
     # (image built from custom/static-plugins/FibBookingSystem/apps/scanner).
     scanner:
+        <<: *hardening
         image: ${SCANNER_IMAGE:-ghcr.io/CHANGEME/fib-booking-scanner:latest}
+        networks:
+            - edge
         labels:
             - 'traefik.enable=true'
             - 'traefik.http.routers.scanner.rule=Host(`scanner.${SHOP_DOMAIN}`)'
             - 'traefik.http.routers.scanner.entrypoints=websecure'
             - 'traefik.http.routers.scanner.tls.certresolver=letsencrypt'
+            - 'traefik.http.routers.scanner.middlewares=scanner-headers'
             - 'traefik.http.services.scanner.loadbalancer.server.port=80'
+            # Same headers as the shop, but the scanner NEEDS the camera
+            # (QR scanning) — allow it for the scanner origin itself only.
+            - 'traefik.http.middlewares.scanner-headers.headers.stsSeconds=31536000'
+            - 'traefik.http.middlewares.scanner-headers.headers.stsIncludeSubdomains=true'
+            - 'traefik.http.middlewares.scanner-headers.headers.stsPreload=true'
+            - 'traefik.http.middlewares.scanner-headers.headers.contentTypeNosniff=true'
+            - 'traefik.http.middlewares.scanner-headers.headers.referrerPolicy=strict-origin-when-cross-origin'
+            - "traefik.http.middlewares.scanner-headers.headers.contentSecurityPolicy=frame-ancestors 'self'"
+            - 'traefik.http.middlewares.scanner-headers.headers.customResponseHeaders.Permissions-Policy=camera=(self), microphone=(), geolocation=()'
         depends_on:
             web:
                 condition: service_healthy
+        mem_limit: 128m
         restart: always
 
     worker:
+        <<: *hardening
         image: *shopware-image
         entrypoint: ['php', 'bin/console', 'messenger:consume', 'async', 'low_priority', 'failed', '--time-limit=300', '--memory-limit=256M']
         environment: *shopware-env
         volumes: *shopware-volumes
+        networks:
+            - backend
         depends_on:
             init:
                 condition: service_completed_successfully
+        mem_limit: 512m
         restart: always
         deploy:
             replicas: ${WORKER_REPLICAS:-1}
 
     scheduler:
+        <<: *hardening
         image: *shopware-image
         entrypoint: ['php', 'bin/console', 'scheduled-task:run', '--time-limit=300', '--memory-limit=256M']
         environment: *shopware-env
         volumes: *shopware-volumes
+        networks:
+            - backend
         depends_on:
             init:
                 condition: service_completed_successfully
+        mem_limit: 512m
         restart: always
 
     db:
+        <<: *hardening
         image: mariadb:11.4
         command: >
             --max-allowed-packet=1073741824
@@ -163,29 +305,82 @@ services:
             MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
         volumes:
             - db_data:/var/lib/mysql
+        networks:
+            - backend
         healthcheck:
             test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
             interval: 10s
             timeout: 5s
             retries: 10
+        mem_limit: 2g
+        restart: always
+
+    # Opt-in search backend for large catalogs:
+    #   SHOPWARE_ES_ENABLED=1 + docker compose --profile search ... up -d
+    # then once: bin/console es:index + dal:refresh:index (web container).
+    opensearch:
+        <<: *hardening
+        image: opensearchproject/opensearch:2
+        profiles:
+            - search
+        environment:
+            discovery.type: single-node
+            plugins.security.disabled: 'true' # backend network only, no public exposure
+            DISABLE_INSTALL_DEMO_CONFIG: 'true'
+            OPENSEARCH_JAVA_OPTS: '-Xms512m -Xmx512m'
+        volumes:
+            - opensearch_data:/usr/share/opensearch/data
+        networks:
+            - backend
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -fsS http://localhost:9200/_cluster/health || exit 1']
+            interval: 15s
+            timeout: 5s
+            retries: 10
+        mem_limit: 1g
         restart: always
 
     redis:
+        <<: *hardening
         image: redis:7-alpine
         command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}', '--maxmemory', '512mb', '--maxmemory-policy', 'volatile-lru', '--appendonly', 'yes']
         volumes:
             - redis_data:/data
+        networks:
+            - backend
         healthcheck:
             test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
             interval: 5s
             timeout: 5s
             retries: 5
+        mem_limit: 768m
         restart: always
+
+# Network segmentation: a compromised edge component (Traefik/scanner) can
+# reach the app, but never the database or Redis directly; the Docker socket
+# proxy is reachable from Traefik only.
+networks:
+    edge:
+    backend:
+    docker-socket:
+
+configs:
+    # CrowdSec acquisition: tail the Traefik JSON access log.
+    crowdsec_acquis:
+        content: |
+            filenames:
+                - /var/log/traefik/access.log
+            labels:
+                type: traefik
 
 volumes:
     db_data:
     redis_data:
+    opensearch_data:
     traefik_certs:
+    traefik_logs:
+    crowdsec_data:
+    crowdsec_config:
     files:
     theme:
     media:

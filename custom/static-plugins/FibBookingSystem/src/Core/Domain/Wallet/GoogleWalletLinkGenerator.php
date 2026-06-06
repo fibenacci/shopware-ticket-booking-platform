@@ -48,7 +48,7 @@ class GoogleWalletLinkGenerator
         $organization = $this->getString('walletOrganizationName') ?: 'FIB Booking';
 
         $claims = [
-            'iss' => (string) $serviceAccount['client_email'],
+            'iss' => $serviceAccount['client_email'],
             'aud' => 'google',
             'typ' => 'savetowallet',
             'iat' => time(),
@@ -60,7 +60,7 @@ class GoogleWalletLinkGenerator
                         'issuerName' => $organization,
                         'reviewStatus' => 'UNDER_REVIEW',
                         'eventName' => [
-                            'defaultValue' => ['language' => 'en-US', 'value' => $data->resourceName],
+                            'defaultValue' => ['language' => 'en-US', 'value' => $data->window->resourceName],
                         ],
                     ],
                 ],
@@ -75,22 +75,22 @@ class GoogleWalletLinkGenerator
                             'value' => $data->qrPayload,
                         ],
                         'eventName' => [
-                            'defaultValue' => ['language' => 'en-US', 'value' => $data->resourceName],
+                            'defaultValue' => ['language' => 'en-US', 'value' => $data->window->resourceName],
                         ],
                         'validTimeInterval' => [
-                            'start' => ['date' => $data->startsAt->format('c')],
-                            'end' => ['date' => $data->endsAt->modify('+1 day')->format('c')],
+                            'start' => ['date' => $data->window->startsAt->format('c')],
+                            'end' => ['date' => $data->window->endsAt->modify('+1 day')->format('c')],
                         ],
                         'textModulesData' => [
                             ['header' => 'Booking', 'body' => $data->bookingNumber, 'id' => 'booking'],
-                            ['header' => 'Guests', 'body' => (string) $data->quantity, 'id' => 'guests'],
+                            ['header' => 'Guests', 'body' => (string) $data->window->quantity, 'id' => 'guests'],
                         ],
                     ],
                 ],
             ],
         ];
 
-        return self::SAVE_URL . $this->signJwt($claims, (string) $serviceAccount['private_key']);
+        return self::SAVE_URL . $this->signJwt($claims, $serviceAccount['private_key']);
     }
 
     /**
@@ -107,9 +107,15 @@ class GoogleWalletLinkGenerator
         $signature = '';
 
         $key = openssl_pkey_get_private($privateKeyPem);
-        if ($key === false || !openssl_sign($signingInput, $signature, $key, OPENSSL_ALGO_SHA256)) {
+        if ($key === false) {
+            throw new RuntimeException('The Google Wallet private key could not be loaded.');
+        }
+
+        if (!openssl_sign($signingInput, $signature, $key, OPENSSL_ALGO_SHA256)) {
             throw new RuntimeException('Signing the Google Wallet JWT failed.');
         }
+
+        \assert(is_string($signature));
 
         $segments[] = $this->base64UrlEncode($signature);
 
@@ -122,7 +128,7 @@ class GoogleWalletLinkGenerator
     }
 
     /**
-     * @return array<string, mixed>|null
+     * @return array{client_email: string, private_key: string}|null
      */
     private function getServiceAccount(): ?array
     {
@@ -138,11 +144,18 @@ class GoogleWalletLinkGenerator
             return null;
         }
 
-        if (!is_array($decoded) || !is_string($decoded['client_email'] ?? null) || !is_string($decoded['private_key'] ?? null)) {
+        if (!is_array($decoded)) {
             return null;
         }
 
-        return $decoded;
+        $clientEmail = $decoded['client_email'] ?? null;
+        $privateKey = $decoded['private_key'] ?? null;
+
+        if (!is_string($clientEmail) || !is_string($privateKey)) {
+            return null;
+        }
+
+        return ['client_email' => $clientEmail, 'private_key' => $privateKey];
     }
 
     private function getIssuerId(): string

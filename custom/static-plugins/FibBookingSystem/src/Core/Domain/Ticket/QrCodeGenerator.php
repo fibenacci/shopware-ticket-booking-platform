@@ -7,6 +7,7 @@ namespace FibBookingSystem\Core\Domain\Ticket;
 use chillerlan\QRCode\Output\QRGdImagePNG;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
+use RuntimeException;
 
 class QrCodeGenerator
 {
@@ -18,6 +19,12 @@ class QrCodeGenerator
             'scale' => 8,
         ]);
 
-        return (new QRCode($options))->render($payload);
+        $rendered = (new QRCode($options))->render($payload);
+
+        if (!is_string($rendered)) {
+            throw new RuntimeException('QR code rendering did not return a data URI string.');
+        }
+
+        return $rendered;
     }
 }

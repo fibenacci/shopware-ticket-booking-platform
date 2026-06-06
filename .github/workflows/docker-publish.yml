@@ -46,6 +46,27 @@ jobs:
                         type=raw,value=latest,enable={{is_default_branch}}
                         type=sha
 
+            # Build locally first so Trivy gates BEFORE anything reaches GHCR;
+            # the push below re-uses the build cache and is near-instant.
+            -   name: Build (local, for scan)
+                uses: docker/build-push-action@v7
+                with:
+                    context: .
+                    file: Dockerfile
+                    push: false
+                    load: true
+                    tags: ${{ env.IMAGE }}:scan
+                    cache-from: type=gha
+                    cache-to: type=gha,mode=max
+
+            -   name: Trivy scan (shop image)
+                uses: aquasecurity/trivy-action@v0.36.0
+                with:
+                    image-ref: ${{ env.IMAGE }}:scan
+                    severity: CRITICAL,HIGH
+                    exit-code: '1'
+                    ignore-unfixed: true
+
             -   name: Build & push
                 uses: docker/build-push-action@v7
                 with:
@@ -66,6 +87,24 @@ jobs:
                         type=ref,event=tag
                         type=raw,value=latest,enable={{is_default_branch}}
                         type=sha
+
+            -   name: Build scanner app (local, for scan)
+                uses: docker/build-push-action@v7
+                with:
+                    context: custom/static-plugins/FibBookingSystem/apps/scanner
+                    push: false
+                    load: true
+                    tags: ${{ env.SCANNER_IMAGE }}:scan
+                    cache-from: type=gha,scope=scanner
+                    cache-to: type=gha,mode=max,scope=scanner
+
+            -   name: Trivy scan (scanner image)
+                uses: aquasecurity/trivy-action@v0.36.0
+                with:
+                    image-ref: ${{ env.SCANNER_IMAGE }}:scan
+                    severity: CRITICAL,HIGH
+                    exit-code: '1'
+                    ignore-unfixed: true
 
             -   name: Build & push scanner app
                 uses: docker/build-push-action@v7

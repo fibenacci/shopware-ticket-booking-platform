@@ -1,8 +1,9 @@
 # Scanner app — Vue 3 operator app for ticket scanning (apps/scanner).
 
 SCANNER_DIR := $(PLUGIN_DIR)/apps/scanner
+ADMIN_APP_DIR := $(PLUGIN_DIR)/src/Resources/app/administration
 
-.PHONY: scanner-install scanner-dev scanner-build scanner-ngrok scanner-ngrok-stop
+.PHONY: scanner-install scanner-dev scanner-build scanner-ngrok scanner-ngrok-stop admin-test
 
 ##@ Scanner app
 
@@ -45,3 +46,7 @@ scanner-ngrok: ## Expose the scanner app via a public ngrok HTTPS tunnel (phone 
 scanner-ngrok-stop: ## Stop the ngrok tunnel
 	@docker compose --profile ngrok rm -sf ngrok >/dev/null 2>&1 || true
 	@echo "✅ ngrok tunnel stopped"
+
+admin-test: ## Run the admin extension's vitest unit tests (pure modules)
+	@cd $(ADMIN_APP_DIR) && npm install --silent >/dev/null && npm test
+	@echo "✅ Admin extension tests passed"

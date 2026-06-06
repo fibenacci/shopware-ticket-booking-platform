@@ -17,7 +17,7 @@ CodeQL ──────────┘
 
 | Job | Checks |
 |---|---|
-| **Static Quality** | PHP-CS-Fixer (dry-run) + PHPStan level 6 |
+| **Static Quality** | PHP-CS-Fixer (dry-run) + PHPStan level max + PHPMD |
 | **JS/TS Lint** | Scanner app production build (type/syntax gate) + `node --check` over plugin storefront JS |
 | **Composer Audit** | Known vulnerabilities in `composer.lock` |
 | **NPM Audit** | High advisories in scanner app + Playwright suite |

@@ -22,6 +22,7 @@
     "require-dev": {
         "fib/fib-booking-demo-data": "*",
         "friendsofphp/php-cs-fixer": "*",
+        "phpmd/phpmd": "*",
         "phpstan/phpstan": "*",
         "phpunit/phpunit": "*"
     },
@@ -58,7 +59,8 @@
     "config": {
         "allow-plugins": {
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "php-http/discovery": false
         },
         "optimize-autoloader": true,
         "sort-packages": true

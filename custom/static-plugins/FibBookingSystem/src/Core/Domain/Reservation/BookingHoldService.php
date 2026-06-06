@@ -8,14 +8,21 @@ use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingHold\BookingHoldCollection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\FibBookingException;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\Uuid\Uuid;
 
 class BookingHoldService
 {
+    /**
+     * @param EntityRepository<BookingHoldCollection> $holdRepository
+     */
     public function __construct(
         private readonly Connection $connection,
+        private readonly EntityRepository $holdRepository,
         private readonly AvailabilityService $availabilityService,
     ) {
     }
@@ -30,6 +37,7 @@ class BookingHoldService
         int $quantity,
         ?string $salesChannelId,
         ?string $customerId,
+        Context $context,
         array $payload = [],
         int $ttlMinutes = 15,
     ): BookingHold {
@@ -40,6 +48,7 @@ class BookingHoldService
             $quantity,
             $salesChannelId,
             $customerId,
+            $context,
             $payload,
             $ttlMinutes,
         ): BookingHold {
@@ -55,20 +64,21 @@ class BookingHoldService
             $token = bin2hex(random_bytes(32));
             $expiresAt = (new DateTimeImmutable())->add(new DateInterval(sprintf('PT%dM', max(1, $ttlMinutes))));
 
-            $this->connection->insert('fib_booking_hold', [
-                'id' => Uuid::fromHexToBytes($holdId),
-                'resource_id' => Uuid::fromHexToBytes($resourceId),
-                'sales_channel_id' => $salesChannelId ? Uuid::fromHexToBytes($salesChannelId) : null,
-                'customer_id' => $customerId ? Uuid::fromHexToBytes($customerId) : null,
-                'token' => $token,
-                'starts_at' => $this->formatDateTime($startsAt),
-                'ends_at' => $this->formatDateTime($endsAt),
-                'expires_at' => $this->formatDateTime($expiresAt),
-                'quantity' => $quantity,
-                'status' => 'active',
-                'payload' => $payload === [] ? null : json_encode($payload, JSON_THROW_ON_ERROR),
-                'created_at' => $this->formatDateTime(new DateTimeImmutable()),
-            ]);
+            $this->holdRepository->create([
+                [
+                    'id' => $holdId,
+                    'resourceId' => $resourceId,
+                    'salesChannelId' => $salesChannelId,
+                    'customerId' => $customerId,
+                    'token' => $token,
+                    'startsAt' => $this->formatDateTime($startsAt),
+                    'endsAt' => $this->formatDateTime($endsAt),
+                    'expiresAt' => $this->formatDateTime($expiresAt),
+                    'quantity' => $quantity,
+                    'status' => 'active',
+                    'payload' => $payload === [] ? null : $payload,
+                ],
+            ], $context);
 
             return new BookingHold($holdId, $token, $expiresAt);
         });

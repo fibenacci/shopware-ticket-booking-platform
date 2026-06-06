@@ -3,20 +3,38 @@
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
     <services>
-        <service id="FibBookingDemoData\Service\BookingDemoDataSeeder">
+        <service id="FibBookingDemoData\Service\CatalogSeeder">
             <argument type="service" id="product.repository"/>
             <argument type="service" id="sales_channel.repository"/>
             <argument type="service" id="tax.repository"/>
             <argument type="service" id="fib_booking_resource.repository"/>
             <argument type="service" id="fib_booking_product_config.repository"/>
-            <argument type="service" id="fib_booking_reservation.repository"/>
             <argument type="service" id="fib_booking_slot.repository"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\ReservationSeeder">
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\DemoCmsSeeder">
             <argument type="service" id="cms_page.repository"/>
             <argument type="service" id="category.repository"/>
+            <argument type="service" id="sales_channel.repository"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\ScannerAccessSeeder">
             <argument type="service" id="acl_role.repository"/>
             <argument type="service" id="user.repository"/>
             <argument type="service" id="locale.repository"/>
-            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\BookingDemoDataSeeder">
+            <argument type="service" id="FibBookingDemoData\Service\CatalogSeeder"/>
+            <argument type="service" id="FibBookingDemoData\Service\ReservationSeeder"/>
+            <argument type="service" id="FibBookingDemoData\Service\DemoCmsSeeder"/>
+            <argument type="service" id="FibBookingDemoData\Service\ScannerAccessSeeder"/>
         </service>
 
         <service id="FibBookingDemoData\Command\SeedDemoDataCommand">

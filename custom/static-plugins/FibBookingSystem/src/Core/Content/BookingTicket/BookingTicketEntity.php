@@ -29,12 +29,72 @@ class BookingTicketEntity extends Entity
 
     protected ?DateTimeInterface $expiresAt = null;
 
+    protected ?DateTimeInterface $validFrom = null;
+
+    protected string $entryPolicy = 'single';
+
+    protected ?int $maxEntriesPerDay = null;
+
+    protected ?string $validityAnchor = null;
+
+    protected ?string $validityDuration = null;
+
     /**
      * @var array<string, mixed>|null
      */
     protected ?array $payload = null;
 
     protected ?BookingReservationEntity $reservation = null;
+
+    public function getValidFrom(): ?DateTimeInterface
+    {
+        return $this->validFrom;
+    }
+
+    public function setValidFrom(?DateTimeInterface $validFrom): void
+    {
+        $this->validFrom = $validFrom;
+    }
+
+    public function getEntryPolicy(): string
+    {
+        return $this->entryPolicy;
+    }
+
+    public function setEntryPolicy(string $entryPolicy): void
+    {
+        $this->entryPolicy = $entryPolicy;
+    }
+
+    public function getMaxEntriesPerDay(): ?int
+    {
+        return $this->maxEntriesPerDay;
+    }
+
+    public function setMaxEntriesPerDay(?int $maxEntriesPerDay): void
+    {
+        $this->maxEntriesPerDay = $maxEntriesPerDay;
+    }
+
+    public function getValidityAnchor(): ?string
+    {
+        return $this->validityAnchor;
+    }
+
+    public function setValidityAnchor(?string $validityAnchor): void
+    {
+        $this->validityAnchor = $validityAnchor;
+    }
+
+    public function getValidityDuration(): ?string
+    {
+        return $this->validityDuration;
+    }
+
+    public function setValidityDuration(?string $validityDuration): void
+    {
+        $this->validityDuration = $validityDuration;
+    }
 
     public function getReservationId(): string
     {
@@ -94,5 +154,15 @@ class BookingTicketEntity extends Entity
     public function setScannedAt(?DateTimeInterface $scannedAt): void
     {
         $this->scannedAt = $scannedAt;
+    }
+
+    public function getReservation(): ?BookingReservationEntity
+    {
+        return $this->reservation;
+    }
+
+    public function setReservation(?BookingReservationEntity $reservation): void
+    {
+        $this->reservation = $reservation;
     }
 }

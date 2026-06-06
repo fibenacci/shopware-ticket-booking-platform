@@ -57,6 +57,14 @@ MAILER_DSN=smtp://...
 TRUSTED_PROXIES=...                       # optional; defaults cover the compose network
 SENTRY_DSN=...                            # optional; empty = error tracking disabled
 SENTRY_RELEASE=...                        # optional; e.g. the deployed image tag
+ADMIN_ALLOWED_IPS=...                     # optional; CIDR list — locks /admin to office/VPN IPs
+```
+
+Optional hardening profile (behavioural bot/scan detection, see
+[Bot Protection](Bot-Protection)):
+
+```bash
+docker compose -f compose.prod.yaml --env-file .env.prod --profile crowdsec up -d
 ```
 
 DNS: point `SHOP_DOMAIN` **and** `scanner.SHOP_DOMAIN` at the host, then:
@@ -64,6 +72,27 @@ DNS: point `SHOP_DOMAIN` **and** `scanner.SHOP_DOMAIN` at the host, then:
 ```bash
 docker compose -f compose.prod.yaml --env-file .env.prod up -d
 ```
+
+## Performance & search
+
+- **Caching (always on in prod)**: sessions + locks live in Redis (compose
+  env), the object cache, carts and number ranges are Redis-backed via
+  `config/packages/prod/redis.yaml` — shared across web/worker/scheduler
+  replicas. Dev/CI keep the filesystem cache.
+- **Search (opt-in)**: product search defaults to MySQL, which is fine for
+  small/medium catalogs. For large catalogs start OpenSearch:
+  `SHOPWARE_ES_ENABLED=1` in `.env.prod` plus
+  `docker compose --profile search … up -d`, then run `bin/console es:index`
+  once in the `web` container.
+
+## Observability
+
+- **Errors/Tracing**: Sentry via `SENTRY_DSN` (see `.env.prod` above).
+- **Edge metrics**: Traefik exposes Prometheus metrics on the internal
+  `:8082` entrypoint (edge network only, not published) — ready for a
+  future Prometheus/Grafana or Grafana-Cloud agent.
+- **Access logs**: JSON in the `traefik_logs` volume (forensics, CrowdSec).
+- **Ops tooling**: FroshTools in the admin (queue, scheduled tasks, logs).
 
 ## Persistent data
 

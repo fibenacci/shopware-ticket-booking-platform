@@ -24,6 +24,7 @@ help: ## Show available targets
 
 # ── Modules ──────────────────────────────────────────────────────────────────
 include make/stack.mk     # lifecycle: preflight, up, stop, down, logs, shell
+include make/console.mk   # bin/console passthrough + common shopware commands
 include make/assets.mk    # cache, theme, asset builds, watchers
 include make/database.mk  # domain, demo data, messenger
 include make/quality.mk   # phpstan, php-cs-fixer

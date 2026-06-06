@@ -45,6 +45,7 @@ class BookingHoldRoute extends AbstractBookingHoldRoute
             BookingRequestParser::positiveInt($payload, 'quantity'),
             $context->getSalesChannelId(),
             $customer?->getId(),
+            $context->getContext(),
             $payload,
         );
 

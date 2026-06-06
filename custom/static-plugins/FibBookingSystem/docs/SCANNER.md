@@ -44,7 +44,7 @@ but gets 403 on every other Admin API endpoint):
 
 | | |
 |---|---|
-| Role | `Booking Scanner` — privileges: `fib_booking.ticket_scan` only |
+| Role | `Booking Scanner` — privileges: `fib_booking.ticket_scan` + `fib_booking.statistics` (scan + dashboard, nothing else) |
 | User | `scanner` / `fib-scanner-demo!` (**demo credentials** — change/disable in production, defined in the demo-data seeds JSON) |
 | Entry point | "Open ticket scanner" button on the seeded homepage → `http://scanner.booking.docker` (served by the dev-stack ingress; the build is auto-created by `make up`). Camera testing needs a secure context — use `http://127.0.0.1:8096`. Adjust the URL in the CMS layout / seeds for production. |
 
@@ -63,8 +63,10 @@ The app accepts the canonical QR payload
 
 | Verdict | Meaning | UI |
 |---|---|---|
-| `valid` | first scan, ticket now `scanned` | green — let them in |
+| `valid` | check-in accepted, ticket now `scanned` | green — let them in |
 | `already_scanned` | replay attempt; shows first-scan time | orange |
+| `checked_out` | check-out accepted (check-out mode) | green — goodbye |
+| `not_checked_in` | check-out of a guest who is not inside | orange |
 | `expired` | ticket past `expires_at` | red |
 | `revoked` | actively revoked | red |
 | `not_found` | unknown/foreign token | red |
@@ -72,5 +74,12 @@ The app accepts the canonical QR payload
 Race safety: two devices scanning the same ticket simultaneously resolve into
 exactly one `valid` and one `already_scanned` (row lock in the service).
 
-Every attempt is recorded in `fib_booking_scan_log` (verdict, acting user,
-token fingerprint, timestamp) — see [SECURITY.md](SECURITY.md).
+### Check-out mode & statistics
+
+When the operator enables check-out scanning in the plugin config, the app
+shows a **Check-in / Check-out** toggle above the camera and a **Statistics**
+tab (purchases, currently inside, dwell time). Both are documented in
+[STATISTICS.md](STATISTICS.md).
+
+Every attempt is recorded in `fib_booking_scan_log` (verdict, direction,
+acting user, token fingerprint, timestamp) — see [SECURITY.md](SECURITY.md).

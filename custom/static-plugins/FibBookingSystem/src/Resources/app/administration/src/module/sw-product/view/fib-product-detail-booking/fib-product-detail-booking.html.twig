@@ -1,0 +1,92 @@
+{% block fib_product_detail_booking %}
+    <sw-card
+        class="fib-product-detail-booking"
+        position-identifier="fib-product-detail-booking"
+        :title="$tc('fibBooking.product.cardTitle')"
+        :is-loading="isLoading"
+    >
+        <template v-if="config">
+            <sw-switch-field
+                v-model:value="config.enabled"
+                :label="$tc('fibBooking.product.enabledLabel')"
+                :help-text="$tc('fibBooking.product.enabledHelp')"
+            />
+
+            <sw-entity-single-select
+                v-model:value="config.resourceId"
+                entity="fib_booking_resource"
+                label-property="name"
+                :label="$tc('fibBooking.product.resourceLabel')"
+                :help-text="$tc('fibBooking.product.resourceHelp')"
+            />
+
+            <sw-single-select
+                v-model:value="config.validityMode"
+                :options="validityModeOptions"
+                :label="$tc('fibBooking.product.validityModeLabel')"
+                :help-text="$tc('fibBooking.product.validityModeHelp')"
+            />
+
+            <sw-number-field
+                v-if="isSlotMode"
+                v-model:value="config.slotMinutes"
+                number-type="int"
+                :min="5"
+                :label="$tc('fibBooking.product.slotMinutesLabel')"
+            />
+
+            <template v-if="isPeriodMode">
+                <sw-single-select
+                    :value="durationPreset"
+                    :options="durationPresetOptions"
+                    :label="$tc('fibBooking.product.presetLabel')"
+                    :help-text="$tc('fibBooking.product.presetHelp')"
+                    @update:value="onPresetChange"
+                />
+
+                <sw-text-field
+                    v-model:value="config.validityDuration"
+                    :label="$tc('fibBooking.product.durationLabel')"
+                    :help-text="$tc('fibBooking.product.durationHelp')"
+                    :error="durationIsInvalid ? { detail: $tc('fibBooking.product.notification.invalidDuration') } : null"
+                    placeholder="P1M"
+                    @update:value="onDurationChange"
+                />
+
+                <sw-single-select
+                    v-model:value="config.validityAnchor"
+                    :options="validityAnchorOptions"
+                    :label="$tc('fibBooking.product.validityAnchorLabel')"
+                    :help-text="$tc('fibBooking.product.validityAnchorHelp')"
+                />
+            </template>
+
+            <sw-single-select
+                v-model:value="config.entryPolicy"
+                :options="entryPolicyOptions"
+                :label="$tc('fibBooking.product.entryPolicyLabel')"
+                :help-text="$tc('fibBooking.product.entryPolicyHelp')"
+            />
+
+            {# 0 = unlimited — the resolver normalizes non-positive values to NULL #}
+            <sw-number-field
+                v-if="isMultiEntry"
+                v-model:value="config.maxEntriesPerDay"
+                number-type="int"
+                :min="0"
+                :label="$tc('fibBooking.product.maxEntriesPerDayLabel')"
+                :help-text="$tc('fibBooking.product.maxEntriesPerDayHelp')"
+            />
+
+            <sw-button-process
+                class="fib-product-detail-booking__save"
+                variant="primary"
+                :is-loading="isSaving"
+                :process-success="false"
+                @click="onSave"
+            >
+                {{ $tc('fibBooking.product.saveLabel') }}
+            </sw-button-process>
+        </template>
+    </sw-card>
+{% endblock %}

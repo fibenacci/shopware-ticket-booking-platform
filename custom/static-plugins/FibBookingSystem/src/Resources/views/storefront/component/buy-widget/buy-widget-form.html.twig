@@ -1,12 +1,19 @@
 {% sw_extends '@Storefront/storefront/component/buy-widget/buy-widget-form.html.twig' %}
 
+{# Three buy experiences, driven by the product's booking config:
+   - slot products:  custom calendar/hold widget (Termin + quantity)
+   - pass products:  standard buy form + validity info (+ start date picker
+                     for the `customer` anchor)
+   - everything else: untouched Shopware default #}
+
 {% block buy_widget_buy_form_inner %}
     {% set bookingConfig = product.extensions.fibBookingConfig ?? null %}
     {% set bookingEnabled = bookingConfig and bookingConfig.enabled %}
     {% set bookingResourceId = bookingConfig ? bookingConfig.resourceId : null %}
     {% set bookingSlotMinutes = bookingConfig ? bookingConfig.slotMinutes : 60 %}
+    {% set isSlotProduct = bookingEnabled and bookingResourceId and bookingConfig.validityMode == 'slot' %}
 
-    {% if bookingEnabled and bookingResourceId %}
+    {% if isSlotProduct %}
         <form class="buy-widget fib-booking-widget"
               data-fib-booking-widget="true"
               data-fib-booking-widget-options="{{ {
@@ -60,4 +67,69 @@
     {% else %}
         {{ parent() }}
     {% endif %}
+{% endblock %}
+
+{% block buy_widget_buy_quantity_container %}
+    {% set bookingConfig = product.extensions.fibBookingConfig ?? null %}
+    {% set isPassProduct = bookingConfig and bookingConfig.enabled and bookingConfig.validityMode in ['period', 'unlimited'] %}
+
+    {% if isPassProduct %}
+        {% set durationLabels = {
+            'P1D': 'fibBooking.pass.durations.day',
+            'P1W': 'fibBooking.pass.durations.week',
+            'P1M': 'fibBooking.pass.durations.month',
+            'P3M': 'fibBooking.pass.durations.threeMonths',
+            'P6M': 'fibBooking.pass.durations.sixMonths',
+            'P1Y': 'fibBooking.pass.durations.year'
+        } %}
+
+        <div class="col-12 fib-pass-info">
+            <ul class="list-unstyled mb-2 small">
+                {% if bookingConfig.validityMode == 'unlimited' %}
+                    <li>✓ {{ 'fibBooking.pass.unlimitedValidity'|trans|sw_sanitize }}</li>
+                {% else %}
+                    <li>
+                        ✓ {{ 'fibBooking.pass.validFor'|trans|sw_sanitize }}
+                        <strong>
+                            {% if durationLabels[bookingConfig.validityDuration] is defined %}
+                                {{ durationLabels[bookingConfig.validityDuration]|trans|sw_sanitize }}
+                            {% else %}
+                                {{ bookingConfig.validityDuration }}
+                            {% endif %}
+                        </strong>
+                        {% if bookingConfig.validityAnchor == 'first_use' %}
+                            {{ 'fibBooking.pass.fromFirstUse'|trans|sw_sanitize }}
+                        {% elseif bookingConfig.validityAnchor == 'customer' %}
+                            {{ 'fibBooking.pass.fromChosenStart'|trans|sw_sanitize }}
+                        {% else %}
+                            {{ 'fibBooking.pass.fromPurchase'|trans|sw_sanitize }}
+                        {% endif %}
+                    </li>
+                {% endif %}
+                {% if bookingConfig.entryPolicy == 'multi' %}
+                    <li>✓ {{ 'fibBooking.pass.multiEntry'|trans|sw_sanitize }}
+                        {% if bookingConfig.maxEntriesPerDay %}
+                            ({{ 'fibBooking.pass.maxPerDay'|trans({'%limit%': bookingConfig.maxEntriesPerDay})|sw_sanitize }})
+                        {% endif %}
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+
+        {% if bookingConfig.validityAnchor == 'customer' %}
+            <div class="col-12 mb-2">
+                <label class="form-label" for="fib-pass-start-{{ product.id }}">
+                    {{ 'fibBooking.pass.startLabel'|trans|sw_sanitize }}
+                </label>
+                <input id="fib-pass-start-{{ product.id }}"
+                       class="form-control"
+                       type="date"
+                       name="fibBookingValidityStart"
+                       min="{{ 'now'|date('Y-m-d') }}"
+                       required>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {{ parent() }}
 {% endblock %}

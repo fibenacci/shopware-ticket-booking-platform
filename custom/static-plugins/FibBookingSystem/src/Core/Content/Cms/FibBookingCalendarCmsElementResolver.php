@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Content\Cms;
 
-use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingResource\BookingResourceCollection;
+use FibBookingSystem\Core\Content\BookingResource\BookingResourceEntity;
+use FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigCollection;
+use FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigEntity;
 use Shopware\Core\Content\Cms\Aggregate\CmsSlot\CmsSlotEntity;
 use Shopware\Core\Content\Cms\DataResolver\CriteriaCollection;
 use Shopware\Core\Content\Cms\DataResolver\Element\AbstractCmsElementResolver;
 use Shopware\Core\Content\Cms\DataResolver\Element\ElementDataCollection;
 use Shopware\Core\Content\Cms\DataResolver\ResolverContext\ResolverContext;
+use Shopware\Core\Content\Product\ProductEntity;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\Framework\Uuid\Uuid;
 
@@ -23,8 +31,14 @@ use Shopware\Core\Framework\Uuid\Uuid;
  */
 class FibBookingCalendarCmsElementResolver extends AbstractCmsElementResolver
 {
-    public function __construct(private readonly Connection $connection)
-    {
+    /**
+     * @param EntityRepository<BookingResourceCollection>      $resourceRepository
+     * @param EntityRepository<ProductBookingConfigCollection> $productConfigRepository
+     */
+    public function __construct(
+        private readonly EntityRepository $resourceRepository,
+        private readonly EntityRepository $productConfigRepository,
+    ) {
     }
 
     public function getType(): string
@@ -50,73 +64,75 @@ class FibBookingCalendarCmsElementResolver extends AbstractCmsElementResolver
             return;
         }
 
-        $resourceName = $this->fetchResourceName($resourceId);
-        $packages = $this->fetchPackages($resourceId, $resolverContext->getSalesChannelContext()->getLanguageId());
+        $context = $resolverContext->getSalesChannelContext()->getContext();
+
+        $resourceName = $this->fetchResourceName($resourceId, $context);
+        $packages = $this->fetchPackages($resourceId, $context);
 
         $slot->setData(new ArrayStruct([
-            'resourceId' => strtolower($resourceId),
+            'resourceId' => $resourceId,
             'resourceName' => $resourceName,
             'packages' => $packages,
         ], 'fib_booking_calendar_data'));
     }
 
-    private function fetchResourceName(string $resourceId): ?string
+    private function fetchResourceName(string $resourceId, Context $context): ?string
     {
-        $name = $this->connection->fetchOne(
-            <<<'SQL'
-                SELECT name FROM fib_booking_resource WHERE id = :resourceId AND active = 1
-                SQL,
-            ['resourceId' => Uuid::fromHexToBytes($resourceId)],
-        );
+        $criteria = new Criteria([$resourceId]);
+        $criteria->addFilter(new EqualsFilter('active', true));
 
-        return is_string($name) ? $name : null;
+        /** @var BookingResourceEntity|null $resource */
+        $resource = $this->resourceRepository->search($criteria, $context)->first();
+
+        return $resource?->getName();
     }
 
     /**
      * @return list<array{productId: string, productNumber: string, name: string|null}>
      */
-    private function fetchPackages(string $resourceId, string $languageId): array
+    private function fetchPackages(string $resourceId, Context $context): array
     {
-        $rows = $this->connection->fetchAllAssociative(
-            <<<'SQL'
-                SELECT LOWER(HEX(product.id)) AS product_id,
-                       product.product_number,
-                       COALESCE(translation.name, fallback.name) AS name
-                FROM fib_booking_product_config config
-                INNER JOIN product
-                    ON product.id = config.product_id AND product.version_id = config.product_version_id
-                LEFT JOIN product_translation translation
-                    ON translation.product_id = product.id
-                   AND translation.product_version_id = product.version_id
-                   AND translation.language_id = :languageId
-                LEFT JOIN product_translation fallback
-                    ON fallback.product_id = product.id
-                   AND fallback.product_version_id = product.version_id
-                WHERE config.resource_id = :resourceId
-                  AND config.enabled = 1
-                  AND product.active = 1
-                ORDER BY product.product_number
-                SQL,
-            [
-                'resourceId' => Uuid::fromHexToBytes($resourceId),
-                'languageId' => Uuid::fromHexToBytes($languageId),
-            ],
-        );
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('resourceId', $resourceId));
+        $criteria->addFilter(new EqualsFilter('enabled', true));
+        $criteria->addFilter(new EqualsFilter('product.active', true));
+        $criteria->addAssociation('product');
+
+        $configs = $this->productConfigRepository->search($criteria, $context)->getEntities();
 
         $packages = [];
         $seen = [];
-        foreach ($rows as $row) {
-            $productId = (string) $row['product_id'];
+
+        /** @var ProductBookingConfigEntity $config */
+        foreach ($configs as $config) {
+            $product = $config->getProduct();
+
+            if (!$product instanceof ProductEntity) {
+                continue;
+            }
+
+            $productId = $product->getId();
+
             if (isset($seen[$productId])) {
                 continue;
             }
             $seen[$productId] = true;
+
+            // The DAL resolves the storefront language with its fallback chain
+            // (what the SQL did with the COALESCE over product_translation).
+            $name = $product->getTranslation('name');
+
             $packages[] = [
                 'productId' => $productId,
-                'productNumber' => (string) $row['product_number'],
-                'name' => $row['name'] !== null ? (string) $row['name'] : null,
+                'productNumber' => $product->getProductNumber(),
+                'name' => is_string($name) ? $name : null,
             ];
         }
+
+        usort(
+            $packages,
+            static fn (array $left, array $right): int => $left['productNumber'] <=> $right['productNumber'],
+        );
 
         return $packages;
     }

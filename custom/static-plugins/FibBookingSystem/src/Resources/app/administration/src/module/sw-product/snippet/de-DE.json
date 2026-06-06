@@ -1,0 +1,54 @@
+{
+    "fibBooking": {
+        "product": {
+            "tabTitle": "Buchung & Tickets",
+            "cardTitle": "Ticket-Konfiguration",
+            "enabledLabel": "Als buchbares Ticket verkaufen",
+            "enabledHelp": "Aktiviert den Buchungs-/Ticketing-Flow für dieses Produkt.",
+            "resourceLabel": "Buchungsressource",
+            "resourceHelp": "Die Ressource, zu der dieses Ticket gehört (Venue, Raum, Netz, …). Scanner und Statistik gruppieren nach Ressource.",
+            "validityModeLabel": "Gültigkeit",
+            "validityModeHelp": "Termin: an einen gebuchten Kalendertermin gebunden. Zeitraum: für eine Dauer gültig. Unbegrenzt: läuft nie ab.",
+            "validityMode": {
+                "slot": "Kalendertermin",
+                "period": "Zeitraum (Pass)",
+                "unlimited": "Unbegrenzt"
+            },
+            "slotMinutesLabel": "Slot-Länge (Minuten)",
+            "presetLabel": "Dauer-Preset",
+            "presetHelp": "Füllt die ISO-8601-Dauer vor — \"Eigene\" erlaubt jeden anderen Wert (z. B. PT4H, P2W, P18M).",
+            "presets": {
+                "day": "Tageskarte (P1D)",
+                "week": "Wochenkarte (P1W)",
+                "month": "Monatskarte (P1M)",
+                "threeMonths": "3-Monatskarte (P3M)",
+                "sixMonths": "6-Monatskarte (P6M)",
+                "year": "Jahreskarte (P1Y)",
+                "custom": "Eigene"
+            },
+            "durationLabel": "Gültigkeitsdauer (ISO 8601)",
+            "durationHelp": "Beispiele: P1D = 1 Tag, P1M = 1 Monat, P1Y = 1 Jahr, PT4H = 4 Stunden.",
+            "validityAnchorLabel": "Gültigkeit beginnt",
+            "validityAnchorHelp": "Kauf: ab Kaufzeitpunkt. Erste Nutzung: der erste Scan aktiviert (Entwertung). Kunde: Kunde wählt das Startdatum im Shop.",
+            "validityAnchor": {
+                "purchase": "Beim Kauf",
+                "first_use": "Bei erster Nutzung (Scan aktiviert)",
+                "customer": "Am vom Kunden gewählten Datum"
+            },
+            "entryPolicyLabel": "Eintritte",
+            "entryPolicyHelp": "Einmalig: das Ticket ist mit dem ersten Scan verbraucht. Mehrfach: im gesamten Gültigkeitszeitraum nutzbar (Pass).",
+            "entryPolicy": {
+                "single": "Einmaliger Eintritt",
+                "multi": "Mehrfache Eintritte (Pass)"
+            },
+            "maxEntriesPerDayLabel": "Max. Eintritte pro Tag (optional)",
+            "maxEntriesPerDayHelp": "0 = unbegrenzte tägliche Eintritte.",
+            "saveLabel": "Buchungskonfiguration speichern",
+            "notification": {
+                "saved": "Buchungskonfiguration gespeichert.",
+                "saveError": "Speichern der Buchungskonfiguration fehlgeschlagen.",
+                "invalidDuration": "Zeitraum-Tickets benötigen eine gültige ISO-8601-Dauer (z. B. P1D, P1M, P1Y)."
+            }
+        }
+    }
+}

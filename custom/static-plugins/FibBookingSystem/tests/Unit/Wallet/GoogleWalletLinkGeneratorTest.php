@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FibBookingSystem\Tests\Unit\Wallet;
 
 use DateTimeImmutable;
+use FibBookingSystem\Core\Domain\Wallet\BookingWindow;
 use FibBookingSystem\Core\Domain\Wallet\GoogleWalletLinkGenerator;
 use FibBookingSystem\Core\Domain\Wallet\TicketWalletData;
 use PHPUnit\Framework\TestCase;
@@ -86,10 +87,12 @@ class GoogleWalletLinkGeneratorTest extends TestCase
             bookingNumber: 'B1001',
             status: 'sent',
             qrPayload: json_encode(['type' => 'fib_booking_ticket', 'ticketNumber' => 'T1001', 'scanToken' => str_repeat('a', 64)], JSON_THROW_ON_ERROR),
-            resourceName: 'Main Stage',
-            startsAt: new DateTimeImmutable('2026-07-01 18:00:00'),
-            endsAt: new DateTimeImmutable('2026-07-01 22:00:00'),
-            quantity: 2,
+            window: new BookingWindow(
+                resourceName: 'Main Stage',
+                startsAt: new DateTimeImmutable('2026-07-01 18:00:00'),
+                endsAt: new DateTimeImmutable('2026-07-01 22:00:00'),
+                quantity: 2,
+            ),
             customerName: 'Jane Doe',
         );
     }

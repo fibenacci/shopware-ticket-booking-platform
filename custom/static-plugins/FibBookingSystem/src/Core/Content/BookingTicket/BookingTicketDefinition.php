@@ -12,6 +12,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\FkField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\PrimaryKey;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\Flag\Required;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\IdField;
+use Shopware\Core\Framework\DataAbstractionLayer\Field\IntField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\JsonField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\ManyToOneAssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\StringField;
@@ -49,6 +50,11 @@ class BookingTicketDefinition extends EntityDefinition
             new DateTimeField('sent_at', 'sentAt'),
             new DateTimeField('scanned_at', 'scannedAt'),
             new DateTimeField('expires_at', 'expiresAt'),
+            new DateTimeField('valid_from', 'validFrom'),
+            (new StringField('entry_policy', 'entryPolicy'))->addFlags(new Required()),
+            new IntField('max_entries_per_day', 'maxEntriesPerDay'),
+            new StringField('validity_anchor', 'validityAnchor'),
+            new StringField('validity_duration', 'validityDuration'),
             new JsonField('payload', 'payload'),
             new ManyToOneAssociationField('reservation', 'reservation_id', BookingReservationDefinition::class, 'id'),
             new CreatedAtField(),

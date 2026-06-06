@@ -18,6 +18,8 @@ class FibBookingException extends HttpException
     public const RESERVATION_NOT_FOUND = 'FIB_BOOKING__RESERVATION_NOT_FOUND';
     public const TICKET_ALREADY_EXISTS = 'FIB_BOOKING__TICKET_ALREADY_EXISTS';
     public const INVALID_PAYLOAD = 'FIB_BOOKING__INVALID_PAYLOAD';
+    public const NO_TICKETS_FOR_ORDER = 'FIB_BOOKING__NO_TICKETS_FOR_ORDER';
+    public const SCAN_CHECK_OUT_DISABLED = 'FIB_BOOKING__SCAN_CHECK_OUT_DISABLED';
 
     public static function resourceNotFound(): self
     {
@@ -25,6 +27,15 @@ class FibBookingException extends HttpException
             Response::HTTP_BAD_REQUEST,
             self::RESOURCE_NOT_FOUND,
             'The requested booking resource does not exist.',
+        );
+    }
+
+    public static function scanCheckOutDisabled(): self
+    {
+        return new self(
+            Response::HTTP_BAD_REQUEST,
+            self::SCAN_CHECK_OUT_DISABLED,
+            'Check-out scanning is disabled. Enable "scanCheckOutEnabled" in the plugin configuration first.',
         );
     }
 
@@ -54,6 +65,16 @@ class FibBookingException extends HttpException
             self::TICKET_ALREADY_EXISTS,
             'A valid ticket already exists for reservation "{{ reservationId }}".',
             ['reservationId' => $reservationId],
+        );
+    }
+
+    public static function noTicketsForOrder(string $orderId): self
+    {
+        return new self(
+            Response::HTTP_BAD_REQUEST,
+            self::NO_TICKETS_FOR_ORDER,
+            'Order "{{ orderId }}" has no issued booking tickets to render.',
+            ['orderId' => $orderId],
         );
     }
 

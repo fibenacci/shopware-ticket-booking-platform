@@ -18,6 +18,7 @@ preflight: ## Prepare local files (env, lock files, vendor scaffold)
 		docker run --rm -v "$$(pwd)/$(PLUGIN_DIR)/apps/scanner":/app -w /app node:22-alpine \
 			sh -c "npm ci --no-audit --no-fund && npm run build"; \
 	fi
+	@DOMAIN=$(DOMAIN) ./docker/dev-certs.sh
 
 composer-install: ## Run composer install via the shopware-cli image (no host PHP needed)
 	@docker run --rm -v "$$(pwd)":/app -w /app --entrypoint sh $(CLI_IMAGE) \
@@ -37,21 +38,8 @@ up: preflight ## Start the full local stack (proxy + compose + setup)
 		codekitchen/dinghy-http-proxy
 	@docker compose up -d --wait || docker compose up -d
 	@echo "Running setup script..."
-	@docker exec fib-shopware bash /setup-dev.sh
-	@echo ""
-	@echo "╔══════════════════════════════════════════════════════════════════╗"
-	@printf "║  ✅  %-62s║\n" "FIB Booking System is ready!"
-	@printf "║                                                                  ║\n"
-	@printf "║  🌐  %-16shttp://%-39s║\n" "Frontend:" "$(DOMAIN)  (or http://127.0.0.1:8090)"
-	@printf "║  🔐  %-16shttp://%-39s║\n" "Admin:" "$(DOMAIN)/admin"
-	@printf "║  📧  %-16shttp://%-39s║\n" "Mailpit:" "mail.$(DOMAIN)"
-	@printf "║  📷  %-16shttp://%-39s║\n" "Scanner:" "scanner.$(DOMAIN)  (camera: 127.0.0.1:8096)"
-	@printf "║  🗄   %-16shttp://%-39s║\n" "Adminer:" "adminer.$(DOMAIN)"
-	@printf "║                                                                  ║\n"
-	@printf "║  👤  %-16s%-46s║\n" "Username:" "admin"
-	@printf "║  🔑  %-16s%-46s║\n" "Password:" "shopware"
-	@echo "╚══════════════════════════════════════════════════════════════════╝"
-	@echo ""
+	@docker exec fib-shopware bash /dev-tools/setup-dev.sh
+	@DOMAIN=$(DOMAIN) ./docker/dev-banner.sh
 
 stop: ## Stop the Docker stack
 	@docker compose stop || { echo "❌ Stop failed"; exit 1; }

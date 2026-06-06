@@ -77,9 +77,9 @@ class AppleWalletPassGenerator
             'teamIdentifier' => $this->getString('appleWalletTeamId'),
             'serialNumber' => $data->ticketNumber,
             'organizationName' => $this->getString('walletOrganizationName') ?: 'FIB Booking',
-            'description' => sprintf('Ticket %s — %s', $data->ticketNumber, $data->resourceName),
-            'relevantDate' => $data->startsAt->format('c'),
-            'expirationDate' => $data->endsAt->modify('+1 day')->format('c'),
+            'description' => sprintf('Ticket %s — %s', $data->ticketNumber, $data->window->resourceName),
+            'relevantDate' => $data->window->startsAt->format('c'),
+            'expirationDate' => $data->window->endsAt->modify('+1 day')->format('c'),
             'barcodes' => [
                 [
                     'format' => 'PKBarcodeFormatQR',
@@ -89,11 +89,11 @@ class AppleWalletPassGenerator
             ],
             'eventTicket' => [
                 'primaryFields' => [
-                    ['key' => 'event', 'label' => 'EVENT', 'value' => $data->resourceName],
+                    ['key' => 'event', 'label' => 'EVENT', 'value' => $data->window->resourceName],
                 ],
                 'secondaryFields' => [
-                    ['key' => 'starts', 'label' => 'START', 'value' => $data->startsAt->format('c'), 'dateStyle' => 'PKDateStyleMedium', 'timeStyle' => 'PKDateStyleShort'],
-                    ['key' => 'quantity', 'label' => 'GUESTS', 'value' => (string) $data->quantity],
+                    ['key' => 'starts', 'label' => 'START', 'value' => $data->window->startsAt->format('c'), 'dateStyle' => 'PKDateStyleMedium', 'timeStyle' => 'PKDateStyleShort'],
+                    ['key' => 'quantity', 'label' => 'GUESTS', 'value' => (string) $data->window->quantity],
                 ],
                 'auxiliaryFields' => [
                     ['key' => 'booking', 'label' => 'BOOKING', 'value' => $data->bookingNumber],
@@ -122,6 +122,14 @@ class AppleWalletPassGenerator
             throw new RuntimeException('Apple Wallet certificate could not be unlocked.');
         }
 
+        /** @var array<string, mixed> $certs */
+        $certificate = $certs['cert'] ?? null;
+        $privateKey = $certs['pkey'] ?? null;
+
+        if (!is_string($certificate) || !is_string($privateKey)) {
+            throw new RuntimeException('Apple Wallet certificate bundle is incomplete (cert/pkey missing).');
+        }
+
         $manifestFile = $this->tempFile($manifestJson);
         $signatureFile = tempnam(sys_get_temp_dir(), 'fib-wallet-sig');
         if ($signatureFile === false) {
@@ -132,8 +140,8 @@ class AppleWalletPassGenerator
             $signed = openssl_pkcs7_sign(
                 $manifestFile,
                 $signatureFile,
-                $certs['cert'],
-                [$certs['pkey'], $certPassword],
+                $certificate,
+                [$privateKey, $certPassword],
                 [],
                 PKCS7_BINARY | PKCS7_DETACHED,
                 $wwdrPath,
@@ -148,8 +156,8 @@ class AppleWalletPassGenerator
 
             return $this->extractDerSignature($smime);
         } finally {
-            @unlink($manifestFile);
-            @unlink($signatureFile);
+            $this->removeTempFile($manifestFile);
+            $this->removeTempFile($signatureFile);
         }
     }
 
@@ -201,7 +209,7 @@ class AppleWalletPassGenerator
 
             return $bundle;
         } finally {
-            @unlink($zipPath);
+            $this->removeTempFile($zipPath);
         }
     }
 
@@ -232,6 +240,13 @@ class AppleWalletPassGenerator
         }
 
         return $path;
+    }
+
+    private function removeTempFile(string $path): void
+    {
+        if (is_file($path)) {
+            unlink($path);
+        }
     }
 
     private function resolvePath(string $configured): ?string

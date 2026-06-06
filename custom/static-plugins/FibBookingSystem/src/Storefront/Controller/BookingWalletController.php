@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Storefront\Controller;
 
-use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
+use FibBookingSystem\Core\Content\BookingTicket\BookingTicketEntity;
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
+use FibBookingSystem\Core\Domain\Wallet\TicketWalletData;
 use FibBookingSystem\Core\Domain\Wallet\WalletPassService;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
@@ -28,9 +35,12 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class BookingWalletController extends StorefrontController
 {
+    /**
+     * @param EntityRepository<BookingTicketCollection> $ticketRepository
+     */
     public function __construct(
         private readonly WalletPassService $walletService,
-        private readonly Connection $connection,
+        private readonly EntityRepository $ticketRepository,
         private readonly BookingRateLimiter $rateLimiter,
     ) {
     }
@@ -41,9 +51,9 @@ class BookingWalletController extends StorefrontController
         defaults: ['_httpCache' => false],
         methods: ['GET'],
     )]
-    public function applePass(string $ticketId, Request $request): Response
+    public function applePass(string $ticketId, Request $request, SalesChannelContext $context): Response
     {
-        $data = $this->validateSignedRequest(WalletPassService::PROVIDER_APPLE, $ticketId, $request);
+        $data = $this->validateSignedRequest(WalletPassService::PROVIDER_APPLE, $ticketId, $request, $context);
 
         if (!$this->walletService->isAppleAvailable()) {
             throw new NotFoundHttpException();
@@ -63,9 +73,9 @@ class BookingWalletController extends StorefrontController
         defaults: ['_httpCache' => false],
         methods: ['GET'],
     )]
-    public function googlePass(string $ticketId, Request $request): Response
+    public function googlePass(string $ticketId, Request $request, SalesChannelContext $context): Response
     {
-        $data = $this->validateSignedRequest(WalletPassService::PROVIDER_GOOGLE, $ticketId, $request);
+        $data = $this->validateSignedRequest(WalletPassService::PROVIDER_GOOGLE, $ticketId, $request, $context);
 
         if (!$this->walletService->isGoogleAvailable()) {
             throw new NotFoundHttpException();
@@ -91,7 +101,7 @@ class BookingWalletController extends StorefrontController
             throw new NotFoundHttpException();
         }
 
-        $tickets = $this->fetchCustomerTickets($customer->getId());
+        $tickets = $this->fetchCustomerTickets($customer->getId(), $salesChannelContext);
 
         foreach ($tickets as &$ticket) {
             $ticket['appleParams'] = $this->walletService->isAppleAvailable() && $ticket['hasWalletToken']
@@ -114,40 +124,53 @@ class BookingWalletController extends StorefrontController
     /**
      * @return list<array<string, mixed>>
      */
-    private function fetchCustomerTickets(string $customerId): array
+    /**
+     * @return list<array{ticketId: string, ticketNumber: string, status: string, hasWalletToken: bool, bookingNumber: string, startsAt: string|null, endsAt: string|null, quantity: int, resourceName: string}>
+     */
+    private function fetchCustomerTickets(string $customerId, SalesChannelContext $context): array
     {
-        $rows = $this->connection->fetchAllAssociative(
-            <<<'SQL'
-                SELECT LOWER(HEX(ticket.id)) AS ticket_id, ticket.ticket_number, ticket.status,
-                ticket.scan_token_cipher IS NOT NULL AS has_wallet_token,
-                reservation.booking_number, reservation.starts_at, reservation.ends_at, reservation.quantity,
-                resource.name AS resource_name
-                FROM fib_booking_ticket ticket
-                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-                INNER JOIN fib_booking_resource resource ON resource.id = reservation.resource_id
-                WHERE reservation.customer_id = :customerId
-                AND ticket.status IN ('issued', 'sent', 'scanned')
-                ORDER BY reservation.starts_at DESC
-                LIMIT 100
-            SQL,
-            ['customerId' => Uuid::fromHexToBytes($customerId)],
-        );
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('reservation.customerId', $customerId));
+        $criteria->addFilter(new EqualsAnyFilter('status', ['issued', 'sent', 'scanned']));
+        $criteria->addAssociation('reservation.resource');
+        $criteria->addSorting(new FieldSorting('reservation.startsAt', FieldSorting::DESCENDING));
+        $criteria->setLimit(100);
 
-        return array_map(static fn (array $row): array => [
-            'ticketId' => (string) $row['ticket_id'],
-            'ticketNumber' => (string) $row['ticket_number'],
-            'status' => (string) $row['status'],
-            'hasWalletToken' => (bool) $row['has_wallet_token'],
-            'bookingNumber' => (string) $row['booking_number'],
-            'startsAt' => (string) $row['starts_at'],
-            'endsAt' => (string) $row['ends_at'],
-            'quantity' => (int) $row['quantity'],
-            'resourceName' => (string) $row['resource_name'],
-        ], $rows);
+        $tickets = $this->ticketRepository->search($criteria, $context->getContext())->getEntities();
+
+        // scan_token_cipher is not in the DAL definition (security), so the
+        // wallet-token flag comes from a separate, batched raw lookup that
+        // owns that documented exception.
+        $ticketsWithToken = $this->walletService->ticketsWithWalletToken($tickets->getIds());
+
+        $result = [];
+
+        /** @var BookingTicketEntity $ticket */
+        foreach ($tickets as $ticket) {
+            $reservation = $ticket->getReservation();
+
+            $result[] = [
+                'ticketId' => $ticket->getId(),
+                'ticketNumber' => $ticket->getTicketNumber(),
+                'status' => $ticket->getStatus(),
+                'hasWalletToken' => isset($ticketsWithToken[$ticket->getId()]),
+                'bookingNumber' => (string) $reservation?->getBookingNumber(),
+                'startsAt' => $reservation?->getStartsAt()->format(\DATE_ATOM),
+                'endsAt' => $reservation?->getEndsAt()->format(\DATE_ATOM),
+                'quantity' => (int) $reservation?->getQuantity(),
+                'resourceName' => (string) $reservation?->getResource()?->getName(),
+            ];
+        }
+
+        return $result;
     }
 
-    private function validateSignedRequest(string $provider, string $ticketId, Request $request): \FibBookingSystem\Core\Domain\Wallet\TicketWalletData
-    {
+    private function validateSignedRequest(
+        string $provider,
+        string $ticketId,
+        Request $request,
+        SalesChannelContext $context,
+    ): TicketWalletData {
         $this->rateLimiter->ensureAccepted(BookingRateLimiter::WALLET, $request->getClientIp());
 
         $exp = $request->query->get('exp');
@@ -161,7 +184,7 @@ class BookingWalletController extends StorefrontController
             throw new NotFoundHttpException();
         }
 
-        $data = $this->walletService->loadTicketData($ticketId);
+        $data = $this->walletService->loadTicketData($ticketId, $context->getContext());
 
         if ($data === null) {
             throw new NotFoundHttpException();

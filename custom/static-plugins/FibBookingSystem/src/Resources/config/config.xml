@@ -3,6 +3,20 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
+        <title>Ticket scanning</title>
+        <title lang="de-DE">Ticket-Scan</title>
+
+        <input-field type="bool">
+            <name>scanCheckOutEnabled</name>
+            <label>Enable check-out scanning</label>
+            <label lang="de-DE">Check-out-Scan aktivieren</label>
+            <helpText>Adds a check-out mode to the scanner app. Guests are scanned out when leaving (re-entry stays possible), which powers the dwell-time statistics. Disabled: a ticket is simply consumed by its first scan.</helpText>
+            <helpText lang="de-DE">Ergänzt die Scanner-App um einen Auslass-Modus. Gäste werden beim Verlassen ausgecheckt (Wiedereintritt bleibt möglich) — Grundlage für die Verweildauer-Statistik. Deaktiviert: ein Ticket ist mit dem ersten Scan verbraucht.</helpText>
+            <defaultValue>false</defaultValue>
+        </input-field>
+    </card>
+
+    <card>
         <title>Wallet — General</title>
         <title lang="de-DE">Wallet — Allgemein</title>
 

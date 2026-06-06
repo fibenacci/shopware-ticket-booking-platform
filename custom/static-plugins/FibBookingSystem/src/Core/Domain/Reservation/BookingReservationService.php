@@ -5,11 +5,23 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Reservation;
 
 use DateTimeImmutable;
-use DateTimeInterface;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingHold\BookingHoldCollection;
+use FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollection;
+use FibBookingSystem\Core\Content\BookingReservation\BookingReservationEntity;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use FibBookingSystem\FibBookingException;
+use Psr\Log\LoggerInterface;
+use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\OrderCollection;
+use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -18,50 +30,54 @@ class BookingReservationService
 {
     public const NUMBER_RANGE_TYPE = 'fib_booking_reservation';
 
+    /**
+     * The DBAL connection is used for two things only: the surrounding
+     * transaction and the pessimistic `SELECT … FOR UPDATE` lock on the hold
+     * row — the DAL has no pessimistic locking, and that lock is the
+     * no-overbooking guarantee. Everything else goes through the DAL.
+     *
+     * @param EntityRepository<OrderCollection>              $orderRepository
+     * @param EntityRepository<OrderTransactionCollection>   $orderTransactionRepository
+     * @param EntityRepository<BookingReservationCollection> $reservationRepository
+     * @param EntityRepository<BookingHoldCollection>        $holdRepository
+     */
     public function __construct(
         private readonly Connection $connection,
+        private readonly EntityRepository $orderRepository,
+        private readonly EntityRepository $orderTransactionRepository,
+        private readonly EntityRepository $reservationRepository,
+        private readonly EntityRepository $holdRepository,
         private readonly BookingTicketService $ticketService,
         private readonly NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
     public function convertOrderHolds(string $orderId, Context $context): int
     {
         return $this->connection->transactional(function () use ($orderId, $context): int {
-            $order = $this->connection->fetchAssociative(
-                <<<'SQL'
-                    SELECT `order`.`id`, `order`.`version_id`, `order`.`sales_channel_id`, `order`.`order_customer_id`, `order_customer`.`customer_id`
-                    FROM `order`
-                    LEFT JOIN `order_customer` ON `order_customer`.`id` = `order`.`order_customer_id`
-                    WHERE `order`.`id` = :orderId
-                SQL,
-                ['orderId' => Uuid::fromHexToBytes($orderId)],
-            );
+            $criteria = new Criteria([$orderId]);
+            $criteria->addAssociation('orderCustomer');
+            $criteria->addAssociation('lineItems');
 
-            if ($order === false) {
+            /** @var OrderEntity|null $order */
+            $order = $this->orderRepository->search($criteria, $context)->first();
+
+            if ($order === null) {
                 return 0;
             }
 
-            $lineItems = $this->connection->fetchAllAssociative(
-                <<<'SQL'
-                    SELECT `id`, `version_id`, `payload`
-                    FROM `order_line_item`
-                    WHERE `order_id` = :orderId
-                SQL,
-                ['orderId' => Uuid::fromHexToBytes($orderId)],
-            );
-
             $converted = 0;
 
-            foreach ($lineItems as $lineItem) {
-                $bookingPayload = $this->extractBookingPayload($lineItem['payload']);
+            foreach ($order->getLineItems() ?? [] as $lineItem) {
+                $bookingPayload = $this->extractBookingPayload($lineItem->getPayload());
 
                 if ($bookingPayload === null) {
                     continue;
                 }
 
-                if ($this->convertHold($context, $orderId, $order['version_id'], $order['sales_channel_id'], $lineItem['id'], $lineItem['version_id'], $order['customer_id'], $bookingPayload)) {
+                if ($this->convertHold($context, $order, $lineItem, $bookingPayload)) {
                     ++$converted;
                 }
             }
@@ -72,76 +88,75 @@ class BookingReservationService
 
     public function confirmReservationsForOrder(string $orderId, Context $context): int
     {
-        $reservationIds = $this->connection->fetchFirstColumn(
-            <<<'SQL'
-                SELECT LOWER(HEX(id))
-                FROM fib_booking_reservation
-                WHERE order_id = :orderId
-                AND status IN ('pending_payment', 'draft')
-            SQL,
-            ['orderId' => Uuid::fromHexToBytes($orderId)],
-        );
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('orderId', $orderId));
+        $criteria->addFilter(new EqualsAnyFilter('status', ['pending_payment', 'draft']));
+
+        /** @var array<string> $reservationIds */
+        $reservationIds = $this->reservationRepository->searchIds($criteria, $context)->getIds();
 
         return $this->confirmReservations($reservationIds, $context);
     }
 
     public function confirmReservationsForOrderTransaction(string $orderTransactionId, Context $context): int
     {
-        $orderId = $this->connection->fetchOne(
-            <<<'SQL'
-                SELECT LOWER(HEX(order_id)) FROM order_transaction WHERE id = :transactionId
-            SQL,
-            ['transactionId' => Uuid::fromHexToBytes($orderTransactionId)],
-        );
+        /** @var OrderTransactionEntity|null $transaction */
+        $transaction = $this->orderTransactionRepository
+            ->search(new Criteria([$orderTransactionId]), $context)
+            ->first();
 
-        if (!is_string($orderId) || $orderId === '') {
+        if ($transaction === null) {
             return 0;
         }
 
-        return $this->confirmReservationsForOrder($orderId, $context);
+        return $this->confirmReservationsForOrder($transaction->getOrderId(), $context);
     }
 
     /**
-     * @param array<int, string> $reservationIds
+     * @param array<string> $reservationIds
      */
     private function confirmReservations(array $reservationIds, Context $context): int
     {
+        if ($reservationIds === []) {
+            return 0;
+        }
+
+        // Bulk payload: one write operation for all reservations — single
+        // transaction, single indexer round trip instead of N round trips.
+        $this->reservationRepository->update(
+            array_map(
+                static fn (string $id): array => ['id' => $id, 'status' => 'confirmed'],
+                $reservationIds,
+            ),
+            $context,
+        );
+
+        $reservations = $this->reservationRepository
+            ->search(new Criteria($reservationIds), $context)
+            ->getEntities();
+
         $confirmed = 0;
 
-        foreach ($reservationIds as $reservationId) {
-            if (!is_string($reservationId) || $reservationId === '') {
-                continue;
-            }
-
-            $updated = $this->connection->update('fib_booking_reservation', [
-                'status' => 'confirmed',
-                'updated_at' => $this->formatDateTime(new DateTimeImmutable()),
-            ], [
-                'id' => Uuid::fromHexToBytes($reservationId),
-            ]);
-
-            if ($updated < 1) {
-                continue;
-            }
-
-            $bookingNumber = $this->connection->fetchOne(
-                <<<'SQL'
-                    SELECT booking_number FROM fib_booking_reservation WHERE id = :reservationId
-                SQL,
-                ['reservationId' => Uuid::fromHexToBytes($reservationId)],
+        /** @var BookingReservationEntity $reservation */
+        foreach ($reservations as $reservation) {
+            $this->eventDispatcher->dispatch(
+                new BookingReservationConfirmedEvent($reservation->getId(), $reservation->getBookingNumber(), $context),
+                BookingReservationConfirmedEvent::EVENT_NAME,
             );
 
-            if (is_string($bookingNumber)) {
-                $this->eventDispatcher->dispatch(
-                    new BookingReservationConfirmedEvent($reservationId, $bookingNumber, $context),
-                    BookingReservationConfirmedEvent::EVENT_NAME,
-                );
-            }
-
             try {
-                $this->ticketService->issueTicket($reservationId, $context);
-            } catch (FibBookingException) {
-                // A valid ticket may already exist after a retry or duplicated state event.
+                $this->ticketService->issueTicket($reservation->getId(), $context);
+            } catch (FibBookingException $exception) {
+                // Only "already exists" is expected (retry / duplicated state
+                // event) — anything else must surface in the logs, otherwise
+                // paid orders silently end up without a ticket.
+                if ($exception->getErrorCode() !== FibBookingException::TICKET_ALREADY_EXISTS) {
+                    $this->logger->error('Ticket issuing failed for reservation {reservationId}: {message}', [
+                        'reservationId' => $reservation->getId(),
+                        'message' => $exception->getMessage(),
+                        'exception' => $exception,
+                    ]);
+                }
             }
 
             ++$confirmed;
@@ -151,22 +166,21 @@ class BookingReservationService
     }
 
     /**
+     * @param array<string, mixed>|null $payload
+     *
      * @return array{holdId: string, holdToken: string}|null
      */
-    private function extractBookingPayload(mixed $payload): ?array
+    private function extractBookingPayload(?array $payload): ?array
     {
-        if (!is_string($payload) || $payload === '') {
+        if ($payload === null) {
             return null;
         }
 
-        $decoded = json_decode($payload, true);
+        $nested = $payload['fibBooking'] ?? null;
+        $nested = is_array($nested) ? $nested : [];
 
-        if (!is_array($decoded)) {
-            return null;
-        }
-
-        $holdId = $decoded['bookingHoldId'] ?? $decoded['fibBooking']['holdId'] ?? null;
-        $holdToken = $decoded['bookingHoldToken'] ?? $decoded['fibBooking']['holdToken'] ?? null;
+        $holdId = $payload['bookingHoldId'] ?? $nested['holdId'] ?? null;
+        $holdToken = $payload['bookingHoldToken'] ?? $nested['holdToken'] ?? null;
 
         if (!is_string($holdId) || !is_string($holdToken) || $holdId === '' || $holdToken === '') {
             return null;
@@ -183,20 +197,21 @@ class BookingReservationService
      */
     private function convertHold(
         Context $context,
-        string $orderId,
-        mixed $orderVersionId,
-        mixed $salesChannelId,
-        mixed $orderLineItemId,
-        mixed $orderLineItemVersionId,
-        mixed $customerId,
+        OrderEntity $order,
+        OrderLineItemEntity $lineItem,
         array $bookingPayload,
     ): bool {
+        // Deliberate raw SQL: pessimistic row lock so concurrent conversions
+        // of the same hold (double submit, webhook retry) serialize here. The
+        // DAL reads/writes below run on the same connection and therefore
+        // inside the same transaction/lock scope.
+        /** @var array{id: string, resource_id: string, status: string, expires_at: string, starts_at: string, ends_at: string, quantity: int|numeric-string, payload: string|null}|false $hold */
         $hold = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT *
-                FROM fib_booking_hold
-                WHERE id = :holdId
-                AND token = :holdToken
+                SELECT LOWER(HEX(`id`)) AS `id`, LOWER(HEX(`resource_id`)) AS `resource_id`,
+                       `status`, `expires_at`, `starts_at`, `ends_at`, `quantity`, `payload`
+                FROM `fib_booking_hold`
+                WHERE `id` = :holdId AND `token` = :holdToken
                 FOR UPDATE
             SQL,
             [
@@ -209,57 +224,47 @@ class BookingReservationService
             return false;
         }
 
-        if (new DateTimeImmutable((string) $hold['expires_at']) <= new DateTimeImmutable()) {
+        if (new DateTimeImmutable($hold['expires_at']) <= new DateTimeImmutable()) {
             return false;
         }
 
-        $existingReservationId = $this->connection->fetchOne(
-            <<<'SQL'
-                SELECT id FROM fib_booking_reservation WHERE hold_id = :holdId
-            SQL,
-            ['holdId' => Uuid::fromHexToBytes($bookingPayload['holdId'])],
-        );
+        $existingCriteria = new Criteria();
+        $existingCriteria->addFilter(new EqualsFilter('holdId', $bookingPayload['holdId']));
 
-        if ($existingReservationId !== false) {
+        if ($this->reservationRepository->searchIds($existingCriteria, $context)->firstId() !== null) {
             return false;
         }
 
-        $reservationId = Uuid::randomHex();
+        $this->reservationRepository->create([
+            [
+                'id' => Uuid::randomHex(),
+                'resourceId' => $hold['resource_id'],
+                'orderId' => $order->getId(),
+                'orderVersionId' => $order->getVersionId(),
+                'orderLineItemId' => $lineItem->getId(),
+                'orderLineItemVersionId' => $lineItem->getVersionId(),
+                'customerId' => $order->getOrderCustomer()?->getCustomerId(),
+                'holdId' => $bookingPayload['holdId'],
+                'bookingNumber' => $this->numberRangeValueGenerator->getValue(
+                    self::NUMBER_RANGE_TYPE,
+                    $context,
+                    $order->getSalesChannelId(),
+                ),
+                'startsAt' => $hold['starts_at'],
+                'endsAt' => $hold['ends_at'],
+                'quantity' => (int) $hold['quantity'],
+                'status' => 'pending_payment',
+                'payload' => is_string($hold['payload']) ? json_decode($hold['payload'], true) : null,
+            ],
+        ], $context);
 
-        $this->connection->insert('fib_booking_reservation', [
-            'id' => Uuid::fromHexToBytes($reservationId),
-            'resource_id' => $hold['resource_id'],
-            'order_id' => Uuid::fromHexToBytes($orderId),
-            'order_version_id' => $orderVersionId,
-            'order_line_item_id' => $orderLineItemId,
-            'order_line_item_version_id' => $orderLineItemVersionId,
-            'customer_id' => $customerId,
-            'hold_id' => Uuid::fromHexToBytes($bookingPayload['holdId']),
-            'booking_number' => $this->numberRangeValueGenerator->getValue(
-                self::NUMBER_RANGE_TYPE,
-                $context,
-                is_string($salesChannelId) ? Uuid::fromBytesToHex($salesChannelId) : null,
-            ),
-            'starts_at' => $hold['starts_at'],
-            'ends_at' => $hold['ends_at'],
-            'quantity' => $hold['quantity'],
-            'status' => 'pending_payment',
-            'payload' => $hold['payload'],
-            'created_at' => $this->formatDateTime(new DateTimeImmutable()),
-        ]);
-
-        $this->connection->update('fib_booking_hold', [
-            'status' => 'converted',
-            'updated_at' => $this->formatDateTime(new DateTimeImmutable()),
-        ], [
-            'id' => Uuid::fromHexToBytes($bookingPayload['holdId']),
-        ]);
+        $this->holdRepository->update([
+            [
+                'id' => $bookingPayload['holdId'],
+                'status' => 'converted',
+            ],
+        ], $context);
 
         return true;
-    }
-
-    private function formatDateTime(DateTimeInterface $dateTime): string
-    {
-        return $dateTime->format('Y-m-d H:i:s.v');
     }
 }

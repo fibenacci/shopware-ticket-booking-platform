@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="FIB Booking PHPMD"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 http://pmd.sf.net/ruleset_xml_schema.xsd">
+    <description>
+        Mess detection for the maintained plugins. Runs as the LAST quality
+        step after PHP-CS-Fixer and PHPStan (make phpmd / CI quality job).
+        Exclusions are Shopware-idiomatic patterns, each justified inline.
+    </description>
+
+    <rule ref="rulesets/unusedcode.xml">
+        <!-- Shopware interface contracts force unused parameters: CartProcessor
+             ::process(original, ...), AbstractCmsElementResolver::collect/enrich,
+             MigrationStep::updateDestructive(Connection). Real dead parameters
+             are still caught by PHPStan level max. -->
+        <exclude name="UnusedFormalParameter"/>
+    </rule>
+
+    <rule ref="rulesets/codesize.xml">
+        <!-- DAL entities mirror their table: one property per column by design
+             (e.g. BookingReservationEntity). Schema width is governed by the
+             migrations, not by a field count on the entity class. -->
+        <exclude name="TooManyFields"/>
+    </rule>
+
+    <rule ref="rulesets/design.xml">
+        <!-- Shopware services are constructor-injected aggregates; the DAL
+             seeder legitimately touches many repositories. Coupling is
+             reviewed via architecture docs, not a hard count. -->
+        <exclude name="CouplingBetweenObjects"/>
+    </rule>
+
+    <rule ref="rulesets/cleancode.xml">
+        <!-- Shopware idiom: Uuid::, Criteria filters, Defaults:: etc. -->
+        <exclude name="StaticAccess"/>
+        <!-- guard-clause style is enforced by review; else is not a smell per se -->
+        <exclude name="ElseExpression"/>
+        <!-- e.g. seed(withReservation:), explicit named booleans are fine -->
+        <exclude name="BooleanArgumentFlag"/>
+    </rule>
+
+    <rule ref="rulesets/naming.xml">
+        <exclude name="ShortVariable"/>
+        <exclude name="LongVariable"/>
+        <exclude name="LongClassName"/>
+    </rule>
+    <rule ref="rulesets/naming.xml/LongClassName">
+        <properties>
+            <!-- Shopware migrations carry a unix-timestamp prefix by convention -->
+            <property name="maximum" value="55"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/naming.xml/ShortVariable">
+        <properties>
+            <!-- established idioms in this codebase -->
+            <property name="exceptions" value="id,io,e,to"/>
+        </properties>
+    </rule>
+    <rule ref="rulesets/naming.xml/LongVariable">
+        <properties>
+            <!-- Shopware repository/service names are descriptive by design -->
+            <property name="maximum" value="45"/>
+        </properties>
+    </rule>
+</ruleset>

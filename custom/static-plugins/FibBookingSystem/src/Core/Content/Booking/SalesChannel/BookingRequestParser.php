@@ -40,7 +40,11 @@ final class BookingRequestParser
             throw FibBookingException::invalidPayload('body', 'expected a JSON object');
         }
 
-        return $decoded;
+        // JSON objects decode to string-keyed arrays.
+        /** @var array<string, mixed> $payload */
+        $payload = $decoded;
+
+        return $payload;
     }
 
     /**

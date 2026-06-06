@@ -23,9 +23,69 @@ class ProductBookingConfigEntity extends Entity
 
     protected int $slotMinutes = 60;
 
+    protected string $validityMode = 'slot';
+
+    protected ?string $validityDuration = null;
+
+    protected ?string $validityAnchor = null;
+
+    protected string $entryPolicy = 'single';
+
+    protected ?int $maxEntriesPerDay = null;
+
     protected ?ProductEntity $product = null;
 
     protected ?BookingResourceEntity $resource = null;
+
+    public function getValidityMode(): string
+    {
+        return $this->validityMode;
+    }
+
+    public function setValidityMode(string $validityMode): void
+    {
+        $this->validityMode = $validityMode;
+    }
+
+    public function getValidityDuration(): ?string
+    {
+        return $this->validityDuration;
+    }
+
+    public function setValidityDuration(?string $validityDuration): void
+    {
+        $this->validityDuration = $validityDuration;
+    }
+
+    public function getValidityAnchor(): ?string
+    {
+        return $this->validityAnchor;
+    }
+
+    public function setValidityAnchor(?string $validityAnchor): void
+    {
+        $this->validityAnchor = $validityAnchor;
+    }
+
+    public function getEntryPolicy(): string
+    {
+        return $this->entryPolicy;
+    }
+
+    public function setEntryPolicy(string $entryPolicy): void
+    {
+        $this->entryPolicy = $entryPolicy;
+    }
+
+    public function getMaxEntriesPerDay(): ?int
+    {
+        return $this->maxEntriesPerDay;
+    }
+
+    public function setMaxEntriesPerDay(?int $maxEntriesPerDay): void
+    {
+        $this->maxEntriesPerDay = $maxEntriesPerDay;
+    }
 
     public function getProductId(): string
     {
@@ -75,5 +135,15 @@ class ProductBookingConfigEntity extends Entity
     public function setSlotMinutes(int $slotMinutes): void
     {
         $this->slotMinutes = $slotMinutes;
+    }
+
+    public function getProduct(): ?ProductEntity
+    {
+        return $this->product;
+    }
+
+    public function setProduct(?ProductEntity $product): void
+    {
+        $this->product = $product;
     }
 }

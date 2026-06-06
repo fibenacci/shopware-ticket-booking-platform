@@ -17,10 +17,16 @@ Configuration: `custom/static-plugins/FibBookingSystem/phpunit.xml.dist`
 ## Static analysis & code style
 
 ```bash
-make phpstan            # PHPStan level 6 (.build/phpstan.neon)
+make quality            # full chain in CI order: cs-fixer check → phpstan → phpmd
+make phpstan            # PHPStan level MAX, no baseline (.build/phpstan.neon)
 make php-cs-fixer       # auto-fix (.build/php-cs-fixer.php, @PSR12 + @Symfony)
 make php-cs-fixer-check # dry-run — identical to the CI check
+make phpmd              # mess detection (.build/phpmd.xml) — last quality step
 ```
+
+PHPMD exclusions are Shopware-idiomatic patterns, justified inline in the
+ruleset and via `@SuppressWarnings` docblocks at the call sites (interface
+contracts, DAL entities, DI aggregates).
 
 ## E2E (Playwright)
 

@@ -17,6 +17,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Field\IntField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\ManyToOneAssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\OneToOneAssociationField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\ReferenceVersionField;
+use Shopware\Core\Framework\DataAbstractionLayer\Field\StringField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\UpdatedAtField;
 use Shopware\Core\Framework\DataAbstractionLayer\FieldCollection;
 
@@ -48,6 +49,11 @@ class ProductBookingConfigDefinition extends EntityDefinition
             (new FkField('resource_id', 'resourceId', BookingResourceDefinition::class))->addFlags(new Required()),
             (new BoolField('enabled', 'enabled'))->addFlags(new Required()),
             (new IntField('slot_minutes', 'slotMinutes'))->addFlags(new Required()),
+            (new StringField('validity_mode', 'validityMode'))->addFlags(new Required()),
+            new StringField('validity_duration', 'validityDuration'),
+            new StringField('validity_anchor', 'validityAnchor'),
+            (new StringField('entry_policy', 'entryPolicy'))->addFlags(new Required()),
+            new IntField('max_entries_per_day', 'maxEntriesPerDay'),
             new OneToOneAssociationField('product', 'product_id', 'id', ProductDefinition::class, false),
             new ManyToOneAssociationField('resource', 'resource_id', BookingResourceDefinition::class, 'id'),
             new CreatedAtField(),

@@ -1,0 +1,78 @@
+{# Ticket document — rendered to PDF (dompdf): keep CSS inline and simple. #}
+<!DOCTYPE html>
+<html lang="{{ order.language.locale.code|default('en-GB') }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ config.documentNumber }}</title>
+    <style>
+        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color: #1a1a1a; margin: 32px; }
+        .doc-header { border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 24px; }
+        .doc-header h1 { font-size: 20px; margin: 0 0 4px 0; }
+        .doc-meta { color: #555; font-size: 11px; }
+        .ticket { border: 1px solid #999; border-radius: 6px; padding: 16px; margin-bottom: 20px; page-break-inside: avoid; }
+        .ticket-grid { width: 100%; }
+        .ticket-grid td { vertical-align: top; }
+        .ticket h2 { font-size: 15px; margin: 0 0 10px 0; }
+        .ticket table.details td { padding: 2px 12px 2px 0; font-size: 12px; }
+        .ticket .label { color: #555; }
+        .qr { text-align: right; }
+        .qr img { width: 140px; height: 140px; }
+        .qr .ticket-number { font-size: 13px; font-weight: bold; text-align: center; margin-top: 4px; }
+        .doc-footer { margin-top: 28px; font-size: 10px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="doc-header">
+        <h1>{{ 'fib-booking.document.title'|trans|default('Ticket') }} {{ config.documentNumber }}</h1>
+        <div class="doc-meta">
+            {{ order.salesChannel.translated.name|default('') }}
+            &nbsp;·&nbsp; {{ 'fib-booking.document.order'|trans|default('Order') }} {{ order.orderNumber }}
+            &nbsp;·&nbsp; {{ config.documentDate|format_date('medium', locale=order.language.locale.code|default('en-GB')) }}
+        </div>
+    </div>
+
+    {% for ticket in tickets %}
+        <div class="ticket">
+            <table class="ticket-grid">
+                <tr>
+                    <td>
+                        <h2>{{ ticket.resourceName|default('—') }}</h2>
+                        <table class="details">
+                            <tr>
+                                <td class="label">{{ 'fib-booking.document.booking'|trans|default('Booking') }}</td>
+                                <td>{{ ticket.bookingNumber|default('—') }}</td>
+                            </tr>
+                            {% if ticket.startsAt %}
+                                <tr>
+                                    <td class="label">{{ 'fib-booking.document.start'|trans|default('Start') }}</td>
+                                    <td>{{ ticket.startsAt|format_datetime('medium', 'short', locale=order.language.locale.code|default('en-GB')) }}</td>
+                                </tr>
+                            {% endif %}
+                            {% if ticket.endsAt %}
+                                <tr>
+                                    <td class="label">{{ 'fib-booking.document.end'|trans|default('End') }}</td>
+                                    <td>{{ ticket.endsAt|format_datetime('medium', 'short', locale=order.language.locale.code|default('en-GB')) }}</td>
+                                </tr>
+                            {% endif %}
+                            <tr>
+                                <td class="label">{{ 'fib-booking.document.guest'|trans|default('Guest') }}</td>
+                                <td>{{ order.orderCustomer.firstName }} {{ order.orderCustomer.lastName }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class="qr">
+                        {% if ticket.qrCodeDataUri %}
+                            <img src="{{ ticket.qrCodeDataUri }}" alt="QR {{ ticket.number }}">
+                        {% endif %}
+                        <div class="ticket-number">{{ ticket.number }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    {% endfor %}
+
+    <div class="doc-footer">
+        {{ 'fib-booking.document.footer'|trans|default('Please present the QR code at the entrance. Each code is valid once.') }}
+    </div>
+</body>
+</html>

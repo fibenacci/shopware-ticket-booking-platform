@@ -46,6 +46,8 @@ jobs:
                 run: make php-cs-fixer-check
             -   name: PHPStan
                 run: make phpstan
+            -   name: PHPMD
+                run: make phpmd
 
     lint:
         name: JS/TS Lint
@@ -59,6 +61,7 @@ jobs:
                     cache: npm
                     cache-dependency-path: |
                         custom/static-plugins/FibBookingSystem/apps/scanner/package-lock.json
+                        custom/static-plugins/FibBookingSystem/src/Resources/app/administration/package-lock.json
                         custom/static-plugins/FibBookingSystem/package-lock.json
 
             -   id: scanner_build
@@ -73,6 +76,13 @@ jobs:
                 working-directory: custom/static-plugins/FibBookingSystem/apps/scanner
                 run: npm test
 
+            -   id: admin_tests
+                name: Admin extension — vitest unit tests
+                working-directory: custom/static-plugins/FibBookingSystem/src/Resources/app/administration
+                run: |
+                    npm ci
+                    npm test
+
             -   id: node_syntax
                 name: Plugin storefront JS — syntax check
                 run: .github/scripts/check-plugin-js.sh
@@ -83,6 +93,7 @@ jobs:
                     .github/scripts/gate.sh "Lint failures — see the steps above." \
                         "Scanner app build=${{ steps.scanner_build.outcome }}" \
                         "Scanner app tests=${{ steps.scanner_tests.outcome }}" \
+                        "Admin extension tests=${{ steps.admin_tests.outcome }}" \
                         "Plugin JS syntax=${{ steps.node_syntax.outcome }}"
 
     composer-audit:

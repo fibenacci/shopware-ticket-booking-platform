@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Ticket;
 
 use DateTimeImmutable;
-use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollection;
+use FibBookingSystem\Core\Content\BookingReservation\BookingReservationEntity;
+use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
 use FibBookingSystem\Core\Domain\Wallet\WalletPassService;
 use Shopware\Core\Content\Mail\Service\AbstractMailService;
 use Shopware\Core\Content\MailTemplate\MailTemplateCollection;
+use Shopware\Core\Content\MailTemplate\MailTemplateEntity;
+use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\Uuid\Uuid;
+use Shopware\Core\System\SalesChannel\Aggregate\SalesChannelDomain\SalesChannelDomainCollection;
+use Shopware\Core\System\SalesChannel\Aggregate\SalesChannelDomain\SalesChannelDomainEntity;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class BookingTicketMailSubscriber implements EventSubscriberInterface
@@ -21,13 +26,19 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
     private const MAIL_TEMPLATE_TYPE = 'fib_booking_ticket_mail';
 
     /**
-     * @param EntityRepository<MailTemplateCollection> $mailTemplateRepository
+     * @param EntityRepository<BookingReservationCollection> $reservationRepository
+     * @param EntityRepository<MailTemplateCollection>       $mailTemplateRepository
+     * @param EntityRepository<SalesChannelDomainCollection> $salesChannelDomainRepository
+     * @param EntityRepository<BookingTicketCollection>      $ticketRepository
      */
     public function __construct(
-        private readonly Connection $connection,
         private readonly AbstractMailService $mailService,
+        private readonly EntityRepository $reservationRepository,
         private readonly EntityRepository $mailTemplateRepository,
+        private readonly EntityRepository $salesChannelDomainRepository,
+        private readonly EntityRepository $ticketRepository,
         private readonly WalletPassService $walletService,
+        private readonly TicketDocumentService $ticketDocumentService,
     ) {
     }
 
@@ -41,78 +52,95 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
     public function sendTicketMail(BookingTicketIssuedEvent $event): void
     {
         $context = $event->getContext();
-        $reservation = $this->fetchReservationMailData($event->getReservationId());
+        $reservation = $this->fetchReservationMailData($event->getReservationId(), $context);
 
-        if ($reservation === null || !is_string($reservation['email']) || $reservation['email'] === '') {
+        if ($reservation === null) {
             return;
         }
 
-        $templateId = $this->fetchTemplateId($context);
+        $customer = $reservation->getCustomer();
+        $email = $customer?->getEmail();
 
-        if ($templateId === null) {
+        if ($customer === null || !is_string($email) || $email === '') {
+            return;
+        }
+
+        $template = $this->fetchTemplate($context);
+
+        if ($template === null) {
             return;
         }
 
         $ticket = $event->getTicket();
+        $salesChannelId = $customer->getSalesChannelId();
 
+        // MailService does NOT resolve template content from a templateId —
+        // subject/sender/content must be passed in resolved form (the same
+        // contract Shopware's own SendMailAction fulfills).
         $data = [
             'recipients' => [
-                $reservation['email'] => trim(sprintf('%s %s', (string) $reservation['first_name'], (string) $reservation['last_name'])),
+                $email => trim(sprintf('%s %s', $customer->getFirstName(), $customer->getLastName())),
             ],
-            'salesChannelId' => $reservation['sales_channel_id'] ? Uuid::fromBytesToHex($reservation['sales_channel_id']) : null,
-            'templateId' => $templateId,
+            'salesChannelId' => $salesChannelId,
+            'templateId' => $template->getId(),
+            'subject' => $template->getTranslation('subject'),
+            'senderName' => $template->getTranslation('senderName'),
+            'contentHtml' => $template->getTranslation('contentHtml'),
+            'contentPlain' => $template->getTranslation('contentPlain'),
         ];
+
+        // Attach the ticket PDF (QR codes) — same document that appears in
+        // the administration order detail.
+        $orderId = $reservation->getOrderId();
+
+        if (is_string($orderId)) {
+            $document = $this->ticketDocumentService->getOrderTicketPdf($orderId, $context);
+
+            if ($document !== null) {
+                $data['binAttachments'] = [
+                    [
+                        'content' => $document->getContent(),
+                        'fileName' => $document->getName(),
+                        'mimeType' => $document->getContentType(),
+                    ],
+                ];
+            }
+        }
 
         $templateData = [
             'booking' => [
-                'number' => $reservation['booking_number'],
-                'startsAt' => $reservation['starts_at'],
-                'endsAt' => $reservation['ends_at'],
+                'number' => $reservation->getBookingNumber(),
+                'startsAt' => $reservation->getStartsAt(),
+                'endsAt' => $reservation->getEndsAt(),
             ],
             'ticket' => [
                 'number' => $ticket->getTicketNumber(),
                 'qrPayload' => $ticket->getQrPayload(),
                 'qrCodeDataUri' => $ticket->getQrCodeDataUri(),
             ],
-            'wallet' => $this->buildWalletTemplateData(
-                $ticket->getId(),
-                $reservation['sales_channel_id'] ?? null,
-            ),
+            'wallet' => $this->buildWalletTemplateData($ticket->getId(), $salesChannelId, $context),
         ];
 
         $this->mailService->send($data, $context, $templateData);
 
-        $this->connection->update('fib_booking_ticket', [
-            'status' => 'sent',
-            'sent_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s.v'),
-            'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s.v'),
-        ], [
-            'id' => Uuid::fromHexToBytes($ticket->getId()),
-        ]);
+        $this->ticketRepository->update([
+            [
+                'id' => $ticket->getId(),
+                'status' => 'sent',
+                'sentAt' => (new DateTimeImmutable())->format(Defaults::STORAGE_DATE_TIME_FORMAT),
+            ],
+        ], $context);
     }
 
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function fetchReservationMailData(string $reservationId): ?array
+    private function fetchReservationMailData(string $reservationId, Context $context): ?BookingReservationEntity
     {
-        $data = $this->connection->fetchAssociative(
-            <<<'SQL'
-                SELECT reservation.booking_number,
-                reservation.starts_at,
-                reservation.ends_at,
-                customer.email,
-                customer.first_name,
-                customer.last_name,
-                customer.sales_channel_id
-                FROM fib_booking_reservation reservation
-                LEFT JOIN customer customer ON customer.id = reservation.customer_id
-                WHERE reservation.id = :reservationId
-            SQL,
-            ['reservationId' => Uuid::fromHexToBytes($reservationId)],
-        );
+        $criteria = new Criteria([$reservationId]);
+        $criteria->addAssociation('customer');
 
-        return $data === false ? null : $data;
+        /** @var BookingReservationEntity|null $reservation */
+        $reservation = $this->reservationRepository->search($criteria, $context)->first();
+
+        return $reservation;
     }
 
     /**
@@ -122,9 +150,9 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
      *
      * @return array{appleUrl: string|null, googleUrl: string|null, accountUrl: string|null}
      */
-    private function buildWalletTemplateData(string $ticketId, mixed $salesChannelIdBytes): array
+    private function buildWalletTemplateData(string $ticketId, ?string $salesChannelId, Context $context): array
     {
-        $baseUrl = is_string($salesChannelIdBytes) ? $this->fetchSalesChannelBaseUrl($salesChannelIdBytes) : null;
+        $baseUrl = is_string($salesChannelId) ? $this->fetchSalesChannelBaseUrl($salesChannelId, $context) : null;
 
         if ($baseUrl === null) {
             return ['appleUrl' => null, 'googleUrl' => null, 'accountUrl' => null];
@@ -149,30 +177,43 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         ];
     }
 
-    private function fetchSalesChannelBaseUrl(string $salesChannelIdBytes): ?string
+    private function fetchSalesChannelBaseUrl(string $salesChannelId, Context $context): ?string
     {
-        $url = $this->connection->fetchOne(
-            <<<'SQL'
-                SELECT url FROM sales_channel_domain
-                WHERE sales_channel_id = :salesChannelId AND url LIKE 'http%'
-                ORDER BY url LIKE 'https%' DESC
-                LIMIT 1
-            SQL,
-            ['salesChannelId' => $salesChannelIdBytes],
-        );
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('salesChannelId', $salesChannelId));
 
-        return is_string($url) && $url !== '' ? rtrim($url, '/') : null;
+        $domains = $this->salesChannelDomainRepository->search($criteria, $context)->getEntities();
+
+        // ORDER BY url LIKE 'https%' is not expressible in DAL — prefer an
+        // https domain, otherwise fall back to the first http one.
+        $fallback = null;
+
+        /** @var SalesChannelDomainEntity $domain */
+        foreach ($domains as $domain) {
+            $url = $domain->getUrl();
+
+            if (str_starts_with($url, 'https')) {
+                return rtrim($url, '/');
+            }
+
+            if ($fallback === null && str_starts_with($url, 'http')) {
+                $fallback = $url;
+            }
+        }
+
+        return $fallback !== null ? rtrim($fallback, '/') : null;
     }
 
-    private function fetchTemplateId(Context $context): ?string
+    private function fetchTemplate(Context $context): ?MailTemplateEntity
     {
         $criteria = (new Criteria())
             ->addAssociation('mailTemplateType')
             ->addFilter(new EqualsFilter('mailTemplateType.technicalName', self::MAIL_TEMPLATE_TYPE))
             ->setLimit(1);
 
-        $templateId = $this->mailTemplateRepository->searchIds($criteria, $context)->firstId();
+        /** @var MailTemplateEntity|null $template */
+        $template = $this->mailTemplateRepository->search($criteria, $context)->first();
 
-        return is_string($templateId) ? $templateId : null;
+        return $template;
     }
 }

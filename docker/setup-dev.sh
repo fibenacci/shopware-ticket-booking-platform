@@ -13,7 +13,10 @@ BOLD='\033[1m'
 
 DOMAIN="${VIRTUAL_HOST:-booking.docker}"
 DOMAIN="${DOMAIN%%,*}"
-LOCAL_URL="http://${DOMAIN}"
+# https is canonical (camera/secure-context parity with prod — certs come
+# from docker/dev-certs.sh); a plain-http domain stays as fallback.
+LOCAL_URL="https://${DOMAIN}"
+FALLBACK_URL="http://${DOMAIN}"
 
 print_step()    { echo -e "${BLUE}▶${NC} ${BOLD}$1${NC}"; }
 print_success() { echo -e "${GREEN}✓${NC} $1"; }
@@ -64,6 +67,17 @@ install_plugin() {
 print_step "Installing + activating plugins..."
 install_plugin FibBookingSystem
 install_plugin FibBookingDemoData
+# Open-source platform plugins — prod installs these via the deployment
+# helper (.shopware-project.yml); keep dev at parity.
+install_plugin FroshAltchaCaptcha
+install_plugin FroshTools
+install_plugin FroshPlatformMailArchive
+install_plugin FroshPlatformHtmlMinify
+install_plugin SwagPayPal
+
+print_step "Activating bot protection (honeypot + ALTCHA, see docs/Bot-Protection.md)..."
+sh bin/activate-bot-protection.sh >/dev/null && print_success "Captchas active" \
+    || print_warning "Captcha activation failed — run 'sh bin/activate-bot-protection.sh' manually"
 
 print_step "Seeding booking demo data (products, slots, packages, homepage calendar)..."
 bin/console fib-booking:demodata --no-interaction || print_warning "Demo data seeding failed — run 'make seed-booking' manually"
@@ -77,9 +91,21 @@ print_success "Admin user configured"
 print_step "Updating sales channel domain to ${DOMAIN}..."
 bin/console sales-channel:update:domain "${DOMAIN}" --no-interaction >/dev/null || true
 # sales-channel:update:domain only swaps the host and keeps a stale port —
-# normalize storefront domains to the plain local URL.
-mysql -hmariadb -uroot -proot shopware -e "UPDATE sales_channel_domain SET url='${LOCAL_URL}' WHERE url LIKE 'http%';" 2>/dev/null || true
-print_success "Sales channel domain updated"
+# promote ONE http domain to the canonical https URL (skip when it exists) …
+mysql -hmariadb -uroot -proot shopware -e "
+    UPDATE sales_channel_domain SET url='${LOCAL_URL}'
+    WHERE url LIKE 'http%' AND url != '${LOCAL_URL}'
+      AND NOT EXISTS (SELECT 1 FROM (SELECT url FROM sales_channel_domain) d WHERE d.url='${LOCAL_URL}')
+    LIMIT 1;" 2>/dev/null || true
+# … and make sure the plain-http fallback domain exists alongside it.
+mysql -hmariadb -uroot -proot shopware -e "
+    INSERT INTO sales_channel_domain (id, sales_channel_id, language_id, url, currency_id, snippet_set_id, created_at)
+    SELECT UNHEX(REPLACE(UUID(),'-','')), sales_channel_id, language_id, '${FALLBACK_URL}', currency_id, snippet_set_id, NOW()
+    FROM sales_channel_domain
+    WHERE url='${LOCAL_URL}'
+      AND NOT EXISTS (SELECT 1 FROM (SELECT url FROM sales_channel_domain) d WHERE d.url='${FALLBACK_URL}')
+    LIMIT 1;" 2>/dev/null || true
+print_success "Sales channel domains updated (${LOCAL_URL} + ${FALLBACK_URL})"
 
 print_step "Installing assets + compiling theme..."
 bin/console assets:install --no-interaction >/dev/null

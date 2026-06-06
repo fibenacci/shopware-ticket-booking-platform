@@ -21,6 +21,34 @@ This codebase deliberately starts as a self-hosted Shopware plugin. A later SaaS
 - Side effects such as mail, webhooks and calendar sync will later run through events / the message queue.
 - Admin actions must become auditable in the long run.
 
+## DAL-first policy (DBAL exceptions)
+
+All persistence goes through the Shopware DAL. Raw DBAL is allowed ONLY for
+the following documented cases — each call site carries a justification
+docblock referencing this section:
+
+1. **Pessimistic locks**: `SELECT … FOR UPDATE` on resources/holds/
+   reservations/tickets — the DAL has no pessimistic locking, and these locks
+   ARE the no-overbooking / no-double-scan guarantee
+   (`BookingHoldService`, `BookingReservationService`, `TicketScanService`,
+   `BookingTicketService`).
+2. **The concurrency core's reads**: every read feeding the overbooking
+   decision inside the lock scope (`AvailabilityService`) stays on the same
+   raw connection — one cohesive serialization path, no DAL/SQL mix.
+3. **Security-excluded column**: `scan_token_cipher` is intentionally not
+   part of the DAL definition so it can never leak through the Admin API;
+   reading/writing it is raw by design (`BookingTicketService` insert,
+   `WalletPassService`, `BookingTicketRenderer`).
+4. **Read models & set-based maintenance**: joined aggregate subqueries the
+   DAL cannot express (`BookingCalendarService` month view,
+   `BookingStatisticsService` purchase/dwell-time aggregation) and
+   scheduled-task bulk flips with no cache/index relevance
+   (`BookingHoldExpirationService`) — same pattern Shopware core uses.
+
+Migrations and the plugin uninstall (`DROP TABLE`) use the connection as
+Shopware's own APIs prescribe. Everything else — CRUD, lookups, status
+transitions, seeding — is DAL.
+
 ## Module structure
 
 ```text

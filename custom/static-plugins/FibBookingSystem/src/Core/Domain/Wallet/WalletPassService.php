@@ -5,9 +5,17 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Wallet;
 
 use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
+use FibBookingSystem\Core\Content\BookingTicket\BookingTicketEntity;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use RuntimeException;
+use Shopware\Core\Checkout\Customer\CustomerEntity;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Uuid\Uuid;
 
 /**
@@ -20,8 +28,17 @@ class WalletPassService
     public const PROVIDER_GOOGLE = 'google';
     public const DEFAULT_LINK_TTL_DAYS = 90;
 
+    /**
+     * The DBAL connection is used for one thing only: reading the
+     * scan_token_cipher column, which is deliberately NOT part of the DAL
+     * definition so the secret never leaks through the Admin API (see plugin
+     * Security.md). Everything else goes through the DAL.
+     *
+     * @param EntityRepository<BookingTicketCollection> $ticketRepository
+     */
     public function __construct(
         private readonly Connection $connection,
+        private readonly EntityRepository $ticketRepository,
         private readonly TokenCipher $tokenCipher,
         private readonly AppleWalletPassGenerator $appleGenerator,
         private readonly GoogleWalletLinkGenerator $googleGenerator,
@@ -75,59 +92,48 @@ class WalletPassService
      * not exist, is not in a pass-worthy state, or predates wallet support
      * (no encrypted token stored).
      */
-    public function loadTicketData(string $ticketId): ?TicketWalletData
+    public function loadTicketData(string $ticketId, Context $context): ?TicketWalletData
     {
         if (!Uuid::isValid($ticketId)) {
             return null;
         }
 
-        $row = $this->connection->fetchAssociative(
-            <<<'SQL'
-                SELECT LOWER(HEX(ticket.id)) AS ticket_id, ticket.ticket_number, ticket.status, ticket.scan_token_cipher,
-                reservation.booking_number, reservation.starts_at, reservation.ends_at, reservation.quantity,
-                reservation.customer_id, resource.name AS resource_name,
-                customer.first_name, customer.last_name
-                FROM fib_booking_ticket ticket
-                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-                INNER JOIN fib_booking_resource resource ON resource.id = reservation.resource_id
-                LEFT JOIN customer ON customer.id = reservation.customer_id
-                WHERE ticket.id = :ticketId
-            SQL,
-            ['ticketId' => Uuid::fromHexToBytes($ticketId)],
-        );
+        $ticket = $this->fetchPassWorthyTicket($ticketId, $context);
+        $reservation = $ticket?->getReservation();
 
-        if ($row === false || !is_string($row['scan_token_cipher']) || $row['scan_token_cipher'] === '') {
+        if ($ticket === null || $reservation === null) {
             return null;
         }
 
-        if (!in_array((string) $row['status'], ['issued', 'sent', 'scanned'], true)) {
-            return null;
-        }
+        $scanToken = $this->decryptScanToken($ticketId);
 
-        try {
-            $scanToken = $this->tokenCipher->decrypt($row['scan_token_cipher']);
-        } catch (RuntimeException) {
+        if ($scanToken === null) {
             return null;
         }
 
         $qrPayload = json_encode([
             'type' => 'fib_booking_ticket',
-            'ticketNumber' => (string) $row['ticket_number'],
+            'ticketNumber' => $ticket->getTicketNumber(),
             'scanToken' => $scanToken,
         ], JSON_THROW_ON_ERROR);
 
-        $customerName = trim(sprintf('%s %s', (string) ($row['first_name'] ?? ''), (string) ($row['last_name'] ?? '')));
+        $customer = $reservation->getCustomer();
+        $customerName = $customer instanceof CustomerEntity
+            ? trim(sprintf('%s %s', $customer->getFirstName(), $customer->getLastName()))
+            : '';
 
         return new TicketWalletData(
-            ticketId: (string) $row['ticket_id'],
-            ticketNumber: (string) $row['ticket_number'],
-            bookingNumber: (string) $row['booking_number'],
-            status: (string) $row['status'],
+            ticketId: $ticket->getId(),
+            ticketNumber: $ticket->getTicketNumber(),
+            bookingNumber: $reservation->getBookingNumber(),
+            status: $ticket->getStatus(),
             qrPayload: $qrPayload,
-            resourceName: (string) $row['resource_name'],
-            startsAt: new DateTimeImmutable((string) $row['starts_at']),
-            endsAt: new DateTimeImmutable((string) $row['ends_at']),
-            quantity: (int) $row['quantity'],
+            window: new BookingWindow(
+                resourceName: (string) $reservation->getResource()?->getName(),
+                startsAt: DateTimeImmutable::createFromInterface($reservation->getStartsAt()),
+                endsAt: DateTimeImmutable::createFromInterface($reservation->getEndsAt()),
+                quantity: $reservation->getQuantity(),
+            ),
             customerName: $customerName === '' ? null : $customerName,
         );
     }
@@ -135,23 +141,88 @@ class WalletPassService
     /**
      * Whether the given customer owns the ticket — used by the account area.
      */
-    public function isOwnedByCustomer(string $ticketId, string $customerId): bool
+    public function isOwnedByCustomer(string $ticketId, string $customerId, Context $context): bool
     {
         if (!Uuid::isValid($ticketId) || !Uuid::isValid($customerId)) {
             return false;
         }
 
-        return (bool) $this->connection->fetchOne(
-            <<<'SQL'
-                SELECT 1
-                FROM fib_booking_ticket ticket
-                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
-                WHERE ticket.id = :ticketId AND reservation.customer_id = :customerId
-            SQL,
-            [
-                'ticketId' => Uuid::fromHexToBytes($ticketId),
-                'customerId' => Uuid::fromHexToBytes($customerId),
-            ],
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('id', $ticketId));
+        $criteria->addFilter(new EqualsFilter('reservation.customerId', $customerId));
+
+        return $this->ticketRepository->searchIds($criteria, $context)->firstId() !== null;
+    }
+
+    /**
+     * Which of the given tickets have a stored wallet token. scan_token_cipher
+     * is intentionally NOT part of the DAL definition (see plugin Security.md),
+     * so presence is read via the same documented raw exception as
+     * loadTicketData().
+     *
+     * @param array<string> $ticketIds
+     *
+     * @return array<string, true> ticket id (hex) => true
+     */
+    public function ticketsWithWalletToken(array $ticketIds): array
+    {
+        if ($ticketIds === []) {
+            return [];
+        }
+
+        /** @var list<string> $rows */
+        $rows = $this->connection->fetchFirstColumn(
+            'SELECT LOWER(HEX(id)) FROM fib_booking_ticket WHERE id IN (:ids) AND scan_token_cipher IS NOT NULL',
+            ['ids' => Uuid::fromHexToBytesList($ticketIds)],
+            ['ids' => ArrayParameterType::BINARY],
         );
+
+        return array_fill_keys($rows, true);
+    }
+
+    private function fetchPassWorthyTicket(string $ticketId, Context $context): ?BookingTicketEntity
+    {
+        $criteria = new Criteria([$ticketId]);
+        $criteria->addAssociation('reservation.resource');
+        $criteria->addAssociation('reservation.customer');
+
+        /** @var BookingTicketEntity|null $ticket */
+        $ticket = $this->ticketRepository->search($criteria, $context)->first();
+
+        if ($ticket === null || !in_array($ticket->getStatus(), ['issued', 'sent', 'scanned'], true)) {
+            return null;
+        }
+
+        return $ticket;
+    }
+
+    private function decryptScanToken(string $ticketId): ?string
+    {
+        $cipher = $this->fetchScanTokenCipher($ticketId);
+
+        if ($cipher === null || $cipher === '') {
+            return null;
+        }
+
+        try {
+            return $this->tokenCipher->decrypt($cipher);
+        } catch (RuntimeException) {
+            return null;
+        }
+    }
+
+    /**
+     * Deliberate raw SQL: scan_token_cipher is intentionally NOT part of the
+     * DAL definition so the secret never leaks through the Admin API (see
+     * plugin Security.md). Same pattern as BookingTicketRenderer.
+     */
+    private function fetchScanTokenCipher(string $ticketId): ?string
+    {
+        $cipher = $this->connection->fetchOne(
+            'SELECT scan_token_cipher FROM fib_booking_ticket WHERE id = :ticketId',
+            ['ticketId' => Uuid::fromHexToBytes($ticketId)],
+        );
+
+        return is_string($cipher) ? $cipher : null;
     }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import QrScanner from 'qr-scanner';
-import { extractScanToken, scanTicket } from '../api.js';
+import { DIRECTION_CHECK_IN, DIRECTION_CHECK_OUT, extractScanToken, fetchScannerConfig, scanTicket } from '../api.js';
 import { cameraLabel, loadPreferredCameraId, pickCamera, storePreferredCameraId } from '../camera.js';
 
 const emit = defineEmits(['session-expired']);
@@ -14,12 +14,25 @@ const manualInput = ref('');
 const busy = ref(false);
 const lastResult = ref(null);
 const history = ref([]);
+const checkOutEnabled = ref(false);
+const direction = ref(DIRECTION_CHECK_IN);
 
 let scanner = null;
 let cooldownUntil = 0;
 let lastToken = '';
 
 onMounted(async () => {
+    try {
+        const config = await fetchScannerConfig();
+        checkOutEnabled.value = config.checkOutEnabled === true;
+    } catch (e) {
+        if (e.requiresLogin) {
+            emit('session-expired');
+            return;
+        }
+        // Config endpoint unreachable — keep the safe default (check-in only).
+    }
+
     try {
         scanner = new QrScanner(video.value, onDecoded, {
             preferredCamera: 'environment',
@@ -64,6 +77,14 @@ onBeforeUnmount(() => {
     scanner = null;
 });
 
+function setDirection(value) {
+    direction.value = value;
+    // A direction switch is a deliberate act — allow re-scanning the code
+    // that was just processed (check-in followed by check-out of the same
+    // ticket is the normal flow at a single-lane entrance).
+    lastToken = '';
+}
+
 async function onDecoded(result) {
     // Debounce: ignore repeats of the same code and rapid-fire frames.
     const now = Date.now();
@@ -94,7 +115,7 @@ async function performScan(token) {
     busy.value = true;
 
     try {
-        const result = await scanTicket(token);
+        const result = await scanTicket(token, direction.value);
         lastResult.value = result;
         history.value.unshift({
             verdict: result.verdict,
@@ -116,6 +137,10 @@ async function performScan(token) {
 const VERDICT_META = {
     valid: { label: 'VALID — let them in', cls: 'verdict-valid' },
     already_scanned: { label: 'ALREADY SCANNED', cls: 'verdict-warn' },
+    checked_out: { label: 'CHECKED OUT — goodbye', cls: 'verdict-valid' },
+    not_checked_in: { label: 'NOT CHECKED IN', cls: 'verdict-warn' },
+    not_yet_valid: { label: 'NOT YET VALID', cls: 'verdict-warn' },
+    entry_limit_reached: { label: 'DAILY LIMIT REACHED', cls: 'verdict-warn' },
     expired: { label: 'EXPIRED', cls: 'verdict-bad' },
     revoked: { label: 'REVOKED', cls: 'verdict-bad' },
     not_found: { label: 'UNKNOWN TICKET', cls: 'verdict-bad' },
@@ -130,6 +155,27 @@ function verdictMeta(verdict) {
 
 <template>
     <div class="scanner">
+        <div v-if="checkOutEnabled" class="card mode-toggle" role="radiogroup" aria-label="Scan direction">
+            <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: direction === DIRECTION_CHECK_IN }"
+                :aria-pressed="direction === DIRECTION_CHECK_IN"
+                @click="setDirection(DIRECTION_CHECK_IN)"
+            >
+                Check-in
+            </button>
+            <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: direction === DIRECTION_CHECK_OUT }"
+                :aria-pressed="direction === DIRECTION_CHECK_OUT"
+                @click="setDirection(DIRECTION_CHECK_OUT)"
+            >
+                Check-out
+            </button>
+        </div>
+
         <div class="card camera-card">
             <video ref="video" class="camera" muted playsinline></video>
             <label v-if="cameras.length > 0" class="camera-select">

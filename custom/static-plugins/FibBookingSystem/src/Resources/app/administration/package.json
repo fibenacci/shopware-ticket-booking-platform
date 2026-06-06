@@ -1,0 +1,11 @@
+{
+    "name": "fib-booking-administration",
+    "private": true,
+    "description": "Unit tests for the admin extension's pure modules (presets, validation). Component rendering is covered by the Shopware admin build.",
+    "scripts": {
+        "test": "vitest run"
+    },
+    "devDependencies": {
+        "vitest": "latest"
+    }
+}

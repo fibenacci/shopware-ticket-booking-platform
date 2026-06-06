@@ -17,6 +17,17 @@ class Migration1717000000CreateBookingTables extends MigrationStep
 
     public function update(Connection $connection): void
     {
+        $this->createResourceTable($connection);
+        $this->createHoldTable($connection);
+        $this->createReservationTable($connection);
+        $this->createTicketTable($connection);
+        $this->createProductConfigTable($connection);
+        $this->createNumberRanges($connection);
+        $this->createTicketMailTemplate($connection);
+    }
+
+    private function createResourceTable(Connection $connection): void
+    {
         $connection->executeStatement(<<<'SQL'
                 CREATE TABLE IF NOT EXISTS `fib_booking_resource` (
                 `id` BINARY(16) NOT NULL,
@@ -36,7 +47,10 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 REFERENCES `product` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             SQL);
+    }
 
+    private function createHoldTable(Connection $connection): void
+    {
         $connection->executeStatement(<<<'SQL'
                 CREATE TABLE IF NOT EXISTS `fib_booking_hold` (
                 `id` BINARY(16) NOT NULL,
@@ -65,7 +79,10 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 REFERENCES `customer` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             SQL);
+    }
 
+    private function createReservationTable(Connection $connection): void
+    {
         $connection->executeStatement(<<<'SQL'
                 CREATE TABLE IF NOT EXISTS `fib_booking_reservation` (
                 `id` BINARY(16) NOT NULL,
@@ -102,7 +119,10 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 REFERENCES `fib_booking_hold` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             SQL);
+    }
 
+    private function createTicketTable(Connection $connection): void
+    {
         $connection->executeStatement(<<<'SQL'
                 CREATE TABLE IF NOT EXISTS `fib_booking_ticket` (
                 `id` BINARY(16) NOT NULL,
@@ -127,7 +147,10 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 REFERENCES `fib_booking_reservation` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             SQL);
+    }
 
+    private function createProductConfigTable(Connection $connection): void
+    {
         $connection->executeStatement(<<<'SQL'
                 CREATE TABLE IF NOT EXISTS `fib_booking_product_config` (
                 `id` BINARY(16) NOT NULL,
@@ -147,9 +170,6 @@ class Migration1717000000CreateBookingTables extends MigrationStep
                 REFERENCES `fib_booking_resource` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             SQL);
-
-        $this->createNumberRanges($connection);
-        $this->createTicketMailTemplate($connection);
     }
 
     public function updateDestructive(Connection $connection): void
@@ -370,7 +390,7 @@ class Migration1717000000CreateBookingTables extends MigrationStep
             'localeCode' => $localeCode,
         ]);
 
-        return $languageId === false ? null : $languageId;
+        return is_string($languageId) ? $languageId : null;
     }
 
     private function stableId(string $name): string

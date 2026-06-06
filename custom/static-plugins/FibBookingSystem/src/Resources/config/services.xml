@@ -37,6 +37,7 @@
 
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_hold.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
         </service>
 
@@ -46,17 +47,35 @@
 
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="order_transaction.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="fib_booking_hold.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
             <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
             <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="logger"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
+
+        <service id="FibBookingSystem\Core\Domain\Reservation\BookingPassReservationService">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="fib_booking_product_config.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
+            <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
+            <argument type="service" id="logger"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
             <argument type="service" id="event_dispatcher"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
             <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Security\TokenCipher">
@@ -129,6 +148,7 @@
 
         <service id="FibBookingSystem\Core\Domain\Wallet\WalletPassService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\AppleWalletPassGenerator"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\GoogleWalletLinkGenerator"/>
@@ -137,15 +157,53 @@
 
         <service id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
 
+        <service id="FibBookingSystem\Core\Content\BookingScanLog\BookingScanLogDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_scan_log"/>
+        </service>
+
         <service id="FibBookingSystem\Core\Domain\Ticket\TicketScanService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="fib_booking_scan_log.repository"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Statistics\BookingStatisticsService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketMailSubscriber">
-            <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="Shopware\Core\Content\Mail\Service\MailService"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
             <argument type="service" id="mail_template.repository"/>
+            <argument type="service" id="sales_channel_domain.repository"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService"/>
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
+        <!-- Ticket PDF as a regular order document (admin order detail) -->
+        <service id="FibBookingSystem\Checkout\Document\BookingTicketRenderer">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Document\Service\DocumentConfigLoader"/>
+            <argument type="service" id="Shopware\Core\Checkout\Document\Service\DocumentFileRendererRegistry"/>
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+            <tag name="document.renderer"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService">
+            <argument type="service" id="Shopware\Core\Checkout\Document\Service\DocumentGenerator"/>
+            <argument type="service" id="document.repository"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Ticket\BookingTicketDocumentSubscriber">
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService"/>
+            <argument type="service" id="logger"/>
             <tag name="kernel.event_subscriber"/>
         </service>
 
@@ -176,12 +234,21 @@
         </service>
 
         <service id="FibBookingSystem\Core\Content\Cms\FibBookingCalendarCmsElementResolver">
-            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_resource.repository"/>
+            <argument type="service" id="fib_booking_product_config.repository"/>
             <tag name="shopware.cms.data_resolver"/>
         </service>
 
         <service id="FibBookingSystem\Command\GenerateBookingSlotsCommand">
-            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_resource.repository"/>
+            <argument type="service" id="fib_booking_slot.repository"/>
+            <tag name="console.command"/>
+        </service>
+
+        <service id="FibBookingSystem\Command\IssueTicketsCommand">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
             <tag name="console.command"/>
         </service>
 
@@ -227,7 +294,7 @@
 
         <service id="FibBookingSystem\Storefront\Controller\BookingWalletController" public="true">
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
-            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
@@ -244,15 +311,31 @@
             <tag name="controller.service_arguments"/>
         </service>
 
+        <service id="FibBookingSystem\Api\Controller\BookingStatisticsController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Statistics\BookingStatisticsService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+
         <service id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
 
         <service id="FibBookingSystem\Checkout\Cart\BookingCartProcessor">
-            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="fib_booking_hold.repository"/>
+            <argument type="service" id="fib_booking_product_config.repository"/>
             <tag name="shopware.cart.processor" priority="4100"/>
+        </service>
+
+        <service id="FibBookingSystem\Checkout\Cart\BookingPassStartDateSubscriber">
+            <argument type="service" id="request_stack"/>
+            <tag name="kernel.event_subscriber"/>
         </service>
 
         <service id="FibBookingSystem\Checkout\Order\BookingOrderPlacedSubscriber">
             <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingPassReservationService"/>
             <tag name="kernel.event_subscriber"/>
         </service>
 

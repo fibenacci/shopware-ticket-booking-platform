@@ -1,0 +1,12 @@
+# Trust the immediate upstream proxy so X-Forwarded-Proto/-For are honored —
+# otherwise Symfony treats every request as plain http and Shopware generates
+# mixed-content asset URLs behind TLS-terminating proxies.
+#
+#   dev:  dinghy proxy → ingress nginx → here (REMOTE_ADDR = ingress)
+#   prod: Traefik → here (REMOTE_ADDR = traefik; compose sets TRUSTED_PROXIES)
+parameters:
+    env(TRUSTED_PROXIES): 'REMOTE_ADDR'
+
+framework:
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port']

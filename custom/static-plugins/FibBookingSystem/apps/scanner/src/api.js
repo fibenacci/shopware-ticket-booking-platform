@@ -11,6 +11,9 @@
 
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
+export const DIRECTION_CHECK_IN = 'check_in';
+export const DIRECTION_CHECK_OUT = 'check_out';
+
 let accessToken = null;
 let refreshToken = null;
 let expiresAt = 0;
@@ -109,23 +112,19 @@ export function extractScanToken(rawContent) {
     return null;
 }
 
-export async function scanTicket(scanToken) {
+export async function scanTicket(scanToken, direction = DIRECTION_CHECK_IN) {
     if (!isLikelyScanToken(scanToken)) {
         throw new Error('Malformed scan token.');
     }
 
-    let response = await authorizedScanRequest(scanToken);
-
-    if (response.status === 401 && (await refreshSession())) {
-        response = await authorizedScanRequest(scanToken);
+    if (direction !== DIRECTION_CHECK_IN && direction !== DIRECTION_CHECK_OUT) {
+        throw new Error('Malformed scan direction.');
     }
 
-    if (response.status === 401) {
-        logout();
-        const error = new Error('Session expired — please log in again.');
-        error.requiresLogin = true;
-        throw error;
-    }
+    const response = await authorizedRequest('/api/_action/fib-booking/ticket/scan', {
+        method: 'POST',
+        body: JSON.stringify({ scanToken, direction }),
+    });
 
     if (response.status === 403) {
         throw new Error('Missing permission to scan tickets (fib_booking.ticket_scan).');
@@ -138,13 +137,68 @@ export async function scanTicket(scanToken) {
     return response.json();
 }
 
-function authorizedScanRequest(scanToken) {
-    return fetch('/api/_action/fib-booking/ticket/scan', {
-        method: 'POST',
+/**
+ * Feature flags for the scanner UI (e.g. whether check-out mode is enabled).
+ * Falls back to safe defaults when the endpoint is unavailable.
+ */
+export async function fetchScannerConfig() {
+    const response = await authorizedRequest('/api/_action/fib-booking/scanner/config', { method: 'GET' });
+
+    if (!response.ok) {
+        return { checkOutEnabled: false };
+    }
+
+    return response.json();
+}
+
+/**
+ * Operator statistics (purchases, attendance, dwell time). Requires the
+ * fib_booking.statistics ACL privilege — a 403 surfaces as `forbidden` so
+ * the dashboard can hide itself instead of erroring.
+ */
+export async function fetchStatistics() {
+    const response = await authorizedRequest('/api/_action/fib-booking/statistics', { method: 'GET' });
+
+    if (response.status === 403) {
+        const error = new Error('Missing permission to view statistics (fib_booking.statistics).');
+        error.forbidden = true;
+        throw error;
+    }
+
+    if (!response.ok) {
+        throw new Error(`Loading statistics failed (${response.status}).`);
+    }
+
+    return response.json();
+}
+
+/**
+ * Sends an authenticated request; on 401 it tries ONE token refresh and
+ * replays the request. A second 401 ends the session.
+ */
+async function authorizedRequest(path, options) {
+    let response = await bearerFetch(path, options);
+
+    if (response.status === 401 && (await refreshSession())) {
+        response = await bearerFetch(path, options);
+    }
+
+    if (response.status === 401) {
+        logout();
+        const error = new Error('Session expired — please log in again.');
+        error.requiresLogin = true;
+        throw error;
+    }
+
+    return response;
+}
+
+function bearerFetch(path, options) {
+    return fetch(path, {
+        ...options,
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ scanToken }),
     });
 }

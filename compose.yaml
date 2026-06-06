@@ -88,6 +88,25 @@ services:
         networks:
             - shopware
 
+    # Optional search backend (parity with the prod `search` profile):
+    #   docker compose --profile search up -d opensearch
+    # then in .env.local: SHOPWARE_ES_ENABLED=1, SHOPWARE_ES_INDEXING_ENABLED=1,
+    # OPENSEARCH_URL=http://fib-opensearch:9200 — and run `make dal-refresh`.
+    opensearch:
+        image: opensearchproject/opensearch:2
+        container_name: fib-opensearch
+        profiles:
+            - search
+        environment:
+            - discovery.type=single-node
+            - plugins.security.disabled=true
+            - DISABLE_INSTALL_DEMO_CONFIG=true
+            - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+        volumes:
+            - opensearch_data:/usr/share/opensearch/data
+        networks:
+            - shopware
+
     ingress:
         image: nginx:alpine
         container_name: fib-ingress
@@ -141,7 +160,10 @@ services:
             - ./.env:/var/www/html/.env
             - ./.env.local:/var/www/html/.env.local
             - ./.build:/var/www/html/.build
-            - ./docker/setup-dev.sh:/setup-dev.sh
+            # Directory mount (not a file mount): host-side edits of the
+            # setup script replace the file's inode — a file bind mount would
+            # then point at the stale inode until the container is recreated.
+            - ./docker:/dev-tools:ro
         networks:
             shopware:
                 aliases:
@@ -150,6 +172,7 @@ services:
 volumes:
     mariadb_data:
     redis_data:
+    opensearch_data:
 
 networks:
     shopware:

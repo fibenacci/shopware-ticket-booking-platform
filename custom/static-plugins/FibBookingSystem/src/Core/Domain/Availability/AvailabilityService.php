@@ -66,7 +66,7 @@ class AvailabilityService
             ['resourceId' => $resourceBytes],
         );
 
-        return $capacity === false ? null : (int) $capacity;
+        return is_numeric($capacity) ? (int) $capacity : null;
     }
 
     private function fetchSlotCapacity(string $resourceBytes, DateTimeInterface $startsAt, DateTimeInterface $endsAt): ?int
@@ -86,7 +86,7 @@ class AvailabilityService
             ],
         );
 
-        return $capacity === false ? null : (int) $capacity;
+        return is_numeric($capacity) ? (int) $capacity : null;
     }
 
     private function hasActiveSlots(string $resourceBytes): bool
@@ -101,7 +101,7 @@ class AvailabilityService
 
     private function fetchReservedQuantity(string $resourceBytes, DateTimeInterface $startsAt, DateTimeInterface $endsAt): int
     {
-        $holdQuantity = (int) $this->connection->fetchOne(
+        $holdQuantity = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT COALESCE(SUM(quantity), 0)
                 FROM fib_booking_hold
@@ -119,7 +119,7 @@ class AvailabilityService
             ],
         );
 
-        $reservationQuantity = (int) $this->connection->fetchOne(
+        $reservationQuantity = $this->connection->fetchOne(
             <<<'SQL'
                 SELECT COALESCE(SUM(quantity), 0)
                 FROM fib_booking_reservation
@@ -138,7 +138,8 @@ class AvailabilityService
             ],
         );
 
-        return $holdQuantity + $reservationQuantity;
+        return (is_numeric($holdQuantity) ? (int) $holdQuantity : 0)
+            + (is_numeric($reservationQuantity) ? (int) $reservationQuantity : 0);
     }
 
     private function formatDateTime(DateTimeInterface $dateTime): string

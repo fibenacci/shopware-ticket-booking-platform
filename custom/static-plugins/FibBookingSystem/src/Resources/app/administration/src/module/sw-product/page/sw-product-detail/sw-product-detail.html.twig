@@ -1,0 +1,11 @@
+{% block sw_product_detail_content_tabs_reviews %}
+    {% parent %}
+
+    <sw-tabs-item
+        class="sw-product-detail__tab-fib-booking"
+        :route="{ name: 'sw.product.detail.fibBooking', params: { id: $route.params.id } }"
+        :title="$tc('fibBooking.product.tabTitle')"
+    >
+        {{ $tc('fibBooking.product.tabTitle') }}
+    </sw-tabs-item>
+{% endblock %}

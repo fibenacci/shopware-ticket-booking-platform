@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FibBookingSystem\Api\Controller;
 
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
+use FibBookingSystem\Core\Domain\Ticket\ScanDirection;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use Shopware\Core\Framework\Api\Context\AdminApiSource;
 use Shopware\Core\Framework\Context;
@@ -43,9 +44,35 @@ class BookingTicketScanController extends AbstractController
             throw new BadRequestHttpException('Missing or malformed parameter "scanToken".');
         }
 
-        $result = $this->scanService->scan($scanToken, $actor, 'admin-api');
+        $direction = $dataBag->get('direction', ScanDirection::CHECK_IN);
+        if (!is_string($direction) || !in_array($direction, ScanDirection::ALL, true)) {
+            throw new BadRequestHttpException('Malformed parameter "direction" (expected "check_in" or "check_out").');
+        }
+
+        $result = $this->scanService->scan($scanToken, $context, $actor, 'admin-api', $direction);
 
         $response = new JsonResponse($result->toArray());
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('X-Robots-Tag', 'noindex');
+
+        return $response;
+    }
+
+    /**
+     * Feature flags the scanner app needs to render its UI (e.g. whether to
+     * offer the check-out mode toggle). Same ACL as scanning itself.
+     */
+    #[Route(
+        path: '/api/_action/fib-booking/scanner/config',
+        name: 'api.action.fib_booking.scanner.config',
+        defaults: ['_acl' => ['fib_booking.ticket_scan']],
+        methods: ['GET'],
+    )]
+    public function scannerConfig(): JsonResponse
+    {
+        $response = new JsonResponse([
+            'checkOutEnabled' => $this->scanService->isCheckOutEnabled(),
+        ]);
         $response->headers->set('Cache-Control', 'no-store, private');
         $response->headers->set('X-Robots-Tag', 'noindex');
 

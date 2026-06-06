@@ -61,6 +61,46 @@ class BookingReservationEntity extends Entity
         return $this->resourceId;
     }
 
+    public function getOrderId(): ?string
+    {
+        return $this->orderId;
+    }
+
+    public function setOrderId(?string $orderId): void
+    {
+        $this->orderId = $orderId;
+    }
+
+    public function getCustomerId(): ?string
+    {
+        return $this->customerId;
+    }
+
+    public function setCustomerId(?string $customerId): void
+    {
+        $this->customerId = $customerId;
+    }
+
+    public function getResource(): ?BookingResourceEntity
+    {
+        return $this->resource;
+    }
+
+    public function setResource(?BookingResourceEntity $resource): void
+    {
+        $this->resource = $resource;
+    }
+
+    public function getCustomer(): ?CustomerEntity
+    {
+        return $this->customer;
+    }
+
+    public function setCustomer(?CustomerEntity $customer): void
+    {
+        $this->customer = $customer;
+    }
+
     public function setResourceId(string $resourceId): void
     {
         $this->resourceId = $resourceId;

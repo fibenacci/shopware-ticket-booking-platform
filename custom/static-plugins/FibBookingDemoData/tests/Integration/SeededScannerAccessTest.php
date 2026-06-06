@@ -12,7 +12,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * The seeded scanner access must follow least privilege: a NON-admin user
- * bound to a role that carries ONLY the ticket-scan privilege.
+ * bound to a role that carries ONLY what the operator app needs — scanning
+ * tickets and reading the statistics dashboard.
  */
 class SeededScannerAccessTest extends TestCase
 {
@@ -41,7 +42,7 @@ class SeededScannerAccessTest extends TestCase
         static::assertSame(1, (int) $user['active']);
     }
 
-    public function testScannerRoleCarriesOnlyTheScanPrivilege(): void
+    public function testScannerRoleCarriesOnlyTheOperatorPrivileges(): void
     {
         $privileges = $this->connection->fetchOne(
             <<<'SQL'
@@ -50,7 +51,26 @@ class SeededScannerAccessTest extends TestCase
         );
 
         static::assertIsString($privileges, 'the seeder must create the Booking Scanner role');
-        static::assertSame(['fib_booking.ticket_scan'], json_decode($privileges, true));
+        static::assertSame(
+            ['fib_booking.ticket_scan', 'fib_booking.statistics'],
+            json_decode($privileges, true),
+        );
+    }
+
+    public function testDemoEnablesCheckOutScanning(): void
+    {
+        $value = $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT configuration_value FROM system_config
+                WHERE configuration_key = 'FibBookingSystem.config.scanCheckOutEnabled'
+                AND sales_channel_id IS NULL
+                SQL,
+        );
+
+        static::assertIsString($value, 'the demo must persist the check-out flag');
+        $decoded = json_decode($value, true);
+        static::assertIsArray($decoded);
+        static::assertSame(true, $decoded['_value'] ?? null);
     }
 
     public function testScannerUserIsBoundToTheScannerRole(): void

@@ -1,23 +1,20 @@
 # Registration hardening / bot protection (OWASP OAT-019 "Account Creation").
 #
 # Uses Shopware's static system config: values defined here OVERRIDE the
-# database, so these protections cannot be disabled through the admin UI —
-# neither accidentally nor by a compromised admin account. The admin captcha
-# settings page will still render its (stale) DB values; runtime always uses
-# the values below.
+# database, so they cannot be disabled through the admin UI — neither
+# accidentally nor by a compromised admin account.
 # https://developer.shopware.com/docs/guides/hosting/configurations/shopware/static-system-config.html
 #
+# NOTE: static system config only accepts SCALAR values (the config tree uses
+# a scalar prototype — nested objects fail the container build). The captcha
+# configuration (`core.basicInformation.activeCaptchasV2`, a JSON object) is
+# therefore applied to the database by bin/activate-bot-protection.sh, which
+# the deployment helper runs on every deploy (.shopware-project.yml hooks).
+#
 # Layers (edge rate limiting lives in compose.prod.yaml, Traefik labels):
-#   1. Double opt-in  — unconfirmed accounts are worthless to bots
-#   2. Honeypot       — free, catches naive form-filling bots
-#   3. ALTCHA         — self-hosted, invisible proof-of-work captcha
-#                       (no third party, no user interaction, GDPR-clean)
-
-parameters:
-    # Dev fallback only. Production injects a real secret via the
-    # ALTCHA_SECRET_KEY environment variable — compose.prod.yaml refuses to
-    # start without it, so this value never reaches production.
-    env(ALTCHA_SECRET_KEY): 'dev-altcha-secret-not-for-production'
+#   1. Double opt-in  — enforced here, unconfirmed accounts are worthless
+#   2. Honeypot       — activated by bin/activate-bot-protection.sh
+#   3. ALTCHA         — activated by bin/activate-bot-protection.sh
 
 shopware:
     system_config:
@@ -25,21 +22,3 @@ shopware:
             # Registrations only become active customers after the email
             # address is confirmed (double opt-in).
             core.loginRegistration.doubleOptInRegistration: true
-
-            core.basicInformation.activeCaptchasV2:
-                honeypot:
-                    name: honeypot
-                    isActive: true
-                altchaCaptcha:
-                    name: altchaCaptcha
-                    isActive: true
-                    config:
-                        secretKey: '%env(ALTCHA_SECRET_KEY)%'
-                        # Logged-in (non-guest) customers skip the challenge.
-                        whitelistCustomers: true
-                        hideLogo: false
-                        hideFooter: false
-                        # Solve the proof-of-work when the form is submitted …
-                        autoMode: 'onsubmit'
-                        # … and without any visible widget/interaction.
-                        invisible: true

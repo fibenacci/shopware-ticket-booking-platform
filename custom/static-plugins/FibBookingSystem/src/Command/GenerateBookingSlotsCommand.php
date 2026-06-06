@@ -6,7 +6,14 @@ namespace FibBookingSystem\Command;
 
 use DateInterval;
 use DateTimeImmutable;
-use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Content\BookingResource\BookingResourceCollection;
+use FibBookingSystem\Core\Content\BookingSlot\BookingSlotCollection;
+use FibBookingSystem\Core\Content\BookingSlot\BookingSlotEntity;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\RangeFilter;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -22,9 +29,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  *       --from=2026-07-01 --to=2026-07-31 --times=18:00,20:30 \
  *       --duration=120 --capacity=10 --weekdays=Fri,Sat
  *
- * Slots are upserted on (resource, starts_at) — re-running with adjusted
- * capacity updates existing slots instead of duplicating them. Individual
- * slots can be managed via the Admin API (/api/fib-booking-slot).
+ * Slots are unique on (resource, starts_at). Existing slots for a date are
+ * left untouched; only missing ones are created — so re-running is safe and
+ * never duplicates. Individual slots can be managed via the Admin API
+ * (/api/fib-booking-slot).
  */
 #[AsCommand(
     name: 'fib-booking:slots:generate',
@@ -33,9 +41,16 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class GenerateBookingSlotsCommand extends Command
 {
     private const WEEKDAYS = ['mon' => 1, 'tue' => 2, 'wed' => 3, 'thu' => 4, 'fri' => 5, 'sat' => 6, 'sun' => 7];
+    private const CREATE_CHUNK_SIZE = 500;
 
-    public function __construct(private readonly Connection $connection)
-    {
+    /**
+     * @param EntityRepository<BookingResourceCollection> $resourceRepository
+     * @param EntityRepository<BookingSlotCollection>     $slotRepository
+     */
+    public function __construct(
+        private readonly EntityRepository $resourceRepository,
+        private readonly EntityRepository $slotRepository,
+    ) {
         parent::__construct();
     }
 
@@ -54,19 +69,20 @@ class GenerateBookingSlotsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $context = Context::createDefaultContext();
 
-        $resourceBytes = $this->resolveResource((string) $input->getOption('resource'));
-        if ($resourceBytes === null) {
+        $resourceId = $this->resolveResource(self::stringOption($input, 'resource'), $context);
+        if ($resourceId === null) {
             $io->error('Resource not found. Pass --resource=<technical_name|hex id>.');
 
             return Command::FAILURE;
         }
 
-        $from = new DateTimeImmutable((string) $input->getOption('from'));
-        $to = new DateTimeImmutable((string) $input->getOption('to'));
-        $duration = max(5, (int) $input->getOption('duration'));
-        $capacity = max(1, (int) $input->getOption('capacity'));
-        $times = $this->parseTimes((string) $input->getOption('times'));
+        $from = new DateTimeImmutable(self::stringOption($input, 'from'));
+        $to = new DateTimeImmutable(self::stringOption($input, 'to'));
+        $duration = max(5, self::intOption($input, 'duration'));
+        $capacity = max(1, self::intOption($input, 'capacity'));
+        $times = $this->parseTimes(self::stringOption($input, 'times'));
         $weekdays = $this->parseWeekdays($input->getOption('weekdays'));
 
         if ($times === []) {
@@ -75,8 +91,10 @@ class GenerateBookingSlotsCommand extends Command
             return Command::FAILURE;
         }
 
-        $created = 0;
-        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s.v');
+        $existing = $this->fetchExistingStartTimes($resourceId, $from, $to, $context);
+
+        $payloads = [];
+        $now = (new DateTimeImmutable())->format(\DATE_ATOM);
 
         for ($day = $from; $day <= $to; $day = $day->add(new DateInterval('P1D'))) {
             if ($weekdays !== null && !in_array((int) $day->format('N'), $weekdays, true)) {
@@ -85,59 +103,87 @@ class GenerateBookingSlotsCommand extends Command
 
             foreach ($times as [$hour, $minute]) {
                 $startsAt = $day->setTime($hour, $minute);
+
+                if (isset($existing[$startsAt->format('Y-m-d H:i:s')])) {
+                    continue;
+                }
+
                 $endsAt = $startsAt->add(new DateInterval(sprintf('PT%dM', $duration)));
 
-                $this->connection->executeStatement(
-                    <<<'SQL'
-                        INSERT INTO fib_booking_slot (id, resource_id, starts_at, ends_at, capacity, active, created_at)
-                        VALUES (:id, :resourceId, :startsAt, :endsAt, :capacity, 1, :createdAt)
-                        ON DUPLICATE KEY UPDATE
-                            ends_at = VALUES(ends_at),
-                            capacity = VALUES(capacity),
-                            active = 1,
-                            updated_at = VALUES(created_at)
-                        SQL,
-                    [
-                        'id' => Uuid::randomBytes(),
-                        'resourceId' => $resourceBytes,
-                        'startsAt' => $startsAt->format('Y-m-d H:i:s.v'),
-                        'endsAt' => $endsAt->format('Y-m-d H:i:s.v'),
-                        'capacity' => $capacity,
-                        'createdAt' => $now,
-                    ],
-                );
-                ++$created;
+                $payloads[] = [
+                    'id' => Uuid::randomHex(),
+                    'resourceId' => $resourceId,
+                    'startsAt' => $startsAt->format(\DATE_ATOM),
+                    'endsAt' => $endsAt->format(\DATE_ATOM),
+                    'capacity' => $capacity,
+                    'active' => true,
+                    'createdAt' => $now,
+                ];
             }
         }
 
-        $io->success(sprintf('%d slot(s) upserted (%s – %s, capacity %d).', $created, $from->format('Y-m-d'), $to->format('Y-m-d'), $capacity));
+        // Bulk payload: write in chunks of 500 instead of one create per slot.
+        foreach (array_chunk($payloads, self::CREATE_CHUNK_SIZE) as $chunk) {
+            $this->slotRepository->create($chunk, $context);
+        }
+
+        $io->success(sprintf(
+            '%d new slot(s) created (%s – %s, capacity %d); existing slots left untouched.',
+            count($payloads),
+            $from->format('Y-m-d'),
+            $to->format('Y-m-d'),
+            $capacity,
+        ));
 
         return Command::SUCCESS;
     }
 
-    private function resolveResource(string $identifier): ?string
+    private function resolveResource(string $identifier, Context $context): ?string
     {
         if ($identifier === '') {
             return null;
         }
 
+        $criteria = new Criteria();
+
         if (preg_match('/^[0-9a-f]{32}$/i', $identifier)) {
-            $found = $this->connection->fetchOne(
-                <<<'SQL'
-                    SELECT id FROM fib_booking_resource WHERE id = :id
-                    SQL,
-                ['id' => Uuid::fromHexToBytes(strtolower($identifier))],
-            );
+            $criteria->addFilter(new EqualsFilter('id', strtolower($identifier)));
         } else {
-            $found = $this->connection->fetchOne(
-                <<<'SQL'
-                    SELECT id FROM fib_booking_resource WHERE technical_name = :technicalName
-                    SQL,
-                ['technicalName' => $identifier],
-            );
+            $criteria->addFilter(new EqualsFilter('technicalName', $identifier));
         }
 
-        return $found === false ? null : (string) $found;
+        return $this->resourceRepository->searchIds($criteria, $context)->firstId();
+    }
+
+    /**
+     * Existing slot start times for the resource in the window, keyed by their
+     * storage representation for O(1) lookup.
+     *
+     * @return array<string, true>
+     */
+    private function fetchExistingStartTimes(
+        string $resourceId,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+        Context $context,
+    ): array {
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('resourceId', $resourceId));
+        $criteria->addFilter(new RangeFilter('startsAt', [
+            RangeFilter::GTE => $from->format(\DATE_ATOM),
+            RangeFilter::LTE => $to->add(new DateInterval('P1D'))->format(\DATE_ATOM),
+        ]));
+
+        $slots = $this->slotRepository->search($criteria, $context)->getEntities();
+
+        $existing = [];
+
+        /** @var BookingSlotEntity $slot */
+        foreach ($slots as $slot) {
+            $existing[$slot->getStartsAt()->format('Y-m-d H:i:s')] = true;
+        }
+
+        return $existing;
     }
 
     /**
@@ -173,5 +219,19 @@ class GenerateBookingSlotsCommand extends Command
         }
 
         return $parsed === [] ? null : $parsed;
+    }
+
+    private static function stringOption(InputInterface $input, string $name): string
+    {
+        $value = $input->getOption($name);
+
+        return is_string($value) ? $value : '';
+    }
+
+    private static function intOption(InputInterface $input, string $name): int
+    {
+        $value = $input->getOption($name);
+
+        return is_numeric($value) ? (int) $value : 0;
     }
 }

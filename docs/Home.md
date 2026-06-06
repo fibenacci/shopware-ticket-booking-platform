@@ -11,7 +11,8 @@ reservation and booking system with holds, reservations, tickets and QR codes.
 | [Tests and Quality](Tests-and-Quality) | PHPUnit, PHPStan, PHP-CS-Fixer, Playwright |
 | [CI Pipeline](CI-Pipeline) | GitHub Actions jobs and what they check |
 | [Deployment](Deployment) | Docker production deployment (image, compose, releases) |
-| [Bot Protection](Bot-Protection) | Registration hardening: double opt-in, rate limiting, ALTCHA |
+| [Bot Protection](Bot-Protection) | Registration hardening: double opt-in, rate limiting, ALTCHA, CrowdSec, edge headers |
+| [Backups](Backups) | Backup script, offsite strategy, restore procedure |
 | [Plugin: FibBookingSystem](Plugin-FibBookingSystem) | Plugin overview (from the plugin README) |
 | [Plugin: Architecture Plan](Plugin-Architecture-Plan) | Architecture and implementation plan of the plugin |
 | [Plugin: Ticketing Plan](Plugin-Ticketing-Plan) | Ticketing platform plan (wallet, scanner, security) |

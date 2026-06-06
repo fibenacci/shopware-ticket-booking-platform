@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Domain\Wallet;
 
-use DateTimeImmutable;
-
 final class TicketWalletData
 {
     public function __construct(
@@ -14,10 +12,7 @@ final class TicketWalletData
         public readonly string $bookingNumber,
         public readonly string $status,
         public readonly string $qrPayload,
-        public readonly string $resourceName,
-        public readonly DateTimeImmutable $startsAt,
-        public readonly DateTimeImmutable $endsAt,
-        public readonly int $quantity,
+        public readonly BookingWindow $window,
         public readonly ?string $customerName,
     ) {
     }

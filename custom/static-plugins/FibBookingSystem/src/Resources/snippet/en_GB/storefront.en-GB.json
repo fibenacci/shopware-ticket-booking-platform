@@ -1,32 +1,53 @@
 {
-  "fibBooking": {
-    "start": {
-      "label": "Date"
+    "fibBooking": {
+        "start": {
+            "label": "Date"
+        },
+        "quantity": {
+            "label": "Quantity"
+        },
+        "calendar": {
+            "previousMonth": "Previous month",
+            "nextMonth": "Next month",
+            "slotsHeadline": "Available times",
+            "packageLabel": "Package",
+            "bookNow": "Book now",
+            "notConfigured": "The booking calendar is not configured yet."
+        },
+        "account": {
+            "ticketsHeadline": "My tickets",
+            "noTickets": "You don't have any tickets yet.",
+            "ticketNumber": "Ticket number",
+            "bookingNumber": "Booking number",
+            "quantity": "Guests",
+            "addToAppleWallet": "Add to Apple Wallet",
+            "addToGoogleWallet": "Add to Google Wallet",
+            "status": {
+                "issued": "Valid",
+                "sent": "Valid",
+                "scanned": "Already used"
+            }
+        },
+        "pass": {
+            "validFor": "Valid for",
+            "unlimitedValidity": "Valid without expiry",
+            "fromPurchase": "from purchase",
+            "fromFirstUse": "from first use (activated at the gate)",
+            "fromChosenStart": "from your chosen start date",
+            "multiEntry": "Unlimited entries while valid",
+            "maxPerDay": "max. %limit% per day",
+            "startLabel": "Start date",
+            "durations": {
+                "day": "1 day",
+                "week": "1 week",
+                "month": "1 month",
+                "threeMonths": "3 months",
+                "sixMonths": "6 months",
+                "year": "1 year"
+            }
+        }
     },
-    "quantity": {
-      "label": "Quantity"
-    },
-    "calendar": {
-      "previousMonth": "Previous month",
-      "nextMonth": "Next month",
-      "slotsHeadline": "Available times",
-      "packageLabel": "Package",
-      "bookNow": "Book now",
-      "notConfigured": "The booking calendar is not configured yet."
-    },
-    "account": {
-      "ticketsHeadline": "My tickets",
-      "noTickets": "You don't have any tickets yet.",
-      "ticketNumber": "Ticket number",
-      "bookingNumber": "Booking number",
-      "quantity": "Guests",
-      "addToAppleWallet": "Add to Apple Wallet",
-      "addToGoogleWallet": "Add to Google Wallet",
-      "status": {
-        "issued": "Valid",
-        "sent": "Valid",
-        "scanned": "Already used"
-      }
+    "checkout": {
+        "fibBookingPassStartMissing": "Please pick a start date for your pass before checking out."
     }
-  }
 }

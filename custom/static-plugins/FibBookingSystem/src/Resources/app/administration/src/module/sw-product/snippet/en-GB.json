@@ -1,0 +1,54 @@
+{
+    "fibBooking": {
+        "product": {
+            "tabTitle": "Booking & Tickets",
+            "cardTitle": "Ticket configuration",
+            "enabledLabel": "Sell as bookable ticket",
+            "enabledHelp": "Enables the booking/ticketing flow for this product.",
+            "resourceLabel": "Booking resource",
+            "resourceHelp": "The resource this ticket belongs to (venue, room, network, …). Scanner and statistics group by resource.",
+            "validityModeLabel": "Validity",
+            "validityModeHelp": "Slot: bound to a booked calendar date. Period: valid for a duration. Unlimited: never expires.",
+            "validityMode": {
+                "slot": "Calendar slot (Termin)",
+                "period": "Period (pass)",
+                "unlimited": "Unlimited"
+            },
+            "slotMinutesLabel": "Slot length (minutes)",
+            "presetLabel": "Duration preset",
+            "presetHelp": "Pre-fills the ISO-8601 duration — pick \"Custom\" for any other value (e.g. PT4H, P2W, P18M).",
+            "presets": {
+                "day": "Day ticket (P1D)",
+                "week": "Week ticket (P1W)",
+                "month": "Monthly pass (P1M)",
+                "threeMonths": "3-month pass (P3M)",
+                "sixMonths": "6-month pass (P6M)",
+                "year": "Annual pass (P1Y)",
+                "custom": "Custom"
+            },
+            "durationLabel": "Validity duration (ISO 8601)",
+            "durationHelp": "Examples: P1D = 1 day, P1M = 1 month, P1Y = 1 year, PT4H = 4 hours.",
+            "validityAnchorLabel": "Validity starts",
+            "validityAnchorHelp": "Purchase: from the moment of purchase. First use: activated by the first scan (transit style). Customer: the customer picks the start date in the shop.",
+            "validityAnchor": {
+                "purchase": "At purchase",
+                "first_use": "At first use (activated by scan)",
+                "customer": "On a customer-chosen date"
+            },
+            "entryPolicyLabel": "Entries",
+            "entryPolicyHelp": "Single: the ticket is consumed by the first scan. Multi: re-usable for the whole validity window (pass).",
+            "entryPolicy": {
+                "single": "Single entry",
+                "multi": "Multiple entries (pass)"
+            },
+            "maxEntriesPerDayLabel": "Max. entries per day (optional)",
+            "maxEntriesPerDayHelp": "0 = unlimited daily entries.",
+            "saveLabel": "Save booking configuration",
+            "notification": {
+                "saved": "Booking configuration saved.",
+                "saveError": "Saving the booking configuration failed.",
+                "invalidDuration": "Period tickets need a valid ISO-8601 duration (e.g. P1D, P1M, P1Y)."
+            }
+        }
+    }
+}

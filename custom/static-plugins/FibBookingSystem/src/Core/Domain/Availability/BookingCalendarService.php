@@ -17,6 +17,11 @@ use Shopware\Core\Framework\Uuid\Uuid;
  * - "partial": some slots are sold out
  * - "full":    ALL slots of the day are sold out  → rendered red
  * - "none":    the day has no slots               → not bookable
+ *
+ * Deliberate raw DBAL (documented exception, see docs/ARCHITECTURE_PLAN.md):
+ * the month view is a read model — slots joined against per-window hold and
+ * reservation SUM subqueries. The DAL cannot express joined aggregate
+ * subqueries; per-slot DAL aggregations would be an N+1 on a public endpoint.
  */
 class BookingCalendarService
 {
@@ -33,6 +38,7 @@ class BookingCalendarService
         $from = $month->modify('first day of this month')->setTime(0, 0);
         $to = $from->modify('first day of next month');
 
+        /** @var list<array{id: string, starts_at: string, ends_at: string, capacity: int|numeric-string, booked: int|numeric-string}> $slots */
         $slots = $this->connection->fetchAllAssociative(
             <<<'SQL'
                 SELECT LOWER(HEX(slot.id)) AS id, slot.starts_at, slot.ends_at, slot.capacity,
@@ -67,15 +73,15 @@ class BookingCalendarService
 
         $days = [];
         foreach ($slots as $slot) {
-            $startsAt = new DateTimeImmutable((string) $slot['starts_at']);
-            $endsAt = new DateTimeImmutable((string) $slot['ends_at']);
+            $startsAt = new DateTimeImmutable($slot['starts_at']);
+            $endsAt = new DateTimeImmutable($slot['ends_at']);
             $capacity = (int) $slot['capacity'];
             $available = max(0, $capacity - (int) $slot['booked']);
             $day = $startsAt->format('Y-m-d');
 
             $days[$day] ??= ['date' => $day, 'slots' => []];
             $days[$day]['slots'][] = [
-                'id' => (string) $slot['id'],
+                'id' => $slot['id'],
                 'startsAt' => $this->formatAtom($startsAt),
                 'endsAt' => $this->formatAtom($endsAt),
                 'capacity' => $capacity,
