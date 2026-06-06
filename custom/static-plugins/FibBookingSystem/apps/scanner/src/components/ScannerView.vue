@@ -2,11 +2,14 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import QrScanner from 'qr-scanner';
 import { extractScanToken, scanTicket } from '../api.js';
+import { cameraLabel, loadPreferredCameraId, pickCamera, storePreferredCameraId } from '../camera.js';
 
 const emit = defineEmits(['session-expired']);
 
 const video = ref(null);
 const cameraError = ref('');
+const cameras = ref([]);
+const selectedCameraId = ref('');
 const manualInput = ref('');
 const busy = ref(false);
 const lastResult = ref(null);
@@ -24,10 +27,37 @@ onMounted(async () => {
             maxScansPerSecond: 4,
         });
         await scanner.start();
+        await initCameraSelection();
     } catch (e) {
         cameraError.value = 'Camera not available — use manual input below. (' + (e?.message ?? e) + ')';
     }
 });
+
+async function initCameraSelection() {
+    // requestLabels=true: the camera permission was just granted by start(),
+    // so the browser now exposes proper device labels.
+    cameras.value = await QrScanner.listCameras(true);
+
+    const preferred = pickCamera(cameras.value, loadPreferredCameraId());
+    if (preferred) {
+        selectedCameraId.value = preferred.id;
+        await scanner.setCamera(preferred.id);
+    }
+}
+
+async function onCameraChange() {
+    if (!scanner) {
+        return;
+    }
+
+    try {
+        await scanner.setCamera(selectedCameraId.value || 'environment');
+        storePreferredCameraId(selectedCameraId.value);
+        cameraError.value = '';
+    } catch (e) {
+        cameraError.value = 'Could not switch camera. (' + (e?.message ?? e) + ')';
+    }
+}
 
 onBeforeUnmount(() => {
     scanner?.destroy();
@@ -102,6 +132,15 @@ function verdictMeta(verdict) {
     <div class="scanner">
         <div class="card camera-card">
             <video ref="video" class="camera" muted playsinline></video>
+            <label v-if="cameras.length > 0" class="camera-select">
+                Camera
+                <select v-model="selectedCameraId" @change="onCameraChange">
+                    <option value="">Auto (rear camera)</option>
+                    <option v-for="(camera, index) in cameras" :key="camera.id" :value="camera.id">
+                        {{ cameraLabel(camera, index) }}
+                    </option>
+                </select>
+            </label>
             <p v-if="cameraError" class="muted">{{ cameraError }}</p>
         </div>
 

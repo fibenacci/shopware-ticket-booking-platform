@@ -1,20 +1,15 @@
 name: CodeQL
 
-# Static security analysis (SAST) for everything CodeQL can analyze in this
-# project: the scanner app + plugin JS (javascript-typescript) and the GitHub
-# workflows (actions). PHP is NOT supported by CodeQL — its security coverage
-# comes from PHPStan + composer audit in the CI pipeline.
+# Weekly scheduled CodeQL re-scan: applies NEW CodeQL queries to existing
+# code without waiting for a push. The per-push/PR analysis gating the
+# security gate is the `codeql` job in ci.yml; both share the project
+# scope in .github/codeql/codeql-config.yml.
 #
-# Two entry points:
-#   - workflow_call: ci.yml runs this as the `codeql` job so the security
-#     gate depends on a completed, uploaded analysis
-#   - schedule:      weekly re-scan so NEW CodeQL queries are applied to
-#                    existing code without waiting for a push
-#
-# Project-specific scope/queries live in .github/codeql/codeql-config.yml.
+# PHP is NOT supported by CodeQL — its security coverage comes from
+# PHPStan + composer audit in the CI pipeline.
 
 on:
-    workflow_call:
+    workflow_dispatch:
     schedule:
         -   cron: '19 17 * * 6'
 
@@ -32,7 +27,7 @@ jobs:
             actions: read
             contents: read
         strategy:
-            fail-fast: false
+            fail-fast: true
             matrix:
                 include:
                     -   language: actions

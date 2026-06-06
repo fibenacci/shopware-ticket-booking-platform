@@ -49,7 +49,10 @@ but gets 403 on every other Admin API endpoint):
 | Entry point | "Open ticket scanner" button on the seeded homepage → `http://scanner.booking.docker` (served by the dev-stack ingress; the build is auto-created by `make up`). Camera testing needs a secure context — use `http://127.0.0.1:8096`. Adjust the URL in the CMS layout / seeds for production. |
 
 Token handling: access + refresh tokens are kept **in memory only**. Closing
-the tab ends the session; nothing is persisted on the device.
+the tab ends the session. The single persisted value is the preferred
+**camera id** (localStorage, non-sensitive device preference) — operators
+pick their webcam once via the dropdown under the video and keep it across
+reloads; "Auto (rear camera)" stays the default.
 
 ## Scan flow & verdicts
 
