@@ -24,8 +24,8 @@ ls -la "$STAGING"/
 
 echo "▶ Cloning wiki repository..."
 if ! git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki-repo; then
-    echo "::error::Wiki repo not found. Initialize the wiki once via the GitHub UI (create any page), then re-run."
-    exit 1
+    echo "::warning::Wiki repo not found — one-time setup needed: open the repository's Wiki tab, click 'Create the first page', save it (any content), then re-run this workflow. Docs will sync automatically afterwards."
+    exit 0
 fi
 
 rsync -av --delete --exclude '.git' "$STAGING"/ wiki-repo/
