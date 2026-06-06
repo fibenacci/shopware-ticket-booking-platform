@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Content\BookingTicket;
 
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationDefinition;
+use FibBookingSystem\Core\Domain\Validity\EntryPolicy;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\CreatedAtField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\DateTimeField;
@@ -36,6 +37,21 @@ class BookingTicketDefinition extends EntityDefinition
     public function getEntityClass(): string
     {
         return BookingTicketEntity::class;
+    }
+
+    /**
+     * DAL-level default: entry_policy is Required and validated BEFORE the
+     * SQL column default could apply — DAL creates without an explicit value
+     * must be filled here. (The regular issue path inserts raw and relies on
+     * the column default, see BookingTicketService.).
+     *
+     * @return array<string, mixed>
+     */
+    public function getDefaults(): array
+    {
+        return [
+            'entryPolicy' => EntryPolicy::SINGLE,
+        ];
     }
 
     protected function defineFields(): FieldCollection

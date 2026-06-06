@@ -15,7 +15,9 @@
 #   4. fallback without mkcert/brew: self-signed (one-time browser warning)
 set -eu
 
-DOMAIN="${DOMAIN:-booking.docker}"
+# Required — the single default lives in the Makefile (DOMAIN ?= …) and is
+# passed in explicitly; a duplicate fallback here would just drift.
+DOMAIN="${DOMAIN:?DOMAIN is not set — call via make (stack.mk passes it)}"
 CERT_DIR="${CERT_DIR:-$HOME/.dinghy/certs}"
 CRT="$CERT_DIR/$DOMAIN.crt"
 KEY="$CERT_DIR/$DOMAIN.key"

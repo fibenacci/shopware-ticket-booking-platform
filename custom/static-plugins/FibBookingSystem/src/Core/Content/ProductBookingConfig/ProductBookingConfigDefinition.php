@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Content\ProductBookingConfig;
 
 use FibBookingSystem\Core\Content\BookingResource\BookingResourceDefinition;
+use FibBookingSystem\Core\Domain\Validity\EntryPolicy;
+use FibBookingSystem\Core\Domain\Validity\ValidityMode;
 use Shopware\Core\Content\Product\ProductDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\BoolField;
@@ -38,6 +40,21 @@ class ProductBookingConfigDefinition extends EntityDefinition
     public function getEntityClass(): string
     {
         return ProductBookingConfigEntity::class;
+    }
+
+    /**
+     * DAL-level defaults: Required fields are validated BEFORE the SQL
+     * column defaults could apply, so creates without explicit values
+     * (admin, seeds for plain slot products) must be filled here.
+     *
+     * @return array<string, mixed>
+     */
+    public function getDefaults(): array
+    {
+        return [
+            'validityMode' => ValidityMode::SLOT,
+            'entryPolicy' => EntryPolicy::SINGLE,
+        ];
     }
 
     protected function defineFields(): FieldCollection

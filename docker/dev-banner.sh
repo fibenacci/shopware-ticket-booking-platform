@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # "Stack ready" banner — called at the end of `make up` (make/stack.mk).
 # Ticket-stub motif (it's a booking/ticketing system) + gradient logo.
-DOMAIN="${DOMAIN:-booking.docker}"
+# Required — the single default lives in the Makefile (DOMAIN ?= …).
+DOMAIN="${DOMAIN:?DOMAIN is not set — call via make (stack.mk passes it)}"
 
 # 256-color helpers; chrome is dim so the content pops.
 c() { printf '\033[38;5;%sm' "$1"; }

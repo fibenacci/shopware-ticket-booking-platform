@@ -11,8 +11,11 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-DOMAIN="${VIRTUAL_HOST:-booking.docker}"
-DOMAIN="${DOMAIN%%,*}"
+# SHOP_DOMAIN comes from compose.yaml — required, no silent fallback:
+# a missing value means the stack is misconfigured and must fail HERE,
+# not produce a shop on a surprise domain. (VIRTUAL_HOST is reserved for
+# the proxy's docker-gen and must only ever appear on the ingress.)
+DOMAIN="${SHOP_DOMAIN:?SHOP_DOMAIN is not set — define it on the shopware service in compose.yaml}"
 # https is canonical (camera/secure-context parity with prod — certs come
 # from docker/dev-certs.sh); a plain-http domain stays as fallback.
 LOCAL_URL="https://${DOMAIN}"

@@ -142,9 +142,7 @@ services:
         environment:
             - XDEBUG_ENABLED=${XDEBUG_ENABLED:-0}
             - DATABASE_URL=mysql://root:root@mariadb:3306/shopware
-            # Used by docker/setup-dev.sh to derive the sales channel domain;
-            # HTTP routing happens in the ingress container (docker/ingress.conf).
-            - VIRTUAL_HOST=booking.docker
+            - SHOP_DOMAIN=booking.docker
         ports:
             - '127.0.0.1:8090:80'
         volumes:
