@@ -48,6 +48,7 @@ class BookingScanLogDefinition extends EntityDefinition
             new StringField('token_fingerprint', 'tokenFingerprint'),
             new StringField('scanned_by', 'scannedBy'),
             (new StringField('source', 'source'))->addFlags(new Required()),
+            new StringField('gate', 'gate'),
             new ManyToOneAssociationField('ticket', 'ticket_id', BookingTicketDefinition::class, 'id'),
             new CreatedAtField(),
         ]);

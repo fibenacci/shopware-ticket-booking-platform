@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Ticket;
 
 use FibBookingSystem\Checkout\Document\BookingTicketRenderer;
+use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Document\DocumentCollection;
+use Shopware\Core\Checkout\Document\DocumentException;
 use Shopware\Core\Checkout\Document\Renderer\RenderedDocument;
 use Shopware\Core\Checkout\Document\Service\DocumentGenerator;
 use Shopware\Core\Checkout\Document\Struct\DocumentGenerateOperation;
@@ -28,13 +30,16 @@ class TicketDocumentService
     public function __construct(
         private readonly DocumentGenerator $documentGenerator,
         private readonly EntityRepository $documentRepository,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
     /**
-     * Generates the ticket document for an order. Re-generates when called
-     * again (e.g. a second ticket was issued later) so the newest document
-     * always contains every ticket.
+     * Generates the ticket document for an order — idempotent: a second
+     * ticket issued later changes the document number (newest ticket) and
+     * re-generates; a repeat call for the SAME ticket set trips the core
+     * duplicate-number check, which is answered with the existing document
+     * instead of a silent null. Every other failure is logged.
      */
     public function generateForOrder(string $orderId, Context $context): ?string
     {
@@ -46,7 +51,29 @@ class TicketDocumentService
             $context,
         );
 
-        return $result->getSuccess()->first()?->getId();
+        $documentId = $result->getSuccess()->first()?->getId();
+
+        if ($documentId !== null) {
+            return $documentId;
+        }
+
+        $error = $result->getErrors()[$orderId] ?? null;
+
+        if ($error instanceof DocumentException && $error->getErrorCode() === DocumentException::DOCUMENT_NUMBER_ALREADY_EXISTS) {
+            // Same ticket set → same document number: the newest existing
+            // document already contains every ticket.
+            return $this->findNewestDocumentId($orderId, $context);
+        }
+
+        if ($error !== null) {
+            $this->logger->error('Ticket document generation failed for order {orderId}: {message}', [
+                'orderId' => $orderId,
+                'message' => $error->getMessage(),
+                'exception' => $error,
+            ]);
+        }
+
+        return null;
     }
 
     /**

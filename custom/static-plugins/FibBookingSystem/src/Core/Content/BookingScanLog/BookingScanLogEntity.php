@@ -24,6 +24,8 @@ class BookingScanLogEntity extends Entity
 
     protected string $source;
 
+    protected ?string $gate = null;
+
     protected ?BookingTicketEntity $ticket = null;
 
     public function getTicketId(): ?string
@@ -84,6 +86,16 @@ class BookingScanLogEntity extends Entity
     public function setSource(string $source): void
     {
         $this->source = $source;
+    }
+
+    public function getGate(): ?string
+    {
+        return $this->gate;
+    }
+
+    public function setGate(?string $gate): void
+    {
+        $this->gate = $gate;
     }
 
     public function getTicket(): ?BookingTicketEntity

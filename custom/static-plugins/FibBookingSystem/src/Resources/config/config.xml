@@ -3,8 +3,58 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
+        <title>Reservation &amp; ticket lifecycle</title>
+        <title lang="de-DE">Reservierungs- &amp; Ticket-Lifecycle</title>
+
+        <input-field type="bool">
+            <name>ticketsOnPartialPayment</name>
+            <label>Issue tickets on partial payment</label>
+            <label lang="de-DE">Tickets bei Teilzahlung ausstellen</label>
+            <helpText>Off (default): tickets are issued only when the payment is complete (paid) or guaranteed (authorized). On: a partial payment already issues the full tickets — beware: pay a deposit, enter, never settle the rest.</helpText>
+            <helpText lang="de-DE">Aus (Standard): Tickets werden erst bei vollständiger (paid) oder garantierter (authorized) Zahlung ausgestellt. An: bereits eine Teilzahlung stellt die vollen Tickets aus — Achtung: Anzahlung leisten, Einlass nutzen, Rest nie zahlen.</helpText>
+            <defaultValue>false</defaultValue>
+        </input-field>
+
+        <input-field type="int">
+            <name>pendingReservationTtlHours</name>
+            <label>Unpaid reservation expiry (hours)</label>
+            <label lang="de-DE">Verfall unbezahlter Reservierungen (Stunden)</label>
+            <helpText>Reservations waiting for payment longer than this release their booking window. Keep it generous — prepayment legitimately takes days. A payment arriving after expiry is re-activated automatically if the window is still free. 0 disables the expiry.</helpText>
+            <helpText lang="de-DE">Reservierungen, die länger als angegeben auf Zahlung warten, geben ihr Buchungsfenster frei. Großzügig wählen — Vorkasse dauert legitim Tage. Trifft die Zahlung nach dem Verfall ein, wird automatisch reaktiviert, sofern das Fenster noch frei ist. 0 deaktiviert den Verfall.</helpText>
+            <defaultValue>72</defaultValue>
+        </input-field>
+
+        <input-field type="int">
+            <name>maxActiveHoldsPerCustomer</name>
+            <label>Max. concurrent holds per customer</label>
+            <label lang="de-DE">Max. gleichzeitige Holds pro Kunde</label>
+            <helpText>A logged-in customer cannot keep more than this many active holds at once — prevents blocking a slot with multiple browser tabs without buying. Guests are throttled by the IP rate limit instead. 0 disables the cap.</helpText>
+            <helpText lang="de-DE">Ein eingeloggter Kunde kann höchstens so viele aktive Holds gleichzeitig halten — verhindert, dass ein Slot per Browser-Tabs blockiert wird, ohne zu kaufen. Gäste werden stattdessen über das IP-Rate-Limit gebremst. 0 deaktiviert die Grenze.</helpText>
+            <defaultValue>5</defaultValue>
+        </input-field>
+    </card>
+
+    <card>
         <title>Ticket scanning</title>
         <title lang="de-DE">Ticket-Scan</title>
+
+        <input-field type="int">
+            <name>scanEarlyEntryMinutes</name>
+            <label>Early entry window (minutes before slot start)</label>
+            <label lang="de-DE">Früheinlass-Fenster (Minuten vor Slot-Beginn)</label>
+            <helpText>Slot-bound tickets scan as valid this many minutes BEFORE the booked slot starts. 0: entry exactly from slot start. Does not apply to period/unlimited passes.</helpText>
+            <helpText lang="de-DE">Slot-gebundene Tickets sind so viele Minuten VOR Slot-Beginn gültig scanbar. 0: Einlass exakt ab Slot-Beginn. Gilt nicht für Zeitraum-/unbegrenzte Pässe.</helpText>
+            <defaultValue>60</defaultValue>
+        </input-field>
+
+        <input-field type="int">
+            <name>scanLogRetentionDays</name>
+            <label>Scan log retention (days)</label>
+            <label lang="de-DE">Scan-Log-Aufbewahrung (Tage)</label>
+            <helpText>GDPR: scan log entries older than this are anonymized — operator/user and ticket fingerprint are removed. Verdicts, directions, gates and timestamps remain, so the attendance statistics stay intact. 0 disables anonymization.</helpText>
+            <helpText lang="de-DE">DSGVO: Scan-Log-Einträge, die älter sind, werden anonymisiert — Bediener/Benutzer und Ticket-Fingerprint werden entfernt. Verdicts, Richtungen, Gates und Zeitstempel bleiben erhalten, die Besuchsstatistik bleibt intakt. 0 deaktiviert die Anonymisierung.</helpText>
+            <defaultValue>180</defaultValue>
+        </input-field>
 
         <input-field type="bool">
             <name>scanCheckOutEnabled</name>

@@ -102,7 +102,9 @@ apps/scanner/                    # Vue 3 + Vite scanner app (standalone)
 
 Open follow-ups: admin module (resource/reservation/slot CRUD UI), admin
 component tests (Jest/Vitest infra for the CMS element), Apple pass push
-updates, scanner offline strategy decision, ticket revocation UI.
+updates, scanner offline strategy decision, ticket revocation UI,
+**numbered seating** (cinema-style seat maps as per-resource option —
+designed in [SEATING_PLAN.md](SEATING_PLAN.md)).
 
 ## Architecture notes (Shopware patterns)
 

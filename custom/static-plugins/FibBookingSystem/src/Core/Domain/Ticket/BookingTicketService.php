@@ -4,20 +4,25 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Domain\Ticket;
 
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use Exception;
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\Core\Domain\Validity\TicketValidity;
 use FibBookingSystem\Core\Domain\Validity\TicketValidityResolver;
+use FibBookingSystem\Core\Domain\Validity\ValidityMode;
 use FibBookingSystem\FibBookingException;
-use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class BookingTicketService
@@ -41,6 +46,7 @@ class BookingTicketService
         private readonly NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         private readonly TokenCipher $tokenCipher,
         private readonly TicketValidityResolver $validityResolver,
+        private readonly SystemConfigService $systemConfig,
     ) {
     }
 
@@ -52,7 +58,8 @@ class BookingTicketService
         $ticket = $this->connection->transactional(function () use ($reservationId, $context, $payload, $expiresAt): BookingTicket {
             $reservation = $this->connection->fetchAssociative(
                 <<<'SQL'
-                    SELECT reservation.id, reservation.booking_number, reservation.payload, `order`.sales_channel_id,
+                    SELECT reservation.id, reservation.booking_number, reservation.payload,
+                    reservation.starts_at, reservation.ends_at, `order`.sales_channel_id,
                     config.validity_mode, config.validity_duration, config.validity_anchor,
                     config.entry_policy, config.max_entries_per_day
                     FROM fib_booking_reservation reservation
@@ -72,6 +79,7 @@ class BookingTicketService
             }
 
             $validity = $this->resolveValidity($reservation);
+            $slotWindow = $this->resolveSlotWindow($reservation);
 
             $existingTicket = $this->connection->fetchAssociative(
                 <<<'SQL'
@@ -97,7 +105,7 @@ class BookingTicketService
             $scanToken = bin2hex(random_bytes(32));
             $qrPayload = $this->createQrPayload($ticketNumber, $scanToken);
             $qrCodeDataUri = $this->qrCodeGenerator->generateDataUri($qrPayload);
-            $issuedAt = new DateTimeImmutable();
+            $issuedAt = UtcDateTime::now();
 
             // Deliberate raw INSERT: scan_token_cipher is intentionally NOT
             // part of the DAL definition (see plugin Security.md), so the
@@ -111,10 +119,11 @@ class BookingTicketService
                 'scan_token_cipher' => $this->tokenCipher->encrypt($scanToken),
                 'status' => 'issued',
                 'issued_at' => $this->formatDateTime($issuedAt),
-                // An explicit expiry (caller knows best, e.g. slot end) wins
-                // over the validity model's computed window.
-                'expires_at' => $expiresAt ? $this->formatDateTime($expiresAt) : ($validity->expiresAt ? $this->formatDateTime($validity->expiresAt) : null),
-                'valid_from' => $validity->validFrom ? $this->formatDateTime($validity->validFrom) : null,
+                // Precedence: explicit caller expiry > validity model window >
+                // slot window. Slot-bound tickets default to their Termin —
+                // a ticket for tomorrow's slot must not scan VALID today.
+                'expires_at' => $this->resolveExpiresAt($expiresAt, $validity, $slotWindow),
+                'valid_from' => $this->resolveValidFrom($validity, $slotWindow),
                 'entry_policy' => $validity->entryPolicy,
                 'max_entries_per_day' => $validity->maxEntriesPerDay,
                 'validity_anchor' => $validity->anchor,
@@ -133,15 +142,117 @@ class BookingTicketService
         return $ticket;
     }
 
+    /**
+     * Revokes every still-usable ticket of the given reservations — the
+     * cancellation/refund tail: a refunded order must never hold a scannable
+     * ticket. Final states (revoked/expired) are left untouched, `scanned`
+     * and `checked_out` ARE revoked: the past visit already happened, but a
+     * multi-entry pass must not grant further entries after the refund.
+     *
+     * SYSTEM_SCOPE: revocation is an internal effect of an authorized order
+     * state change — the acting admin user needs order privileges, not
+     * booking-entity write ACLs.
+     *
+     * @param list<string> $reservationIds
+     *
+     * @return int number of tickets revoked
+     */
+    public function revokeForReservations(array $reservationIds, Context $context): int
+    {
+        if ($reservationIds === []) {
+            return 0;
+        }
+
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsAnyFilter('reservationId', $reservationIds));
+        $criteria->addFilter(new EqualsAnyFilter('status', ['issued', 'sent', 'scanned', 'checked_out']));
+
+        /** @var array<string> $ticketIds */
+        $ticketIds = $this->ticketRepository->searchIds($criteria, $context)->getIds();
+
+        if ($ticketIds === []) {
+            return 0;
+        }
+
+        // Bulk payload: one write operation for all tickets.
+        $payload = array_map(
+            static fn (string $id): array => ['id' => $id, 'status' => 'revoked'],
+            $ticketIds,
+        );
+
+        $context->scope(Context::SYSTEM_SCOPE, function (Context $systemContext) use ($payload): void {
+            $this->ticketRepository->update($payload, $systemContext);
+        });
+
+        return count($ticketIds);
+    }
+
     public function markSent(string $ticketId, Context $context): void
     {
         $this->ticketRepository->update([
             [
                 'id' => $ticketId,
                 'status' => 'sent',
-                'sentAt' => (new DateTimeImmutable())->format(Defaults::STORAGE_DATE_TIME_FORMAT),
+                'sentAt' => UtcDateTime::now(),
             ],
         ], $context);
+    }
+
+    /**
+     * The scan window of a slot-bound ticket (validity mode `slot` or no
+     * product config): valid from `scanEarlyEntryMinutes` before the booked
+     * Termin (default 60 — gates usually open before the slot starts) until
+     * its end. Period/unlimited tickets carry their own window from the
+     * validity model and return null here.
+     *
+     * @param array<string, mixed> $reservation
+     *
+     * @return array{validFrom: DateTimeImmutable, expiresAt: DateTimeImmutable}|null
+     */
+    private function resolveSlotWindow(array $reservation): ?array
+    {
+        $mode = $reservation['validity_mode'] ?? null;
+
+        if (is_string($mode) && $mode !== '' && $mode !== ValidityMode::SLOT) {
+            return null;
+        }
+
+        $startsAt = $reservation['starts_at'] ?? null;
+        $endsAt = $reservation['ends_at'] ?? null;
+
+        if (!is_string($startsAt) || !is_string($endsAt)) {
+            return null;
+        }
+
+        // Unset config falls back to 60; an explicit 0 ("no early entry")
+        // is respected — that distinction is why getInt() is not used here.
+        $raw = $this->systemConfig->get('FibBookingSystem.config.scanEarlyEntryMinutes');
+        $earlyEntryMinutes = is_numeric($raw) ? max(0, (int) $raw) : 60;
+
+        return [
+            'validFrom' => UtcDateTime::parse($startsAt)->sub(new DateInterval(sprintf('PT%dM', $earlyEntryMinutes))),
+            'expiresAt' => UtcDateTime::parse($endsAt),
+        ];
+    }
+
+    /**
+     * @param array{validFrom: DateTimeImmutable, expiresAt: DateTimeImmutable}|null $slotWindow
+     */
+    private function resolveExpiresAt(?DateTimeInterface $expiresAt, TicketValidity $validity, ?array $slotWindow): ?string
+    {
+        $resolved = $expiresAt ?? $validity->expiresAt ?? $slotWindow['expiresAt'] ?? null;
+
+        return $resolved !== null ? $this->formatDateTime($resolved) : null;
+    }
+
+    /**
+     * @param array{validFrom: DateTimeImmutable, expiresAt: DateTimeImmutable}|null $slotWindow
+     */
+    private function resolveValidFrom(TicketValidity $validity, ?array $slotWindow): ?string
+    {
+        $resolved = $validity->validFrom ?? $slotWindow['validFrom'] ?? null;
+
+        return $resolved !== null ? $this->formatDateTime($resolved) : null;
     }
 
     /**
@@ -191,7 +302,7 @@ class BookingTicketService
         }
 
         try {
-            return new DateTimeImmutable($start);
+            return UtcDateTime::parse($start);
         } catch (Exception) {
             throw FibBookingException::invalidPayload('validityStart', sprintf('"%s" is not a valid date', $start));
         }
@@ -206,8 +317,12 @@ class BookingTicketService
         ], JSON_THROW_ON_ERROR);
     }
 
+    /**
+     * Raw INSERT values are UTC wall time (DATETIME(3)) — normalize before
+     * formatting; the raw path has no DAL serializer to do it.
+     */
     private function formatDateTime(DateTimeInterface $dateTime): string
     {
-        return $dateTime->format('Y-m-d H:i:s.v');
+        return UtcDateTime::toStorage($dateTime);
     }
 }

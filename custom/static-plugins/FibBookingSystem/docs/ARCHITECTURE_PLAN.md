@@ -166,6 +166,12 @@ The number ranges are created by the migration in `number_range_type`, `number_r
 
 ## Status model
 
+Transitions, triggers and safety nets are documented in
+[`RESERVATION_LIFECYCLE.md`](RESERVATION_LIFECYCLE.md) — including
+cancellation/refund handling, expiry of unpaid reservations, the
+per-customer hold cap, scan-log retention and the hourly oversell
+consistency check.
+
 Holds:
 
 - `active`
@@ -203,12 +209,24 @@ AND existing.ends_at > requested.starts_at
 
 When creating a hold, `BookingHoldService` locks the resource with `SELECT ... FOR UPDATE`. Parallel requests for the same resource are therefore checked serially. This is the most important technical safety line against double bookings.
 
-Long-term hardening:
+Implemented hardening (see `RESERVATION_LIFECYCLE.md` for details):
 
-- dedicated slot tables for fixed time grids.
+- dedicated slot tables for fixed time grids (`fib_booking_slot`).
+- transactional conversion of hold to reservation during checkout
+  (pessimistic hold-row lock, idempotent against retries).
+- expiry of unpaid reservations + availability-checked resurrection on late
+  payment.
+- per-customer cap on concurrent holds (`maxActiveHoldsPerCustomer`).
+- hourly oversell consistency check (`BookingConsistencyCheckTask`) — every
+  violation is an ERROR log meant for alerting.
+- single UTC entry point for all time handling
+  (`Core/Domain/Time/UtcDateTime`): client offsets are normalized at the
+  parser, raw SQL compares UTC wall time, DAL writes receive UTC objects.
+
+Still open:
+
 - retry strategy on deadlocks.
 - load tests for parallel hold creation.
-- transactional conversion of hold to reservation during checkout.
 
 ## Cache strategy
 

@@ -61,14 +61,21 @@ The app accepts the canonical QR payload
 64-hex token, validates it client-side and calls
 `POST /api/_action/fib-booking/ticket/scan`.
 
+The request optionally carries a `gate` label (entrance/lane, ≤64 chars) that
+lands in the audit log — with several entrances, "already scanned at 18:03"
+is only actionable when staff can see WHERE, and per-gate throughput drives
+staffing decisions.
+
 | Verdict | Meaning | UI |
 |---|---|---|
 | `valid` | check-in accepted, ticket now `scanned` | green — let them in |
 | `already_scanned` | replay attempt; shows first-scan time | orange |
+| `not_yet_valid` | before the ticket's window (slot tickets: slot start − `scanEarlyEntryMinutes`) | orange |
+| `entry_limit_reached` | multi-entry pass hit its daily cap | orange |
 | `checked_out` | check-out accepted (check-out mode) | green — goodbye |
 | `not_checked_in` | check-out of a guest who is not inside | orange |
-| `expired` | ticket past `expires_at` | red |
-| `revoked` | actively revoked | red |
+| `expired` | ticket past `expires_at` (slot tickets: slot end) | red |
+| `revoked` | actively revoked (also set by refund/cancellation, see [RESERVATION_LIFECYCLE.md](RESERVATION_LIFECYCLE.md)) | red |
 | `not_found` | unknown/foreign token | red |
 
 Race safety: two devices scanning the same ticket simultaneously resolve into
@@ -82,4 +89,7 @@ tab (purchases, currently inside, dwell time). Both are documented in
 [STATISTICS.md](STATISTICS.md).
 
 Every attempt is recorded in `fib_booking_scan_log` (verdict, direction,
-acting user, token fingerprint, timestamp) — see [SECURITY.md](SECURITY.md).
+gate, acting user, token fingerprint, timestamp) — see
+[SECURITY.md](SECURITY.md). GDPR: person-related columns are anonymized
+after `scanLogRetentionDays` (default 180), see
+[RESERVATION_LIFECYCLE.md](RESERVATION_LIFECYCLE.md).

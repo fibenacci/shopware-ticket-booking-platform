@@ -49,7 +49,7 @@ class BookingTicketScanController extends AbstractController
             throw new BadRequestHttpException('Malformed parameter "direction" (expected "check_in" or "check_out").');
         }
 
-        $result = $this->scanService->scan($scanToken, $context, $actor, 'admin-api', $direction);
+        $result = $this->scanService->scan($scanToken, $context, $actor, 'admin-api', $direction, $this->resolveGate($dataBag));
 
         $response = new JsonResponse($result->toArray());
         $response->headers->set('Cache-Control', 'no-store, private');
@@ -77,6 +77,21 @@ class BookingTicketScanController extends AbstractController
         $response->headers->set('X-Robots-Tag', 'noindex');
 
         return $response;
+    }
+
+    /**
+     * Optional entrance/lane label for the audit trail — free-form but
+     * bounded, so a misbehaving client cannot stuff arbitrary blobs in.
+     */
+    private function resolveGate(RequestDataBag $dataBag): ?string
+    {
+        $gate = $dataBag->get('gate');
+
+        if ($gate !== null && (!is_string($gate) || mb_strlen($gate) > 64)) {
+            throw new BadRequestHttpException('Malformed parameter "gate" (expected a string of at most 64 characters).');
+        }
+
+        return is_string($gate) && trim($gate) !== '' ? trim($gate) : null;
     }
 
     private function resolveActor(Context $context): ?string

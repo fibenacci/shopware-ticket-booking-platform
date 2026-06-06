@@ -23,10 +23,10 @@
 </head>
 <body>
     <div class="doc-header">
-        <h1>{{ 'fib-booking.document.title'|trans|default('Ticket') }} {{ config.documentNumber }}</h1>
+        <h1>{{ 'fibBooking.document.title'|trans }} {{ config.documentNumber }}</h1>
         <div class="doc-meta">
             {{ order.salesChannel.translated.name|default('') }}
-            &nbsp;·&nbsp; {{ 'fib-booking.document.order'|trans|default('Order') }} {{ order.orderNumber }}
+            &nbsp;·&nbsp; {{ 'fibBooking.document.order'|trans }} {{ order.orderNumber }}
             &nbsp;·&nbsp; {{ config.documentDate|format_date('medium', locale=order.language.locale.code|default('en-GB')) }}
         </div>
     </div>
@@ -39,23 +39,23 @@
                         <h2>{{ ticket.resourceName|default('—') }}</h2>
                         <table class="details">
                             <tr>
-                                <td class="label">{{ 'fib-booking.document.booking'|trans|default('Booking') }}</td>
+                                <td class="label">{{ 'fibBooking.document.booking'|trans }}</td>
                                 <td>{{ ticket.bookingNumber|default('—') }}</td>
                             </tr>
                             {% if ticket.startsAt %}
                                 <tr>
-                                    <td class="label">{{ 'fib-booking.document.start'|trans|default('Start') }}</td>
+                                    <td class="label">{{ 'fibBooking.document.start'|trans }}</td>
                                     <td>{{ ticket.startsAt|format_datetime('medium', 'short', locale=order.language.locale.code|default('en-GB')) }}</td>
                                 </tr>
                             {% endif %}
                             {% if ticket.endsAt %}
                                 <tr>
-                                    <td class="label">{{ 'fib-booking.document.end'|trans|default('End') }}</td>
+                                    <td class="label">{{ 'fibBooking.document.end'|trans }}</td>
                                     <td>{{ ticket.endsAt|format_datetime('medium', 'short', locale=order.language.locale.code|default('en-GB')) }}</td>
                                 </tr>
                             {% endif %}
                             <tr>
-                                <td class="label">{{ 'fib-booking.document.guest'|trans|default('Guest') }}</td>
+                                <td class="label">{{ 'fibBooking.document.guest'|trans }}</td>
                                 <td>{{ order.orderCustomer.firstName }} {{ order.orderCustomer.lastName }}</td>
                             </tr>
                         </table>
@@ -72,7 +72,7 @@
     {% endfor %}
 
     <div class="doc-footer">
-        {{ 'fib-booking.document.footer'|trans|default('Please present the QR code at the entrance. Each code is valid once.') }}
+        {{ 'fibBooking.document.footer'|trans }}
     </div>
 </body>
 </html>

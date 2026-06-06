@@ -9,6 +9,7 @@ use Exception;
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollection;
 use FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigCollection;
 use FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigEntity;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\Core\Domain\Validity\TicketValidityResolver;
 use FibBookingSystem\Core\Domain\Validity\ValidityMode;
 use FibBookingSystem\FibBookingException;
@@ -16,7 +17,6 @@ use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -162,7 +162,7 @@ class BookingPassReservationService
             'max_entries_per_day' => $config->getMaxEntriesPerDay(),
         ], $customerStart);
 
-        $now = new DateTimeImmutable();
+        $now = UtcDateTime::now();
         // first_use / unlimited have no window yet — starts_at mirrors the
         // purchase; ends_at falls back to starts_at (open-ended, the ticket
         // carries the real validity).
@@ -188,8 +188,11 @@ class BookingPassReservationService
                     $context,
                     $order->getSalesChannelId(),
                 ),
-                'startsAt' => $startsAt->format(Defaults::STORAGE_DATE_TIME_FORMAT),
-                'endsAt' => $endsAt->format(Defaults::STORAGE_DATE_TIME_FORMAT),
+                // UTC objects — the DAL serializer normalizes them itself; a
+                // pre-formatted naive string would be re-interpreted in the
+                // PHP default timezone.
+                'startsAt' => UtcDateTime::from($startsAt),
+                'endsAt' => UtcDateTime::from($endsAt),
                 'quantity' => $lineItem->getQuantity(),
                 'status' => 'pending_payment',
                 'payload' => $payload,
@@ -211,7 +214,7 @@ class BookingPassReservationService
         }
 
         try {
-            return new DateTimeImmutable($start);
+            return UtcDateTime::parse($start);
         } catch (Exception) {
             return null;
         }

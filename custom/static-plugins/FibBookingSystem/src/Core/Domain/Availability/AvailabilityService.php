@@ -6,6 +6,7 @@ namespace FibBookingSystem\Core\Domain\Availability;
 
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use InvalidArgumentException;
 use Shopware\Core\Framework\Uuid\Uuid;
 
@@ -142,8 +143,13 @@ class AvailabilityService
             + (is_numeric($reservationQuantity) ? (int) $reservationQuantity : 0);
     }
 
+    /**
+     * Raw SQL parameters compare against UTC wall time (DATETIME(3) columns,
+     * UTC_TIMESTAMP(3)) — normalize before formatting, or an offset-carrying
+     * DateTime would describe a shifted window.
+     */
     private function formatDateTime(DateTimeInterface $dateTime): string
     {
-        return $dateTime->format('Y-m-d H:i:s.v');
+        return UtcDateTime::toStorage($dateTime);
     }
 }

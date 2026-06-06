@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Content\Booking\SalesChannel;
 
-use DateTimeImmutable;
 use DateTimeInterface;
 use Exception;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\FibBookingException;
 use JsonException;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -63,6 +63,12 @@ final class BookingRequestParser
     }
 
     /**
+     * Normalized to UTC: storage and all raw SQL comparisons are UTC wall
+     * time, so two clients describing the same instant with different offsets
+     * (`10:00+02:00` vs `08:00Z`) must resolve to the SAME window — otherwise
+     * the availability math counts them separately. Strings without an offset
+     * are interpreted as UTC, never as the PHP default timezone.
+     *
      * @param array<string, mixed> $payload
      */
     public static function dateTime(array $payload, string $field): DateTimeInterface
@@ -74,7 +80,7 @@ final class BookingRequestParser
         }
 
         try {
-            return new DateTimeImmutable($value);
+            return UtcDateTime::parse($value);
         } catch (Exception) {
             throw FibBookingException::invalidPayload($field, 'expected an ISO 8601 date');
         }

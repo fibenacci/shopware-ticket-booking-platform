@@ -7,6 +7,7 @@ namespace FibBookingSystem\Core\Domain\Validity;
 use DateInterval;
 use DateTimeImmutable;
 use Exception;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\FibBookingException;
 
 /**
@@ -43,7 +44,7 @@ class TicketValidityResolver
         $anchor = $config['validity_anchor'] ?? ValidityAnchor::PURCHASE;
 
         return match ($anchor) {
-            ValidityAnchor::PURCHASE => $this->window($now ?? new DateTimeImmutable(), $interval, $entryPolicy, $maxEntriesPerDay, $anchor, $duration),
+            ValidityAnchor::PURCHASE => $this->window($now ?? UtcDateTime::now(), $interval, $entryPolicy, $maxEntriesPerDay, $anchor, $duration),
             ValidityAnchor::CUSTOMER => $this->window(
                 $customerStart ?? throw FibBookingException::invalidPayload('validityStart', 'the customer anchor requires a start date'),
                 $interval,

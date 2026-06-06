@@ -15,6 +15,7 @@ class FibBookingException extends HttpException
 {
     public const RESOURCE_NOT_FOUND = 'FIB_BOOKING__RESOURCE_NOT_FOUND';
     public const WINDOW_UNAVAILABLE = 'FIB_BOOKING__WINDOW_UNAVAILABLE';
+    public const HOLD_LIMIT_REACHED = 'FIB_BOOKING__HOLD_LIMIT_REACHED';
     public const RESERVATION_NOT_FOUND = 'FIB_BOOKING__RESERVATION_NOT_FOUND';
     public const TICKET_ALREADY_EXISTS = 'FIB_BOOKING__TICKET_ALREADY_EXISTS';
     public const INVALID_PAYLOAD = 'FIB_BOOKING__INVALID_PAYLOAD';
@@ -36,6 +37,16 @@ class FibBookingException extends HttpException
             Response::HTTP_BAD_REQUEST,
             self::SCAN_CHECK_OUT_DISABLED,
             'Check-out scanning is disabled. Enable "scanCheckOutEnabled" in the plugin configuration first.',
+        );
+    }
+
+    public static function holdLimitReached(int $limit): self
+    {
+        return new self(
+            Response::HTTP_TOO_MANY_REQUESTS,
+            self::HOLD_LIMIT_REACHED,
+            'No more than {{ limit }} concurrent booking holds are allowed per customer. Complete or abandon an existing hold first.',
+            ['limit' => $limit],
         );
     }
 

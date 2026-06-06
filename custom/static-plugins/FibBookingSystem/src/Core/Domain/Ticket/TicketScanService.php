@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Ticket;
 
 use DateInterval;
-use DateTimeImmutable;
 use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Content\BookingScanLog\BookingScanLogCollection;
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\Core\Domain\Validity\EntryPolicy;
 use FibBookingSystem\Core\Domain\Validity\ValidityAnchor;
 use FibBookingSystem\FibBookingException;
-use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\Uuid\Uuid;
@@ -82,6 +81,7 @@ class TicketScanService
         ?string $scannedBy = null,
         string $source = 'api',
         string $direction = ScanDirection::CHECK_IN,
+        ?string $gate = null,
     ): TicketScanResult {
         if ($direction === ScanDirection::CHECK_OUT && !$this->isCheckOutEnabled()) {
             throw FibBookingException::scanCheckOutDisabled();
@@ -89,7 +89,7 @@ class TicketScanService
 
         $tokenHash = hash('sha256', $scanToken);
 
-        return $this->connection->transactional(function () use ($tokenHash, $context, $scannedBy, $source, $direction): TicketScanResult {
+        return $this->connection->transactional(function () use ($tokenHash, $context, $scannedBy, $source, $direction, $gate): TicketScanResult {
             /** @var TicketRow|false $ticket */
             $ticket = $this->connection->fetchAssociative(
                 <<<'SQL'
@@ -108,7 +108,7 @@ class TicketScanService
             $result = $direction === ScanDirection::CHECK_OUT
                 ? $this->resolveCheckOutVerdict($ticket, $context)
                 : $this->resolveCheckInVerdict($ticket, $context);
-            $this->logAttempt($context, $result, $ticket === false ? null : $ticket['id'], $tokenHash, $scannedBy, $source);
+            $this->logAttempt($context, $result, $ticket === false ? null : $ticket['id'], $tokenHash, $scannedBy, $source, $gate);
 
             return $result;
         });
@@ -136,7 +136,7 @@ class TicketScanService
             return $expired;
         }
 
-        if ($ticket['valid_from'] !== null && new DateTimeImmutable($ticket['valid_from']) > new DateTimeImmutable()) {
+        if ($ticket['valid_from'] !== null && UtcDateTime::parse($ticket['valid_from']) > UtcDateTime::now()) {
             return new TicketScanResult(TicketScanResult::NOT_YET_VALID, $ticketNumber, $bookingNumber);
         }
 
@@ -172,16 +172,17 @@ class TicketScanService
         // Re-entry keeps the FIRST entry time on the ticket; the per-session
         // history is reconstructed from the scan log.
         $scannedAt = $ticket['scanned_at'] !== null
-            ? new DateTimeImmutable($ticket['scanned_at'])
-            : new DateTimeImmutable();
+            ? UtcDateTime::parse($ticket['scanned_at'])
+            : UtcDateTime::now();
 
         if ($transition) {
             $this->updateTicket([
                 'id' => Uuid::fromBytesToHex($ticket['id']),
                 'status' => 'scanned',
-                // Storage format keeps millisecond precision (DATE_ATOM would
-                // truncate it), so a replay reports the exact first-scan time.
-                'scannedAt' => $scannedAt->format(Defaults::STORAGE_DATE_TIME_FORMAT),
+                // UTC object: keeps millisecond precision AND lets the DAL
+                // serializer normalize — a replay reports the exact
+                // first-scan time.
+                'scannedAt' => $scannedAt,
             ], $context);
         }
 
@@ -211,7 +212,9 @@ class TicketScanService
             SQL,
             [
                 'ticketId' => $ticket['id'],
-                'dayStart' => (new DateTimeImmutable('today'))->format('Y-m-d H:i:s.v'),
+                // "Today" starts at UTC midnight — `new DateTimeImmutable('today')`
+                // would use the PHP default timezone and shift the window.
+                'dayStart' => UtcDateTime::toStorage(UtcDateTime::now()->setTime(0, 0)),
             ],
         );
 
@@ -235,12 +238,12 @@ class TicketScanService
             return;
         }
 
-        $now = new DateTimeImmutable();
+        $now = UtcDateTime::now();
 
         $this->updateTicket([
             'id' => Uuid::fromBytesToHex($ticket['id']),
-            'validFrom' => $now->format(Defaults::STORAGE_DATE_TIME_FORMAT),
-            'expiresAt' => $now->add(new DateInterval($ticket['validity_duration']))->format(Defaults::STORAGE_DATE_TIME_FORMAT),
+            'validFrom' => $now,
+            'expiresAt' => $now->add(new DateInterval($ticket['validity_duration'])),
         ], $context);
     }
 
@@ -254,7 +257,7 @@ class TicketScanService
     private function resolveExpiredVerdict(array $ticket, Context $context): ?TicketScanResult
     {
         $isExpired = $ticket['expires_at'] !== null
-            && new DateTimeImmutable($ticket['expires_at']) < new DateTimeImmutable();
+            && UtcDateTime::parse($ticket['expires_at']) < UtcDateTime::now();
 
         if ($ticket['status'] !== 'expired' && !$isExpired) {
             return null;
@@ -325,7 +328,7 @@ class TicketScanService
         });
     }
 
-    private function logAttempt(Context $context, TicketScanResult $result, ?string $ticketIdBytes, string $tokenHash, ?string $scannedBy, string $source): void
+    private function logAttempt(Context $context, TicketScanResult $result, ?string $ticketIdBytes, string $tokenHash, ?string $scannedBy, string $source, ?string $gate): void
     {
         // DAL write — shares the connection, so it stays inside the
         // FOR UPDATE transaction scope above. SYSTEM_SCOPE for the same
@@ -339,6 +342,7 @@ class TicketScanService
             'tokenFingerprint' => substr($tokenHash, 0, 12),
             'scannedBy' => $scannedBy !== null ? mb_substr($scannedBy, 0, 64) : null,
             'source' => mb_substr($source, 0, 32),
+            'gate' => $gate !== null ? mb_substr($gate, 0, 64) : null,
         ];
 
         $context->scope(Context::SYSTEM_SCOPE, function (Context $systemContext) use ($entry): void {
@@ -348,6 +352,6 @@ class TicketScanService
 
     private function formatDateTime(DateTimeInterface $dateTime): string
     {
-        return $dateTime->format('Y-m-d H:i:s.v');
+        return UtcDateTime::toStorage($dateTime);
     }
 }

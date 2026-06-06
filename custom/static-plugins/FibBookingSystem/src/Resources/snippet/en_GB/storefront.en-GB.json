@@ -28,6 +28,15 @@
                 "scanned": "Already used"
             }
         },
+        "document": {
+            "title": "Ticket",
+            "order": "Order",
+            "booking": "Booking",
+            "start": "Start",
+            "end": "End",
+            "guest": "Guest",
+            "footer": "Please present the QR code at the entrance. Each code is valid once."
+        },
         "pass": {
             "validFor": "Valid for",
             "unlimitedValidity": "Valid without expiry",

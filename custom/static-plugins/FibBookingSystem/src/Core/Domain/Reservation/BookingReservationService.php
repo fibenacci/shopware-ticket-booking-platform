@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Domain\Reservation;
 
-use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Content\BookingHold\BookingHoldCollection;
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollection;
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationEntity;
+use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\FibBookingException;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
@@ -40,6 +41,10 @@ class BookingReservationService
      * @param EntityRepository<OrderTransactionCollection>   $orderTransactionRepository
      * @param EntityRepository<BookingReservationCollection> $reservationRepository
      * @param EntityRepository<BookingHoldCollection>        $holdRepository
+     *
+     * @SuppressWarnings("PHPMD.ExcessiveParameterList") constructor DI of the
+     * reservation lifecycle hub — four repositories plus the collaborating
+     * domain services; splitting it would only move the wiring, not reduce it
      */
     public function __construct(
         private readonly Connection $connection,
@@ -48,6 +53,7 @@ class BookingReservationService
         private readonly EntityRepository $reservationRepository,
         private readonly EntityRepository $holdRepository,
         private readonly BookingTicketService $ticketService,
+        private readonly AvailabilityService $availabilityService,
         private readonly NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly LoggerInterface $logger,
@@ -88,14 +94,77 @@ class BookingReservationService
 
     public function confirmReservationsForOrder(string $orderId, Context $context): int
     {
+        // Payment may legitimately arrive AFTER the pending-payment TTL
+        // (prepayment takes days) — resurrect what the expiry task flipped,
+        // as long as the window is still free.
+        $this->resurrectExpiredReservations($orderId, $context);
+
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('orderId', $orderId));
         $criteria->addFilter(new EqualsAnyFilter('status', ['pending_payment', 'draft']));
 
-        /** @var array<string> $reservationIds */
+        /** @var list<string> $reservationIds */
         $reservationIds = $this->reservationRepository->searchIds($criteria, $context)->getIds();
 
         return $this->confirmReservations($reservationIds, $context);
+    }
+
+    /**
+     * Re-activates expired reservations of an order whose payment arrived
+     * late. Same locking discipline as the hold conversion: the resource row
+     * lock serializes against concurrent hold creation, then the availability
+     * math decides — the expired reservation itself no longer counts, so a
+     * plain re-check is exact. A window that was given away in the meantime
+     * stays lost: the operator gets an error log to re-book or refund.
+     */
+    private function resurrectExpiredReservations(string $orderId, Context $context): void
+    {
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('orderId', $orderId));
+        $criteria->addFilter(new EqualsFilter('status', 'expired'));
+
+        $expired = $this->reservationRepository->search($criteria, $context)->getEntities();
+
+        /** @var BookingReservationEntity $reservation */
+        foreach ($expired as $reservation) {
+            $resurrected = $this->connection->transactional(function () use ($reservation, $context): bool {
+                // Deliberate raw SQL: pessimistic resource lock, same
+                // no-overbooking guarantee as BookingHoldService::createHold.
+                $this->connection->fetchOne(
+                    <<<'SQL'
+                        SELECT id FROM fib_booking_resource WHERE id = :resourceId FOR UPDATE
+                    SQL,
+                    ['resourceId' => Uuid::fromHexToBytes($reservation->getResourceId())],
+                );
+
+                $availability = $this->availabilityService->check(
+                    $reservation->getResourceId(),
+                    $reservation->getStartsAt(),
+                    $reservation->getEndsAt(),
+                    $reservation->getQuantity(),
+                );
+
+                if (!$availability->isAvailable()) {
+                    return false;
+                }
+
+                $context->scope(Context::SYSTEM_SCOPE, function (Context $systemContext) use ($reservation): void {
+                    $this->reservationRepository->update([
+                        ['id' => $reservation->getId(), 'status' => 'pending_payment'],
+                    ], $systemContext);
+                });
+
+                return true;
+            });
+
+            if (!$resurrected) {
+                $this->logger->error('Late payment for expired reservation {bookingNumber} (order {orderId}): window no longer available — re-book or refund manually.', [
+                    'bookingNumber' => $reservation->getBookingNumber(),
+                    'reservationId' => $reservation->getId(),
+                    'orderId' => $orderId,
+                ]);
+            }
+        }
     }
 
     public function confirmReservationsForOrderTransaction(string $orderTransactionId, Context $context): int
@@ -113,7 +182,80 @@ class BookingReservationService
     }
 
     /**
-     * @param array<string> $reservationIds
+     * Cancellation/refund tail: every non-final reservation of the order is
+     * cancelled and its tickets are revoked. Cancelled reservations leave the
+     * availability math (status filter), so the booked window is released
+     * automatically — a cancelled order must never block a slot, and a
+     * refunded order must never hold a scannable ticket.
+     *
+     * `completed` reservations are included on purpose: the past visit is
+     * history, but a refunded multi-entry pass must stop granting entries.
+     *
+     * @return int number of reservations cancelled
+     */
+    public function cancelReservationsForOrder(string $orderId, Context $context, string $reason): int
+    {
+        // One transaction: a cancelled reservation with a still-scannable
+        // ticket (or vice versa) must not exist, not even transiently.
+        $count = $this->connection->transactional(function () use ($orderId, $context): int {
+            $criteria = new Criteria();
+            $criteria->addFilter(new EqualsFilter('orderId', $orderId));
+            $criteria->addFilter(new EqualsAnyFilter('status', ['draft', 'pending_payment', 'confirmed', 'completed']));
+
+            /** @var list<string> $reservationIds */
+            $reservationIds = $this->reservationRepository->searchIds($criteria, $context)->getIds();
+
+            if ($reservationIds === []) {
+                return 0;
+            }
+
+            // Bulk payload + SYSTEM_SCOPE: the transition is an internal
+            // effect of an authorized order state change; the acting admin
+            // user needs order privileges, not booking-entity write ACLs.
+            $payload = array_map(
+                static fn (string $id): array => ['id' => $id, 'status' => 'cancelled'],
+                $reservationIds,
+            );
+
+            $context->scope(Context::SYSTEM_SCOPE, function (Context $systemContext) use ($payload): void {
+                $this->reservationRepository->update($payload, $systemContext);
+            });
+
+            $this->ticketService->revokeForReservations($reservationIds, $context);
+
+            return count($reservationIds);
+        });
+
+        if ($count > 0) {
+            $this->logger->info('Cancelled {reservations} reservation(s) for order {orderId} ({reason}); their booking windows are released.', [
+                'reservations' => $count,
+                'orderId' => $orderId,
+                'reason' => $reason,
+            ]);
+        }
+
+        return $count;
+    }
+
+    /**
+     * @see cancelReservationsForOrder — resolved via the transaction's order
+     */
+    public function cancelReservationsForOrderTransaction(string $orderTransactionId, Context $context, string $reason): int
+    {
+        /** @var OrderTransactionEntity|null $transaction */
+        $transaction = $this->orderTransactionRepository
+            ->search(new Criteria([$orderTransactionId]), $context)
+            ->first();
+
+        if ($transaction === null) {
+            return 0;
+        }
+
+        return $this->cancelReservationsForOrder($transaction->getOrderId(), $context, $reason);
+    }
+
+    /**
+     * @param list<string> $reservationIds
      */
     private function confirmReservations(array $reservationIds, Context $context): int
     {
@@ -220,18 +362,38 @@ class BookingReservationService
             ],
         );
 
-        if ($hold === false || $hold['status'] !== 'active') {
+        // Every false path below means: the order exists (and may get paid)
+        // WITHOUT a reservation. That must never disappear silently — the
+        // operator has to re-book or refund manually.
+        if ($hold === false) {
+            $this->logger->error('Booking hold conversion failed for order {orderNumber}: hold {holdId} not found or token mismatch.', [
+                'orderNumber' => $order->getOrderNumber(),
+                'orderId' => $order->getId(),
+                'lineItemId' => $lineItem->getId(),
+                'holdId' => $bookingPayload['holdId'],
+            ]);
+
             return false;
         }
 
-        if (new DateTimeImmutable($hold['expires_at']) <= new DateTimeImmutable()) {
+        $alreadyConverted = $this->hasReservationForHold($bookingPayload['holdId'], $context);
+
+        if ($alreadyConverted) {
+            // Expected idempotent replay (double submit, webhook retry) — the
+            // reservation exists, nothing to repair.
             return false;
         }
 
-        $existingCriteria = new Criteria();
-        $existingCriteria->addFilter(new EqualsFilter('holdId', $bookingPayload['holdId']));
+        if ($hold['status'] !== 'active' || UtcDateTime::parse($hold['expires_at']) <= UtcDateTime::now()) {
+            $this->logger->error('Booking hold conversion failed for order {orderNumber}: hold {holdId} is {status} (expires {expiresAt}) — order placed without a reservation.', [
+                'orderNumber' => $order->getOrderNumber(),
+                'orderId' => $order->getId(),
+                'lineItemId' => $lineItem->getId(),
+                'holdId' => $bookingPayload['holdId'],
+                'status' => $hold['status'],
+                'expiresAt' => $hold['expires_at'],
+            ]);
 
-        if ($this->reservationRepository->searchIds($existingCriteria, $context)->firstId() !== null) {
             return false;
         }
 
@@ -250,8 +412,10 @@ class BookingReservationService
                     $context,
                     $order->getSalesChannelId(),
                 ),
-                'startsAt' => $hold['starts_at'],
-                'endsAt' => $hold['ends_at'],
+                // UTC objects instead of the naive DB strings — the DAL would
+                // re-interpret a naive string in the PHP default timezone.
+                'startsAt' => UtcDateTime::parse($hold['starts_at']),
+                'endsAt' => UtcDateTime::parse($hold['ends_at']),
                 'quantity' => (int) $hold['quantity'],
                 'status' => 'pending_payment',
                 'payload' => is_string($hold['payload']) ? json_decode($hold['payload'], true) : null,
@@ -266,5 +430,13 @@ class BookingReservationService
         ], $context);
 
         return true;
+    }
+
+    private function hasReservationForHold(string $holdId, Context $context): bool
+    {
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('holdId', $holdId));
+
+        return $this->reservationRepository->searchIds($criteria, $context)->firstId() !== null;
     }
 }

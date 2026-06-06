@@ -26,6 +26,33 @@ class BookingRequestParserTest extends TestCase
         static::assertSame(2, BookingRequestParser::positiveInt($payload, 'quantity'));
     }
 
+    public function testDateTimeNormalizesClientOffsetToUtc(): void
+    {
+        $viaOffset = BookingRequestParser::dateTime(['startsAt' => '2026-07-01T10:00:00+02:00'], 'startsAt');
+        $viaZulu = BookingRequestParser::dateTime(['startsAt' => '2026-07-01T08:00:00Z'], 'startsAt');
+
+        static::assertSame('UTC', $viaOffset->getTimezone()->getName());
+        static::assertSame(
+            $viaOffset->format(\DATE_ATOM),
+            $viaZulu->format(\DATE_ATOM),
+            'same instant with different offsets must resolve to the same booking window',
+        );
+    }
+
+    public function testDateTimeTreatsNaiveInputAsUtc(): void
+    {
+        $previous = date_default_timezone_get();
+        date_default_timezone_set('Europe/Berlin');
+
+        try {
+            $parsed = BookingRequestParser::dateTime(['startsAt' => '2026-07-01 08:00:00'], 'startsAt');
+
+            static::assertSame('2026-07-01T08:00:00+00:00', $parsed->format(\DATE_ATOM));
+        } finally {
+            date_default_timezone_set($previous);
+        }
+    }
+
     public function testEmptyBodyYieldsEmptyPayload(): void
     {
         static::assertSame([], BookingRequestParser::payload(new Request()));

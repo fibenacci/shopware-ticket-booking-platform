@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Checkout\Cart;
 
-use DateTimeImmutable;
 use FibBookingSystem\Core\Content\BookingHold\BookingHoldCollection;
 use FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigCollection;
+use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\Core\Domain\Validity\ValidityAnchor;
 use FibBookingSystem\Core\Domain\Validity\ValidityMode;
 use Shopware\Core\Checkout\Cart\Cart;
@@ -160,9 +160,13 @@ class BookingCartProcessor implements CartProcessorInterface
             return false;
         }
 
-        $date = DateTimeImmutable::createFromFormat('Y-m-d|', $start);
+        if (!checkdate((int) substr($start, 5, 2), (int) substr($start, 8, 2), (int) substr($start, 0, 4))) {
+            return false;
+        }
 
-        return $date !== false && $date >= new DateTimeImmutable('today');
+        // Calendar-date comparison in UTC — `new DateTimeImmutable('today')`
+        // would shift the boundary by the PHP default timezone offset.
+        return $start >= UtcDateTime::now()->format('Y-m-d');
     }
 
     /**
@@ -200,7 +204,9 @@ class BookingCartProcessor implements CartProcessorInterface
         $criteria->addFilter(new EqualsFilter('token', $holdToken));
         $criteria->addFilter(new EqualsFilter('status', 'active'));
         $criteria->addFilter(new RangeFilter('expiresAt', [
-            RangeFilter::GT => (new DateTimeImmutable())->format(\DATE_ATOM),
+            // UTC + offset suffix, so the DAL compares the right instant even
+            // when the PHP default timezone is not UTC.
+            RangeFilter::GT => UtcDateTime::now()->format(\DATE_ATOM),
         ]));
 
         return $this->holdRepository->searchIds($criteria, $context)->firstId() !== null;
