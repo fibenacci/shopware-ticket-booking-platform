@@ -23,14 +23,14 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 15
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   uses: shivammathur/setup-php@v2
                 with:
                     php-version: ${{ env.PHP_VERSION }}
                     extensions: ${{ env.PHP_EXTENSIONS }}
                     tools: composer:v2
                     coverage: none
-            -   uses: actions/cache@v4
+            -   uses: actions/cache@v5
                 with:
                     path: ~/.composer/cache
                     key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
@@ -47,8 +47,8 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
-            -   uses: actions/checkout@v4
-            -   uses: actions/setup-node@v4
+            -   uses: actions/checkout@v6
+            -   uses: actions/setup-node@v6
                 with:
                     node-version: ${{ env.NODE_VERSION }}
                     cache: npm
@@ -63,6 +63,11 @@ jobs:
                     npm ci
                     npm run build
 
+            -   id: scanner_tests
+                name: Scanner app — vitest unit tests
+                working-directory: custom/static-plugins/FibBookingSystem/apps/scanner
+                run: npm test
+
             -   id: node_syntax
                 name: Plugin storefront JS — syntax check
                 run: |
@@ -74,6 +79,7 @@ jobs:
                 run: |
                     .github/scripts/gate.sh "Lint failures — see the steps above." \
                         "Scanner app build=${{ steps.scanner_build.outcome }}" \
+                        "Scanner app tests=${{ steps.scanner_tests.outcome }}" \
                         "Plugin JS syntax=${{ steps.node_syntax.outcome }}"
 
     composer-audit:
@@ -81,7 +87,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   uses: shivammathur/setup-php@v2
                 with:
                     php-version: ${{ env.PHP_VERSION }}
@@ -95,8 +101,8 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
-            -   uses: actions/checkout@v4
-            -   uses: actions/setup-node@v4
+            -   uses: actions/checkout@v6
+            -   uses: actions/setup-node@v6
                 with:
                     node-version: ${{ env.NODE_VERSION }}
                     cache: npm
@@ -124,7 +130,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   uses: shopware/shopware-cli-action@v3
             -   name: Validate maintained plugins
                 run: .github/scripts/validate-plugins.sh
@@ -154,16 +160,16 @@ jobs:
             COMPOSE_PROJECT_NAME: fib-booking-shop-tests
             STOREFRONT_PORT: '8080'
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
 
-            -   uses: actions/setup-node@v4
+            -   uses: actions/setup-node@v6
                 with:
                     node-version: ${{ env.NODE_VERSION }}
                     cache: npm
                     cache-dependency-path: |
                         custom/static-plugins/FibBookingSystem/package-lock.json
 
-            -   uses: actions/cache@v4
+            -   uses: actions/cache@v5
                 with:
                     path: ~/.cache/ms-playwright
                     key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('custom/static-plugins/FibBookingSystem/package-lock.json') }}
@@ -182,7 +188,7 @@ jobs:
 
             -   name: Upload JUnit results
                 if: always()
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v7
                 with:
                     name: junit-results
                     path: |
@@ -192,7 +198,7 @@ jobs:
 
             -   name: Upload Playwright reports
                 if: always()
-                uses: actions/upload-artifact@v4
+                uses: actions/upload-artifact@v7
                 with:
                     name: playwright-reports
                     path: |
@@ -225,11 +231,11 @@ jobs:
             checks: write
             pull-requests: write
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
 
             -   name: Download JUnit results
                 continue-on-error: true
-                uses: actions/download-artifact@v4
+                uses: actions/download-artifact@v8
                 with:
                     name: junit-results
                     path: junit-results
@@ -237,7 +243,7 @@ jobs:
             -   id: phpunit-report
                 name: Publish PHPUnit report
                 if: ${{ needs.tests.result == 'success' || needs.tests.result == 'failure' }}
-                uses: dorny/test-reporter@v1
+                uses: dorny/test-reporter@v3
                 with:
                     name: PHPUnit
                     path: 'junit-results/custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml'
@@ -250,7 +256,7 @@ jobs:
             -   id: e2e-booking-report
                 name: Publish Booking Playwright report
                 if: ${{ needs.tests.result == 'success' || needs.tests.result == 'failure' }}
-                uses: dorny/test-reporter@v1
+                uses: dorny/test-reporter@v3
                 with:
                     name: Playwright — Booking
                     path: 'junit-results/custom/static-plugins/FibBookingSystem/test-results/junit.xml'
@@ -262,7 +268,7 @@ jobs:
 
             -   name: Update PR description with test results
                 if: ${{ github.event_name == 'pull_request' }}
-                uses: actions/github-script@v7
+                uses: actions/github-script@v9
                 env:
                     PHPUNIT_REPORT_URL: ${{ steps.phpunit-report.outputs.url_html }}
                     E2E_BOOKING_REPORT_URL: ${{ steps.e2e-booking-report.outputs.url_html }}
@@ -281,7 +287,7 @@ jobs:
         if: always()
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Check CI results
                 run: |
                     if [ "${{ needs.publish-results.result }}" = "failure" ]; then

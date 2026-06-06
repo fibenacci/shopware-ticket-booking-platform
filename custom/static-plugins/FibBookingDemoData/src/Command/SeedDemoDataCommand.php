@@ -56,6 +56,18 @@ class SeedDemoDataCommand extends Command
 
         $io->writeln(sprintf('  %d calendar slot(s) upserted for the package resource.', $result['slots']));
 
+        if ($result['homepageAssigned']) {
+            $io->writeln('  Homepage layout "FIB Booking Home" assigned (booking calendar on the start page).');
+        }
+
+        if ($result['scannerUser'] !== null) {
+            $io->writeln(sprintf(
+                '  Scanner access: user <info>%s</info> with least-privilege role <info>%s</info> (demo credentials — see seeds JSON).',
+                $result['scannerUser']['username'],
+                $result['scannerUser']['role'],
+            ));
+        }
+
         if ($result['reservationId'] !== null) {
             $io->writeln(sprintf(
                 '  Reservation <info>B-DEMO-1</info> (%s)%s',

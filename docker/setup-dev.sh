@@ -50,14 +50,23 @@ fi
 print_step "Refreshing plugins..."
 bin/console plugin:refresh --no-interaction >/dev/null
 
-print_step "Installing + activating FibBookingSystem..."
-if bin/console plugin:install --activate FibBookingSystem --no-interaction >/dev/null 2>&1; then
-    print_success "FibBookingSystem installed + activated"
-else
-    bin/console plugin:update FibBookingSystem --no-interaction >/dev/null 2>&1 || true
-    bin/console plugin:activate FibBookingSystem --no-interaction >/dev/null 2>&1 || true
-    print_success "FibBookingSystem already installed (update + activation ensured)"
-fi
+install_plugin() {
+    local plugin="$1"
+    if bin/console plugin:install --activate "$plugin" --no-interaction >/dev/null 2>&1; then
+        print_success "$plugin installed + activated"
+    else
+        bin/console plugin:update "$plugin" --no-interaction >/dev/null 2>&1 || true
+        bin/console plugin:activate "$plugin" --no-interaction >/dev/null 2>&1 || true
+        print_success "$plugin already installed (update + activation ensured)"
+    fi
+}
+
+print_step "Installing + activating plugins..."
+install_plugin FibBookingSystem
+install_plugin FibBookingDemoData
+
+print_step "Seeding booking demo data (products, slots, packages, homepage calendar)..."
+bin/console fib-booking:demodata --no-interaction || print_warning "Demo data seeding failed — run 'make seed-booking' manually"
 
 print_step "Setting up admin user (admin / shopware)..."
 bin/console user:create admin --admin --password=shopware --email=admin@localhost.local --firstName=Admin --lastName=User >/dev/null 2>&1 \

@@ -11,6 +11,11 @@
             <argument type="service" id="fib_booking_product_config.repository"/>
             <argument type="service" id="fib_booking_reservation.repository"/>
             <argument type="service" id="fib_booking_slot.repository"/>
+            <argument type="service" id="cms_page.repository"/>
+            <argument type="service" id="category.repository"/>
+            <argument type="service" id="acl_role.repository"/>
+            <argument type="service" id="user.repository"/>
+            <argument type="service" id="locale.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
         </service>
 

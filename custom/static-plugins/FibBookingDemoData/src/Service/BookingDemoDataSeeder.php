@@ -28,7 +28,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
  * All ids are derived from stable seed strings, so re-running upserts instead
  * of duplicating — safe for repeated use in dev and CI.
  *
- * @phpstan-type SeedResult array{resources: list<array{id: string, name: string}>, products: list<array{id: string, number: string, name: string, resourceId: string}>, packages: list<array{id: string, number: string, name: string, resourceId: string}>, slots: int, reservationId: string|null, ticketNumber: string|null}
+ * @phpstan-type SeedResult array{resources: list<array{id: string, name: string}>, products: list<array{id: string, number: string, name: string, resourceId: string}>, packages: list<array{id: string, number: string, name: string, resourceId: string}>, slots: int, reservationId: string|null, ticketNumber: string|null, homepageAssigned: bool, scannerUser: array{username: string, role: string}|null}
  */
 class BookingDemoDataSeeder
 {
@@ -42,6 +42,11 @@ class BookingDemoDataSeeder
      * @param EntityRepository<\FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigCollection> $productConfigRepository
      * @param EntityRepository<\FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollection>     $reservationRepository
      * @param EntityRepository<\FibBookingSystem\Core\Content\BookingSlot\BookingSlotCollection>                   $slotRepository
+     * @param EntityRepository<\Shopware\Core\Content\Cms\CmsPageCollection>                                       $cmsPageRepository
+     * @param EntityRepository<\Shopware\Core\Content\Category\CategoryCollection>                                 $categoryRepository
+     * @param EntityRepository<\Shopware\Core\Framework\Api\Acl\Role\AclRoleCollection>                            $aclRoleRepository
+     * @param EntityRepository<\Shopware\Core\System\User\UserCollection>                                          $userRepository
+     * @param EntityRepository<\Shopware\Core\System\Locale\LocaleCollection>                                      $localeRepository
      */
     public function __construct(
         private readonly EntityRepository $productRepository,
@@ -51,6 +56,11 @@ class BookingDemoDataSeeder
         private readonly EntityRepository $productConfigRepository,
         private readonly EntityRepository $reservationRepository,
         private readonly EntityRepository $slotRepository,
+        private readonly EntityRepository $cmsPageRepository,
+        private readonly EntityRepository $categoryRepository,
+        private readonly EntityRepository $aclRoleRepository,
+        private readonly EntityRepository $userRepository,
+        private readonly EntityRepository $localeRepository,
         private readonly BookingTicketService $ticketService,
     ) {
     }
@@ -90,6 +100,21 @@ class BookingDemoDataSeeder
             );
         }
 
+        $homepageAssigned = false;
+        if (isset($seeds['cms']['homepage'])) {
+            $calendarResourceKey = (string) $seeds['cms']['homepage']['calendarResource'];
+            $calendarResourceId = $resourceIds[$calendarResourceKey] ?? $packages[0]['resourceId'] ?? null;
+
+            if ($calendarResourceId !== null) {
+                $homepageAssigned = $this->seedHomepageWithCalendar($seeds['cms']['homepage'], $calendarResourceId, $context);
+            }
+        }
+
+        $scannerUser = null;
+        if (isset($seeds['scanner'])) {
+            $scannerUser = $this->seedScannerAccess($seeds['scanner'], $context);
+        }
+
         return [
             'resources' => $resources,
             'products' => $products,
@@ -97,7 +122,194 @@ class BookingDemoDataSeeder
             'slots' => $slotCount,
             'reservationId' => $reservationId,
             'ticketNumber' => $ticketNumber,
+            'homepageAssigned' => $homepageAssigned,
+            'scannerUser' => $scannerUser,
         ];
+    }
+
+    /**
+     * Standard text block linking operators to the scanner app login —
+     * rendered below the calendar on the seeded homepage.
+     *
+     * @param array<string, mixed> $scannerLink
+     *
+     * @return array<string, mixed>
+     */
+    private function buildScannerLinkBlock(array $scannerLink): array
+    {
+        $url = htmlspecialchars((string) ($scannerLink['url'] ?? '/scanner/'), \ENT_QUOTES);
+        $headline = htmlspecialchars((string) ($scannerLink['headline'] ?? 'Operator area'), \ENT_QUOTES);
+        $label = htmlspecialchars((string) ($scannerLink['label'] ?? 'Open ticket scanner'), \ENT_QUOTES);
+        $hint = htmlspecialchars((string) ($scannerLink['hint'] ?? ''), \ENT_QUOTES);
+
+        $content = sprintf(
+            '<h3>%s</h3><p><a class="btn btn-outline-primary" href="%s" target="_blank" rel="noopener">%s</a></p>%s',
+            $headline,
+            $url,
+            $label,
+            $hint !== '' ? sprintf('<p><small>%s</small></p>', $hint) : '',
+        );
+
+        return [
+            'id' => self::id('cms:homepage:scanner-block'),
+            'type' => 'text',
+            'position' => 1,
+            'sectionPosition' => 'main',
+            'slots' => [
+                [
+                    'id' => self::id('cms:homepage:scanner-slot'),
+                    'type' => 'text',
+                    'slot' => 'content',
+                    'config' => [
+                        'content' => ['source' => 'static', 'value' => $content],
+                        'verticalAlign' => ['source' => 'static', 'value' => null],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Least-privilege scanner access: an ACL role carrying ONLY the
+     * fib_booking.ticket_scan privilege and a non-admin demo user bound to it.
+     * The scanner app logs in with this user — it can scan tickets and
+     * nothing else.
+     *
+     * @param array<string, mixed> $scanner
+     *
+     * @return array{username: string, role: string}|null
+     */
+    private function seedScannerAccess(array $scanner, Context $context): ?array
+    {
+        $roleName = (string) ($scanner['role']['name'] ?? 'Booking Scanner');
+        $privileges = $scanner['role']['privileges'] ?? ['fib_booking.ticket_scan'];
+
+        $existingRoleId = $this->aclRoleRepository->searchIds(
+            (new Criteria())->addFilter(new EqualsFilter('name', $roleName)),
+            $context,
+        )->firstId();
+        $roleId = is_string($existingRoleId) ? $existingRoleId : self::id('acl-role:scanner');
+
+        $this->aclRoleRepository->upsert([
+            [
+                'id' => $roleId,
+                'name' => $roleName,
+                'description' => 'Demo role: may scan booking tickets — nothing else.',
+                'privileges' => array_values($privileges),
+            ],
+        ], $context);
+
+        $user = $scanner['user'] ?? null;
+        if (!is_array($user)) {
+            return null;
+        }
+
+        $username = (string) $user['username'];
+        $existingUserId = $this->userRepository->searchIds(
+            (new Criteria())->addFilter(new EqualsFilter('username', $username)),
+            $context,
+        )->firstId();
+        $userId = is_string($existingUserId) ? $existingUserId : self::id('user:scanner');
+
+        $localeId = $this->localeRepository->searchIds((new Criteria())->setLimit(1), $context)->firstId();
+        if (!is_string($localeId)) {
+            return null;
+        }
+
+        $this->userRepository->upsert([
+            [
+                'id' => $userId,
+                'username' => $username,
+                'password' => (string) $user['password'],
+                'firstName' => (string) ($user['firstName'] ?? 'Demo'),
+                'lastName' => (string) ($user['lastName'] ?? 'Scanner'),
+                'email' => (string) ($user['email'] ?? 'scanner@example.invalid'),
+                'localeId' => $localeId,
+                'admin' => false,
+                'aclRoles' => [
+                    ['id' => $roleId],
+                ],
+            ],
+        ], $context);
+
+        return ['username' => $username, 'role' => $roleName];
+    }
+
+    /**
+     * Creates a CMS layout containing the booking-calendar element (configured
+     * with the package resource) and assigns it as the homepage of every
+     * storefront sales channel's root category — `make up` boots straight
+     * into a bookable calendar.
+     *
+     * @param array<string, mixed> $homepage
+     */
+    private function seedHomepageWithCalendar(array $homepage, string $calendarResourceId, Context $context): bool
+    {
+        $pageId = self::id('cms:homepage');
+
+        $blocks = [
+            [
+                'id' => self::id('cms:homepage:block'),
+                'type' => 'fib-booking-calendar',
+                'position' => 0,
+                'sectionPosition' => 'main',
+                'slots' => [
+                    [
+                        'id' => self::id('cms:homepage:slot'),
+                        'type' => 'fib-booking-calendar',
+                        'slot' => 'calendar',
+                        'config' => [
+                            'resourceId' => ['source' => 'static', 'value' => $calendarResourceId],
+                            'monthsAhead' => ['source' => 'static', 'value' => (int) ($homepage['monthsAhead'] ?? 3)],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        if (isset($homepage['scannerLink'])) {
+            $blocks[] = $this->buildScannerLinkBlock($homepage['scannerLink']);
+        }
+
+        $this->cmsPageRepository->upsert([
+            [
+                'id' => $pageId,
+                'type' => 'page',
+                'name' => (string) ($homepage['name'] ?? 'FIB Booking Home'),
+                'sections' => [
+                    [
+                        'id' => self::id('cms:homepage:section'),
+                        'type' => 'default',
+                        'position' => 0,
+                        'blocks' => $blocks,
+                    ],
+                ],
+            ],
+        ], $context);
+
+        if (!($homepage['assignToHomepage'] ?? false)) {
+            return false;
+        }
+
+        // Point every storefront sales channel's entry category at the layout.
+        $criteria = (new Criteria())
+            ->addFilter(new EqualsFilter('typeId', Defaults::SALES_CHANNEL_TYPE_STOREFRONT));
+        $salesChannels = $this->salesChannelRepository->search($criteria, $context);
+
+        $categoryUpdates = [];
+        foreach ($salesChannels as $salesChannel) {
+            $navigationCategoryId = $salesChannel->getNavigationCategoryId();
+            $categoryUpdates[$navigationCategoryId] = [
+                'id' => $navigationCategoryId,
+                'cmsPageId' => $pageId,
+            ];
+        }
+
+        if ($categoryUpdates !== []) {
+            $this->categoryRepository->update(array_values($categoryUpdates), $context);
+        }
+
+        return $categoryUpdates !== [];
     }
 
     /**

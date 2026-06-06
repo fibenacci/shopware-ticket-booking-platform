@@ -100,8 +100,9 @@ apps/scanner/                    # Vue 3 + Vite scanner app (standalone)
    element/block for shopping experiences. See [CALENDAR.md](CALENDAR.md).
    **Status: done.**
 
-Open follow-ups: admin module (resource/reservation/slot CRUD UI), Apple pass
-push updates, scanner offline strategy decision, ticket revocation UI.
+Open follow-ups: admin module (resource/reservation/slot CRUD UI), admin
+component tests (Jest/Vitest infra for the CMS element), Apple pass push
+updates, scanner offline strategy decision, ticket revocation UI.
 
 ## Architecture notes (Shopware patterns)
 

@@ -42,8 +42,9 @@ class FibBookingCalendarCmsElementResolver extends AbstractCmsElementResolver
         $config = $slot->getFieldConfig();
         $resourceConfig = $config->get('resourceId');
         $resourceId = $resourceConfig?->getValue();
+        $resourceId = is_string($resourceId) ? strtolower($resourceId) : null;
 
-        if (!is_string($resourceId) || !Uuid::isValid($resourceId)) {
+        if ($resourceId === null || !Uuid::isValid($resourceId)) {
             $slot->setData(new ArrayStruct(['resourceId' => null, 'resourceName' => null, 'packages' => []], 'fib_booking_calendar_data'));
 
             return;

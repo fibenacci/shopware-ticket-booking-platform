@@ -20,8 +20,20 @@ subdomain with a reverse proxy to `/api` both work.
 ## Login & permissions
 
 The app authenticates against the Shopware Admin API (OAuth password grant).
-Create a dedicated **scanner role** with ONLY the `fib_booking.ticket_scan`
-privilege and one user per device/operator — don't scan with full admins.
+Access is restricted to **specific users**: the scan endpoint requires the
+ACL privilege `fib_booking.ticket_scan` — create a dedicated **scanner role**
+with ONLY that privilege and one user per device/operator. Don't scan with
+full admins. The static app itself is useless without such an account: every
+request is authenticated and authorized server-side.
+
+The demo data seeds this setup out of the box (verified: the user can scan,
+but gets 403 on every other Admin API endpoint):
+
+| | |
+|---|---|
+| Role | `Booking Scanner` — privileges: `fib_booking.ticket_scan` only |
+| User | `scanner` / `fib-scanner-demo!` (**demo credentials** — change/disable in production, defined in the demo-data seeds JSON) |
+| Entry point | "Open ticket scanner" button on the seeded homepage (links to the dev server `http://localhost:5173`; adjust the URL in the CMS layout for production) |
 
 Token handling: access + refresh tokens are kept **in memory only**. Closing
 the tab ends the session; nothing is persisted on the device.

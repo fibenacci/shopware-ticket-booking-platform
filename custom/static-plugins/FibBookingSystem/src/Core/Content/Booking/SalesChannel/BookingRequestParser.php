@@ -49,12 +49,13 @@ final class BookingRequestParser
     public static function uuid(array $payload, string $field): string
     {
         $value = $payload[$field] ?? null;
+        $normalized = is_string($value) ? strtolower($value) : null;
 
-        if (!is_string($value) || !Uuid::isValid($value)) {
+        if ($normalized === null || !Uuid::isValid($normalized)) {
             throw FibBookingException::invalidPayload($field, 'expected a UUID');
         }
 
-        return strtolower($value);
+        return $normalized;
     }
 
     /**

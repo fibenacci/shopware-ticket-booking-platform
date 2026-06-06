@@ -24,8 +24,11 @@ make php-cs-fixer-check # dry-run — identical to the CI check
 
 ## E2E (Playwright)
 
-The E2E tests run against the local storefront and need a booking resource
-plus a linked product:
+Two suites run against the local storefront:
+
+- `homepage-calendar.spec.ts` — self-contained: asserts the booking-calendar
+  CMS element renders on the homepage and the month endpoint serves data
+- `booking-flow.spec.ts` — API booking flow; needs the demo-data ids
 
 ```bash
 make e2e-install        # one-time: npm install + Chromium
@@ -34,4 +37,26 @@ make e2e-ui             # interactive UI mode
 make e2e-report         # open the latest HTML report
 ```
 
-Without the IDs set, the tests skip themselves (`test.skip`).
+The ids come from `make seed-booking` output; without them only the booking
+flow spec skips itself (`test.skip`).
+
+## Scanner app (Vitest)
+
+```bash
+cd custom/static-plugins/FibBookingSystem/apps/scanner
+npm test                # api.js: token extraction/validation, session handling
+```
+
+## Test coverage map
+
+| Layer | Suite |
+|---|---|
+| Domain/unit (45 tests) | crypto (cipher/signer/JWT), cart, rules, flow, cache, request parser, CMS resolver |
+| Integration (14 tests) | migrations (1717/1718/1719), number ranges, **scan verdict matrix + audit**, **slot availability + calendar red-day logic** |
+| Storefront E2E (2 specs) | homepage calendar smoke, API booking flow |
+| Scanner app (17 tests) | QR token parsing, in-memory session handling |
+
+**Known gap**: administration component tests (CMS element/block) — requires
+the Shopware admin Jest/Vitest infrastructure inside the plugin; the CI
+covers the admin build only indirectly via the full asset build in the
+CI image. Tracked as a follow-up in the ticketing plan.

@@ -1,5 +1,11 @@
 # FIB Booking System — Shopware 6 Shop
 
+> ⚠️ **Prototype** — this project is a prototype for evaluating a
+> Shopware-based booking & ticketing platform. It is not production-hardened
+> yet: APIs, data model and configuration may change without migration paths,
+> and some areas (admin CRUD UI, wallet certificates, scanner deployment)
+> still need productization before going live.
+
 Shopware 6.7 project (based on `shopware/production`) containing the
 **FibBookingSystem** plugin (`custom/static-plugins/FibBookingSystem`) — a
 reservation and booking system with holds, reservations, tickets and QR codes.

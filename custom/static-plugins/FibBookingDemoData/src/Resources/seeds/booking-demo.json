@@ -30,5 +30,32 @@
         "startTime": "18:00",
         "durationMinutes": 120,
         "quantity": 2
+    },
+    "cms": {
+        "homepage": {
+            "name": "FIB Booking Home",
+            "calendarResource": "event_hall",
+            "monthsAhead": 3,
+            "assignToHomepage": true,
+            "scannerLink": {
+                "url": "http://localhost:5173",
+                "headline": "Operator area",
+                "label": "Open ticket scanner",
+                "hint": "Sign in with a scanner account (dedicated ACL role — see docs/SCANNER.md)."
+            }
+        }
+    },
+    "scanner": {
+        "role": {
+            "name": "Booking Scanner",
+            "privileges": ["fib_booking.ticket_scan"]
+        },
+        "user": {
+            "username": "scanner",
+            "password": "fib-scanner-demo!",
+            "firstName": "Demo",
+            "lastName": "Scanner",
+            "email": "scanner@fibenacci.de"
+        }
     }
 }
