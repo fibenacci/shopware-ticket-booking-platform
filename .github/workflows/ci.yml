@@ -61,6 +61,7 @@ jobs:
                     cache: npm
                     cache-dependency-path: |
                         custom/static-plugins/FibBookingSystem/apps/scanner/package-lock.json
+                        custom/static-plugins/FibBookingSystem/apps/seat-picker/package-lock.json
                         custom/static-plugins/FibBookingSystem/src/Resources/app/administration/package-lock.json
                         custom/static-plugins/FibBookingSystem/package-lock.json
 
@@ -75,6 +76,14 @@ jobs:
                 name: Scanner app — vitest unit tests
                 working-directory: custom/static-plugins/FibBookingSystem/apps/scanner
                 run: npm test
+
+            -   id: seatpicker_tests
+                name: Seat picker — install + build + vitest unit tests
+                working-directory: custom/static-plugins/FibBookingSystem/apps/seat-picker
+                run: |
+                    npm ci
+                    npm run build
+                    npm test
 
             -   id: admin_tests
                 name: Admin extension — vitest unit tests
@@ -93,6 +102,7 @@ jobs:
                     .github/scripts/gate.sh "Lint failures — see the steps above." \
                         "Scanner app build=${{ steps.scanner_build.outcome }}" \
                         "Scanner app tests=${{ steps.scanner_tests.outcome }}" \
+                        "Seat picker build+tests=${{ steps.seatpicker_tests.outcome }}" \
                         "Admin extension tests=${{ steps.admin_tests.outcome }}" \
                         "Plugin JS syntax=${{ steps.node_syntax.outcome }}"
 

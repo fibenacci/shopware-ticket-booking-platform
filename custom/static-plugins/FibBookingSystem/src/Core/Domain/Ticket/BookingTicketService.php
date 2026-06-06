@@ -51,11 +51,28 @@ class BookingTicketService
     }
 
     /**
+     * Convenience for single-ticket flows — see issueTickets() for the
+     * seatmap case (one ticket PER SEAT).
+     *
      * @param array<string, mixed> $payload
      */
     public function issueTicket(string $reservationId, Context $context, array $payload = [], ?DateTimeInterface $expiresAt = null): BookingTicket
     {
-        $ticket = $this->connection->transactional(function () use ($reservationId, $context, $payload, $expiresAt): BookingTicket {
+        return $this->issueTickets($reservationId, $context, $payload, $expiresAt)[0];
+    }
+
+    /**
+     * Issues the reservation's tickets: ONE per claimed seat for seatmap
+     * resources (each carrying its seat-label snapshot, see
+     * docs/SEATING_PLAN.md), a single ticket for pool reservations.
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @return non-empty-list<BookingTicket>
+     */
+    public function issueTickets(string $reservationId, Context $context, array $payload = [], ?DateTimeInterface $expiresAt = null): array
+    {
+        $tickets = $this->connection->transactional(function () use ($reservationId, $context, $payload, $expiresAt): array {
             $reservation = $this->connection->fetchAssociative(
                 <<<'SQL'
                     SELECT reservation.id, reservation.booking_number, reservation.payload,
@@ -96,50 +113,104 @@ class BookingTicketService
                 throw FibBookingException::ticketAlreadyExists($reservationId);
             }
 
-            $ticketId = Uuid::randomHex();
-            $ticketNumber = $this->numberRangeValueGenerator->getValue(
-                self::NUMBER_RANGE_TYPE,
-                $context,
-                is_string($reservation['sales_channel_id'] ?? null) ? Uuid::fromBytesToHex($reservation['sales_channel_id']) : null,
-            );
-            $scanToken = bin2hex(random_bytes(32));
-            $qrPayload = $this->createQrPayload($ticketNumber, $scanToken);
-            $qrCodeDataUri = $this->qrCodeGenerator->generateDataUri($qrPayload);
+            // Seatmap reservations carry their claimed seats; pool
+            // reservations get exactly one (seat-less) ticket.
+            $seatLabels = $this->fetchClaimedSeatLabels($reservationId);
             $issuedAt = UtcDateTime::now();
 
-            // Deliberate raw INSERT: scan_token_cipher is intentionally NOT
-            // part of the DAL definition (see plugin Security.md), so the
-            // ticket row cannot be written through the DAL. Runs on the same
-            // connection, hence inside the FOR UPDATE transaction scope.
-            $this->connection->insert('fib_booking_ticket', [
-                'id' => Uuid::fromHexToBytes($ticketId),
-                'reservation_id' => Uuid::fromHexToBytes($reservationId),
-                'ticket_number' => $ticketNumber,
-                'scan_token_hash' => hash('sha256', $scanToken),
-                'scan_token_cipher' => $this->tokenCipher->encrypt($scanToken),
-                'status' => 'issued',
-                'issued_at' => $this->formatDateTime($issuedAt),
-                // Precedence: explicit caller expiry > validity model window >
-                // slot window. Slot-bound tickets default to their Termin —
-                // a ticket for tomorrow's slot must not scan VALID today.
-                'expires_at' => $this->resolveExpiresAt($expiresAt, $validity, $slotWindow),
-                'valid_from' => $this->resolveValidFrom($validity, $slotWindow),
-                'entry_policy' => $validity->entryPolicy,
-                'max_entries_per_day' => $validity->maxEntriesPerDay,
-                'validity_anchor' => $validity->anchor,
-                'validity_duration' => $validity->duration,
-                'payload' => $payload === [] ? null : json_encode($payload, JSON_THROW_ON_ERROR),
-                'created_at' => $this->formatDateTime($issuedAt),
-            ]);
+            $tickets = [];
+            foreach ($seatLabels === [] ? [null] : $seatLabels as $seatLabel) {
+                $tickets[] = $this->insertTicket($reservationId, $reservation, $validity, $slotWindow, $payload, $expiresAt, $issuedAt, $seatLabel, $context);
+            }
 
-            return new BookingTicket($ticketId, $ticketNumber, $scanToken, $qrPayload, $qrCodeDataUri);
+            return $tickets;
         });
 
-        // Side effects (mail, flows, webhooks) only AFTER the ticket is
-        // committed — a failing listener must never roll back the ticket.
-        $this->eventDispatcher->dispatch(new BookingTicketIssuedEvent($reservationId, $ticket, $context), BookingTicketIssuedEvent::EVENT_NAME);
+        // Side effects (mail, flows, webhooks) only AFTER the tickets are
+        // committed — a failing listener must never roll back a ticket.
+        foreach ($tickets as $ticket) {
+            $this->eventDispatcher->dispatch(new BookingTicketIssuedEvent($reservationId, $ticket, $context), BookingTicketIssuedEvent::EVENT_NAME);
+        }
 
-        return $ticket;
+        return $tickets;
+    }
+
+    /**
+     * @param array{validFrom: DateTimeImmutable, expiresAt: DateTimeImmutable}|null $slotWindow
+     * @param array<string, mixed>                                                   $reservation
+     * @param array<string, mixed>                                                   $payload
+     */
+    private function insertTicket(
+        string $reservationId,
+        array $reservation,
+        TicketValidity $validity,
+        ?array $slotWindow,
+        array $payload,
+        ?DateTimeInterface $expiresAt,
+        DateTimeImmutable $issuedAt,
+        ?string $seatLabel,
+        Context $context,
+    ): BookingTicket {
+        $ticketId = Uuid::randomHex();
+        $ticketNumber = $this->numberRangeValueGenerator->getValue(
+            self::NUMBER_RANGE_TYPE,
+            $context,
+            is_string($reservation['sales_channel_id'] ?? null) ? Uuid::fromBytesToHex($reservation['sales_channel_id']) : null,
+        );
+        $scanToken = bin2hex(random_bytes(32));
+        $qrPayload = $this->createQrPayload($ticketNumber, $scanToken);
+        $qrCodeDataUri = $this->qrCodeGenerator->generateDataUri($qrPayload);
+
+        // Deliberate raw INSERT: scan_token_cipher is intentionally NOT
+        // part of the DAL definition (see plugin Security.md), so the
+        // ticket row cannot be written through the DAL. Runs on the same
+        // connection, hence inside the FOR UPDATE transaction scope.
+        $this->connection->insert('fib_booking_ticket', [
+            'id' => Uuid::fromHexToBytes($ticketId),
+            'reservation_id' => Uuid::fromHexToBytes($reservationId),
+            'ticket_number' => $ticketNumber,
+            'scan_token_hash' => hash('sha256', $scanToken),
+            'scan_token_cipher' => $this->tokenCipher->encrypt($scanToken),
+            'status' => 'issued',
+            'issued_at' => $this->formatDateTime($issuedAt),
+            // Precedence: explicit caller expiry > validity model window >
+            // slot window. Slot-bound tickets default to their Termin —
+            // a ticket for tomorrow's slot must not scan VALID today.
+            'expires_at' => $this->resolveExpiresAt($expiresAt, $validity, $slotWindow),
+            'valid_from' => $this->resolveValidFrom($validity, $slotWindow),
+            'entry_policy' => $validity->entryPolicy,
+            'max_entries_per_day' => $validity->maxEntriesPerDay,
+            'validity_anchor' => $validity->anchor,
+            'validity_duration' => $validity->duration,
+            'seat_label' => $seatLabel,
+            'payload' => $payload === [] ? null : json_encode($payload, JSON_THROW_ON_ERROR),
+            'created_at' => $this->formatDateTime($issuedAt),
+        ]);
+
+        return new BookingTicket($ticketId, $ticketNumber, $scanToken, $qrPayload, $qrCodeDataUri, $seatLabel);
+    }
+
+    /**
+     * Seat labels ("F7") of the claims bound to this reservation — same
+     * connection, hence inside the FOR UPDATE scope of issueTickets().
+     *
+     * @return list<string>
+     */
+    private function fetchClaimedSeatLabels(string $reservationId): array
+    {
+        /** @var list<string> $labels */
+        $labels = $this->connection->fetchFirstColumn(
+            <<<'SQL'
+                SELECT CONCAT(seat.row_label, seat.seat_label)
+                FROM fib_booking_seat_claim claim
+                INNER JOIN fib_booking_seat seat ON seat.id = claim.seat_id
+                WHERE claim.reservation_id = :reservationId
+                ORDER BY seat.row_label, CAST(seat.seat_label AS UNSIGNED), seat.seat_label
+            SQL,
+            ['reservationId' => Uuid::fromHexToBytes($reservationId)],
+        );
+
+        return $labels;
     }
 
     /**

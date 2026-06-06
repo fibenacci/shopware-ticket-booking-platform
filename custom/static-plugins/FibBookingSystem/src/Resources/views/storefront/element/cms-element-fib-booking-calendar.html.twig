@@ -14,6 +14,7 @@
                      holdUrl: path('frontend.fib_booking.hold'),
                      cartUrl: path('frontend.fib_booking.cart.add'),
                      checkoutUrl: path('frontend.checkout.cart.page'),
+                     seatPickerScript: asset('bundles/fibbookingsystem/seat-picker/fib-seat-picker.js'),
                  }|json_encode }}">
 
                 <div class="fib-booking-calendar-header d-flex justify-content-between align-items-center mb-2">
@@ -28,6 +29,11 @@
                     <h3 class="h6">{{ 'fibBooking.calendar.slotsHeadline'|trans|sw_sanitize }}</h3>
                     <div class="fib-booking-calendar-slot-list d-flex flex-wrap gap-2"></div>
                 </div>
+
+                {# Seatmap resources: the <fib-seat-picker> custom element is
+                   mounted here once a slot is chosen (lazy-loaded Vue island,
+                   see apps/seat-picker). #}
+                <div class="fib-booking-calendar-seatpicker mt-3 d-none"></div>
 
                 {% if calendarData.packages|length > 0 %}
                     <div class="fib-booking-calendar-packages mt-3">

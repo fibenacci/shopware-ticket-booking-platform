@@ -71,6 +71,7 @@ class BookingTicketDefinition extends EntityDefinition
             new IntField('max_entries_per_day', 'maxEntriesPerDay'),
             new StringField('validity_anchor', 'validityAnchor'),
             new StringField('validity_duration', 'validityDuration'),
+            new StringField('seat_label', 'seatLabel'),
             new JsonField('payload', 'payload'),
             new ManyToOneAssociationField('reservation', 'reservation_id', BookingReservationDefinition::class, 'id'),
             new CreatedAtField(),

@@ -194,6 +194,7 @@ function verdictMeta(verdict) {
             <strong class="verdict-label">{{ verdictMeta(lastResult.verdict).label }}</strong>
             <template v-if="lastResult.ticket">
                 <div>Ticket: {{ lastResult.ticket.ticketNumber }}</div>
+                <div v-if="lastResult.ticket.seatLabel" class="seat-label">Seat: {{ lastResult.ticket.seatLabel }}</div>
                 <div v-if="lastResult.ticket.bookingNumber">Booking: {{ lastResult.ticket.bookingNumber }}</div>
                 <div v-if="lastResult.verdict === 'already_scanned' && lastResult.ticket.scannedAt">
                     First scanned: {{ lastResult.ticket.scannedAt }}

@@ -188,6 +188,7 @@ final class BookingTicketRenderer extends AbstractDocumentRenderer
                 'issuedAt' => $ticket->getIssuedAt(),
                 'bookingNumber' => $reservation?->getBookingNumber(),
                 'resourceName' => $reservation?->getResource()?->getName(),
+                'seatLabel' => $ticket->getSeatLabel(),
                 'startsAt' => $reservation?->getStartsAt(),
                 'endsAt' => $reservation?->getEndsAt(),
                 'qrCodeDataUri' => $this->buildQrCodeDataUri($ticket, $ciphers[$ticket->getId()] ?? null),

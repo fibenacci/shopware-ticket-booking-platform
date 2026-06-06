@@ -22,6 +22,7 @@ final class TicketScanResult
         public readonly ?string $bookingNumber = null,
         public readonly ?string $scannedAt = null,
         public readonly string $direction = ScanDirection::CHECK_IN,
+        public readonly ?string $seatLabel = null,
     ) {
     }
 
@@ -43,6 +44,7 @@ final class TicketScanResult
                 'ticketNumber' => $this->ticketNumber,
                 'bookingNumber' => $this->bookingNumber,
                 'scannedAt' => $this->scannedAt,
+                'seatLabel' => $this->seatLabel,
             ],
         ];
     }

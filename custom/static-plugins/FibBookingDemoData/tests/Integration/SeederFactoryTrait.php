@@ -31,6 +31,7 @@ trait SeederFactoryTrait
                 $container->get('fib_booking_resource.repository'),
                 $container->get('fib_booking_product_config.repository'),
                 $container->get('fib_booking_slot.repository'),
+                $container->get('fib_booking_seat.repository'),
             ),
             new ReservationSeeder(
                 $container->get('fib_booking_reservation.repository'),

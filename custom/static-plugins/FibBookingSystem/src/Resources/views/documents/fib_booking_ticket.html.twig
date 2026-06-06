@@ -42,6 +42,12 @@
                                 <td class="label">{{ 'fibBooking.document.booking'|trans }}</td>
                                 <td>{{ ticket.bookingNumber|default('—') }}</td>
                             </tr>
+                            {% if ticket.seatLabel %}
+                                <tr>
+                                    <td class="label">{{ 'fibBooking.document.seat'|trans }}</td>
+                                    <td><strong>{{ ticket.seatLabel }}</strong></td>
+                                </tr>
+                            {% endif %}
                             {% if ticket.startsAt %}
                                 <tr>
                                     <td class="label">{{ 'fibBooking.document.start'|trans }}</td>

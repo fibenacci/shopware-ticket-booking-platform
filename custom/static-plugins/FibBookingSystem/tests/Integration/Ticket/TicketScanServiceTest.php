@@ -203,6 +203,16 @@ class TicketScanServiceTest extends TestCase
         );
     }
 
+    public function testScanResultCarriesTheSeatLabel(): void
+    {
+        $token = $this->seedTicket('T-SCAN-13', 'sent', seatLabel: 'F7');
+
+        $result = $this->scanService->scan($token, $this->context, 'test-user', 'phpunit');
+
+        static::assertSame('F7', $result->seatLabel, 'door staff must see WHICH seat this ticket belongs to');
+        static::assertSame('F7', $result->toArray()['ticket']['seatLabel'] ?? null);
+    }
+
     public function testScanLogCarriesTheDirection(): void
     {
         $token = $this->seedTicket('T-SCAN-8', 'sent');
@@ -284,15 +294,16 @@ class TicketScanServiceTest extends TestCase
         ?int $maxEntriesPerDay = null,
         ?string $validityAnchor = null,
         ?string $validityDuration = null,
+        ?string $seatLabel = null,
     ): string {
         $token = bin2hex(random_bytes(32));
 
         $this->connection->executeStatement(
             <<<'SQL'
                 INSERT INTO fib_booking_ticket (id, reservation_id, ticket_number, scan_token_hash, status, issued_at,
-                expires_at, valid_from, entry_policy, max_entries_per_day, validity_anchor, validity_duration, created_at)
+                expires_at, valid_from, entry_policy, max_entries_per_day, validity_anchor, validity_duration, seat_label, created_at)
                 VALUES (:id, :reservationId, :ticketNumber, :tokenHash, :status, NOW(3),
-                :expiresAt, :validFrom, :entryPolicy, :maxEntriesPerDay, :validityAnchor, :validityDuration, NOW(3))
+                :expiresAt, :validFrom, :entryPolicy, :maxEntriesPerDay, :validityAnchor, :validityDuration, :seatLabel, NOW(3))
                 SQL,
             [
                 'id' => Uuid::randomBytes(),
@@ -306,6 +317,7 @@ class TicketScanServiceTest extends TestCase
                 'maxEntriesPerDay' => $maxEntriesPerDay,
                 'validityAnchor' => $validityAnchor,
                 'validityDuration' => $validityDuration,
+                'seatLabel' => $seatLabel,
             ],
         );
 

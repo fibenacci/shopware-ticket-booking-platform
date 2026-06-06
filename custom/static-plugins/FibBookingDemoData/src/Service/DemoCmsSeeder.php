@@ -34,33 +34,24 @@ class DemoCmsSeeder
      * with the package resource) and assigns it as the homepage of every
      * storefront sales channel's root category.
      */
-    public function seedHomepageWithCalendar(SeedSection $homepage, string $calendarResourceId, Context $context): bool
+    public function seedHomepageWithCalendar(SeedSection $homepage, string $calendarResourceId, Context $context, ?string $cinemaResourceId = null): bool
     {
         $pageId = SeedIds::stable('cms:homepage');
 
         $blocks = [
-            [
-                'id' => SeedIds::stable('cms:homepage:block'),
-                'type' => 'fib-booking-calendar',
-                'position' => 0,
-                'sectionPosition' => 'main',
-                'slots' => [
-                    [
-                        'id' => SeedIds::stable('cms:homepage:slot'),
-                        'type' => 'fib-booking-calendar',
-                        'slot' => 'calendar',
-                        'config' => [
-                            'resourceId' => ['source' => 'static', 'value' => $calendarResourceId],
-                            'monthsAhead' => ['source' => 'static', 'value' => $homepage->int('monthsAhead', 3)],
-                        ],
-                    ],
-                ],
-            ],
+            $this->buildCalendarBlock('cms:homepage:block', 0, $calendarResourceId, $homepage->int('monthsAhead', 3)),
         ];
+
+        // Second calendar bound to the seatmap demo (cinema) — shows the
+        // numbered-seat flow right on the start page.
+        $cinemaCalendar = $homepage->sectionOrNull('cinemaCalendar');
+        if ($cinemaResourceId !== null && $cinemaCalendar !== null) {
+            $blocks[] = $this->buildCalendarBlock('cms:homepage:cinema-block', 1, $cinemaResourceId, $cinemaCalendar->int('monthsAhead', 1));
+        }
 
         $scannerLink = $homepage->sectionOrNull('scannerLink');
         if ($scannerLink !== null) {
-            $blocks[] = $this->buildScannerLinkBlock($scannerLink);
+            $blocks[] = $this->buildScannerLinkBlock($scannerLink, position: count($blocks));
         }
 
         $this->cmsPageRepository->upsert([
@@ -105,12 +96,36 @@ class DemoCmsSeeder
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function buildCalendarBlock(string $seedKey, int $position, string $resourceId, int $monthsAhead): array
+    {
+        return [
+            'id' => SeedIds::stable($seedKey),
+            'type' => 'fib-booking-calendar',
+            'position' => $position,
+            'sectionPosition' => 'main',
+            'slots' => [
+                [
+                    'id' => SeedIds::stable($seedKey . ':slot'),
+                    'type' => 'fib-booking-calendar',
+                    'slot' => 'calendar',
+                    'config' => [
+                        'resourceId' => ['source' => 'static', 'value' => $resourceId],
+                        'monthsAhead' => ['source' => 'static', 'value' => $monthsAhead],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
      * Standard text block linking operators to the scanner app login —
-     * rendered below the calendar on the seeded homepage.
+     * rendered below the calendars on the seeded homepage.
      *
      * @return array<string, mixed>
      */
-    private function buildScannerLinkBlock(SeedSection $scannerLink): array
+    private function buildScannerLinkBlock(SeedSection $scannerLink, int $position = 1): array
     {
         $url = htmlspecialchars($scannerLink->string('url', '/scanner/'), \ENT_QUOTES);
         $headline = htmlspecialchars($scannerLink->string('headline', 'Operator area'), \ENT_QUOTES);
@@ -128,7 +143,7 @@ class DemoCmsSeeder
         return [
             'id' => SeedIds::stable('cms:homepage:scanner-block'),
             'type' => 'text',
-            'position' => 1,
+            'position' => $position,
             'sectionPosition' => 'main',
             'slots' => [
                 [

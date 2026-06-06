@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Reservation;
 
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
 
 /**
  * Deliberate raw DBAL (documented exception, see docs/ARCHITECTURE_PLAN.md):
@@ -15,13 +16,15 @@ use Doctrine\DBAL\Connection;
  */
 class BookingHoldExpirationService
 {
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly SeatClaimService $seatClaimService,
+    ) {
     }
 
     public function expireOverdueHolds(): int
     {
-        return (int) $this->connection->executeStatement(
+        $expired = (int) $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE fib_booking_hold
                 SET status = 'expired', updated_at = UTC_TIMESTAMP(3)
@@ -29,5 +32,12 @@ class BookingHoldExpirationService
                 AND expires_at <= UTC_TIMESTAMP(3)
             SQL,
         );
+
+        // Seats of dead holds become claimable again. The seatmap read model
+        // already ignores these claims via its liveness predicate — this is
+        // garbage collection, not the correctness boundary.
+        $this->seatClaimService->releaseOrphanedClaims();
+
+        return $expired;
     }
 }

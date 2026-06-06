@@ -35,7 +35,8 @@
             "start": "Beginn",
             "end": "Ende",
             "guest": "Gast",
-            "footer": "Bitte zeige den QR-Code am Einlass vor. Jeder Code ist einmal gültig."
+            "footer": "Bitte zeige den QR-Code am Einlass vor. Jeder Code ist einmal gültig.",
+            "seat": "Sitzplatz"
         },
         "pass": {
             "validFor": "Gültig für",

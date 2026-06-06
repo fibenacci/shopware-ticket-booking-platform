@@ -10,6 +10,7 @@
             <argument type="service" id="fib_booking_resource.repository"/>
             <argument type="service" id="fib_booking_product_config.repository"/>
             <argument type="service" id="fib_booking_slot.repository"/>
+            <argument type="service" id="fib_booking_seat.repository"/>
         </service>
 
         <service id="FibBookingDemoData\Service\ReservationSeeder">

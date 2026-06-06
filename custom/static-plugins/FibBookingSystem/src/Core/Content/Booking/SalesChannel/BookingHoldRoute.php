@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Content\Booking\SalesChannel;
 
+use FibBookingSystem\Core\Domain\Reservation\BookingHoldRequest;
 use FibBookingSystem\Core\Domain\Reservation\BookingHoldService;
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
 use Shopware\Core\Framework\Plugin\Exception\DecorationPatternException;
@@ -39,14 +40,17 @@ class BookingHoldRoute extends AbstractBookingHoldRoute
         $customer = $context->getCustomer();
 
         $hold = $this->holdService->createHold(
-            BookingRequestParser::uuid($payload, 'resourceId'),
-            BookingRequestParser::dateTime($payload, 'startsAt'),
-            BookingRequestParser::dateTime($payload, 'endsAt'),
-            BookingRequestParser::positiveInt($payload, 'quantity'),
-            $context->getSalesChannelId(),
-            $customer?->getId(),
+            new BookingHoldRequest(
+                resourceId: BookingRequestParser::uuid($payload, 'resourceId'),
+                startsAt: BookingRequestParser::dateTime($payload, 'startsAt'),
+                endsAt: BookingRequestParser::dateTime($payload, 'endsAt'),
+                quantity: BookingRequestParser::positiveInt($payload, 'quantity'),
+                salesChannelId: $context->getSalesChannelId(),
+                customerId: $customer?->getId(),
+                payload: $payload,
+                seatIds: BookingRequestParser::optionalUuidList($payload, 'seatIds'),
+            ),
             $context->getContext(),
-            $payload,
         );
 
         return new BookingHoldRouteResponse([

@@ -7,6 +7,7 @@ namespace FibBookingSystem\Tests\Unit\Reservation;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\Core\Domain\Reservation\BookingReservationService;
+use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -93,6 +94,7 @@ class BookingReservationCancellationTest extends TestCase
             $holdRepository,
             $this->ticketService,
             $this->createStub(AvailabilityService::class),
+            $this->createStub(SeatClaimService::class),
             $this->createStub(NumberRangeValueGeneratorInterface::class),
             $this->createStub(EventDispatcherInterface::class),
             $this->createStub(LoggerInterface::class),

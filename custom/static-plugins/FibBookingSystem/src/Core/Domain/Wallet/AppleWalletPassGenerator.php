@@ -93,7 +93,12 @@ class AppleWalletPassGenerator
                 ],
                 'secondaryFields' => [
                     ['key' => 'starts', 'label' => 'START', 'value' => $data->window->startsAt->format('c'), 'dateStyle' => 'PKDateStyleMedium', 'timeStyle' => 'PKDateStyleShort'],
-                    ['key' => 'quantity', 'label' => 'GUESTS', 'value' => (string) $data->window->quantity],
+                    // Numbered seating: the SEAT is the relevant figure —
+                    // each seat carries its own pass, so GUESTS would be 1
+                    // anyway. Pool tickets keep the guest count.
+                    $data->seatLabel !== null
+                        ? ['key' => 'seat', 'label' => 'SEAT', 'value' => $data->seatLabel]
+                        : ['key' => 'quantity', 'label' => 'GUESTS', 'value' => (string) $data->window->quantity],
                 ],
                 'auxiliaryFields' => [
                     ['key' => 'booking', 'label' => 'BOOKING', 'value' => $data->bookingNumber],

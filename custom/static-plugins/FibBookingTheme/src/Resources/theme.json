@@ -1,6 +1,7 @@
 {
     "name": "FIB Booking Theme",
     "author": "Fibenacci",
+    "previewMedia": "app/storefront/dist/assets/preview.png",
     "views": [
         "@Storefront",
         "@Plugins",

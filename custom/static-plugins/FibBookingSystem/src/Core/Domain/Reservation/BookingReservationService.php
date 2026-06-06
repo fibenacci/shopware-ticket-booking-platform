@@ -9,6 +9,7 @@ use FibBookingSystem\Core\Content\BookingHold\BookingHoldCollection;
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationCollection;
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationEntity;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
+use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\FibBookingException;
@@ -54,6 +55,7 @@ class BookingReservationService
         private readonly EntityRepository $holdRepository,
         private readonly BookingTicketService $ticketService,
         private readonly AvailabilityService $availabilityService,
+        private readonly SeatClaimService $seatClaimService,
         private readonly NumberRangeValueGeneratorInterface $numberRangeValueGenerator,
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly LoggerInterface $logger,
@@ -287,7 +289,9 @@ class BookingReservationService
             );
 
             try {
-                $this->ticketService->issueTicket($reservation->getId(), $context);
+                // Plural on purpose: seatmap reservations issue one ticket
+                // PER SEAT (docs/SEATING_PLAN.md), pool reservations one total.
+                $this->ticketService->issueTickets($reservation->getId(), $context);
             } catch (FibBookingException $exception) {
                 // Only "already exists" is expected (retry / duplicated state
                 // event) — anything else must surface in the logs, otherwise
@@ -384,22 +388,15 @@ class BookingReservationService
             return false;
         }
 
-        if ($hold['status'] !== 'active' || UtcDateTime::parse($hold['expires_at']) <= UtcDateTime::now()) {
-            $this->logger->error('Booking hold conversion failed for order {orderNumber}: hold {holdId} is {status} (expires {expiresAt}) — order placed without a reservation.', [
-                'orderNumber' => $order->getOrderNumber(),
-                'orderId' => $order->getId(),
-                'lineItemId' => $lineItem->getId(),
-                'holdId' => $bookingPayload['holdId'],
-                'status' => $hold['status'],
-                'expiresAt' => $hold['expires_at'],
-            ]);
-
+        if ($this->holdIsDead($hold, $order, $lineItem, $bookingPayload['holdId'])) {
             return false;
         }
 
+        $reservationId = Uuid::randomHex();
+
         $this->reservationRepository->create([
             [
-                'id' => Uuid::randomHex(),
+                'id' => $reservationId,
                 'resourceId' => $hold['resource_id'],
                 'orderId' => $order->getId(),
                 'orderVersionId' => $order->getVersionId(),
@@ -428,6 +425,36 @@ class BookingReservationService
                 'status' => 'converted',
             ],
         ], $context);
+
+        // Seatmap resources: the seats now belong to the reservation. MUST
+        // stay inside this transaction — once the hold flips to 'converted',
+        // unbound claims would look orphaned to the cleanup/read model.
+        $this->seatClaimService->bindHoldClaimsToReservation($bookingPayload['holdId'], $reservationId);
+
+        return true;
+    }
+
+    /**
+     * An inactive or expired hold cannot convert — logged loudly, because it
+     * means a placed (possibly paid) order has NO reservation and the
+     * operator must re-book or refund manually.
+     *
+     * @param array{status: string, expires_at: string} $hold
+     */
+    private function holdIsDead(array $hold, OrderEntity $order, OrderLineItemEntity $lineItem, string $holdId): bool
+    {
+        if ($hold['status'] === 'active' && UtcDateTime::parse($hold['expires_at']) > UtcDateTime::now()) {
+            return false;
+        }
+
+        $this->logger->error('Booking hold conversion failed for order {orderNumber}: hold {holdId} is {status} (expires {expiresAt}) — order placed without a reservation.', [
+            'orderNumber' => $order->getOrderNumber(),
+            'orderId' => $order->getId(),
+            'lineItemId' => $lineItem->getId(),
+            'holdId' => $holdId,
+            'status' => $hold['status'],
+            'expiresAt' => $hold['expires_at'],
+        ]);
 
         return true;
     }

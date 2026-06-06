@@ -47,7 +47,7 @@ use Shopware\Core\System\SystemConfig\SystemConfigService;
  * token itself is never persisted — only a 12-char fingerprint of its sha256
  * hash for correlation.
  *
- * @phpstan-type TicketRow array{id: string, ticket_number: string, status: string, expires_at: string|null, scanned_at: string|null, valid_from: string|null, entry_policy: string, max_entries_per_day: int|string|null, validity_anchor: string|null, validity_duration: string|null, booking_number: string|null}
+ * @phpstan-type TicketRow array{id: string, ticket_number: string, status: string, expires_at: string|null, scanned_at: string|null, valid_from: string|null, entry_policy: string, max_entries_per_day: int|string|null, validity_anchor: string|null, validity_duration: string|null, seat_label: string|null, booking_number: string|null}
  */
 class TicketScanService
 {
@@ -95,7 +95,7 @@ class TicketScanService
                 <<<'SQL'
                     SELECT ticket.id, ticket.ticket_number, ticket.status, ticket.expires_at, ticket.scanned_at,
                     ticket.valid_from, ticket.entry_policy, ticket.max_entries_per_day,
-                    ticket.validity_anchor, ticket.validity_duration,
+                    ticket.validity_anchor, ticket.validity_duration, ticket.seat_label,
                     reservation.booking_number
                     FROM fib_booking_ticket ticket
                     LEFT JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
@@ -137,7 +137,7 @@ class TicketScanService
         }
 
         if ($ticket['valid_from'] !== null && UtcDateTime::parse($ticket['valid_from']) > UtcDateTime::now()) {
-            return new TicketScanResult(TicketScanResult::NOT_YET_VALID, $ticketNumber, $bookingNumber);
+            return new TicketScanResult(TicketScanResult::NOT_YET_VALID, $ticketNumber, $bookingNumber, seatLabel: $ticket['seat_label']);
         }
 
         if ($status === 'scanned') {
@@ -145,7 +145,7 @@ class TicketScanService
             // usage without check-out); single tickets are consumed.
             return $ticket['entry_policy'] === EntryPolicy::MULTI
                 ? $this->acceptEntry($ticket, $context, transition: false)
-                : new TicketScanResult(TicketScanResult::ALREADY_SCANNED, $ticketNumber, $bookingNumber, $ticket['scanned_at'] ?? '');
+                : new TicketScanResult(TicketScanResult::ALREADY_SCANNED, $ticketNumber, $bookingNumber, $ticket['scanned_at'] ?? '', seatLabel: $ticket['seat_label']);
         }
 
         if (!in_array($status, self::CHECK_IN_STATUSES, true)) {
@@ -164,7 +164,7 @@ class TicketScanService
     private function acceptEntry(array $ticket, Context $context, bool $transition): TicketScanResult
     {
         if ($this->hasReachedDailyLimit($ticket)) {
-            return new TicketScanResult(TicketScanResult::ENTRY_LIMIT_REACHED, $ticket['ticket_number'], $ticket['booking_number']);
+            return new TicketScanResult(TicketScanResult::ENTRY_LIMIT_REACHED, $ticket['ticket_number'], $ticket['booking_number'], seatLabel: $ticket['seat_label']);
         }
 
         $this->activateFirstUse($ticket, $context);
@@ -186,7 +186,7 @@ class TicketScanService
             ], $context);
         }
 
-        return new TicketScanResult(TicketScanResult::VALID, $ticket['ticket_number'], $ticket['booking_number'], $this->formatDateTime($scannedAt));
+        return new TicketScanResult(TicketScanResult::VALID, $ticket['ticket_number'], $ticket['booking_number'], $this->formatDateTime($scannedAt), seatLabel: $ticket['seat_label']);
     }
 
     /**
@@ -270,7 +270,7 @@ class TicketScanService
             ], $context);
         }
 
-        return new TicketScanResult(TicketScanResult::EXPIRED, $ticket['ticket_number'], $ticket['booking_number']);
+        return new TicketScanResult(TicketScanResult::EXPIRED, $ticket['ticket_number'], $ticket['booking_number'], seatLabel: $ticket['seat_label']);
     }
 
     /**
@@ -293,7 +293,7 @@ class TicketScanService
         // Only a currently checked-in guest can check out. Expiry does not
         // block leaving — the visit already happened.
         if ($status !== 'scanned') {
-            return new TicketScanResult(TicketScanResult::NOT_CHECKED_IN, $ticketNumber, $bookingNumber, direction: ScanDirection::CHECK_OUT);
+            return new TicketScanResult(TicketScanResult::NOT_CHECKED_IN, $ticketNumber, $bookingNumber, direction: ScanDirection::CHECK_OUT, seatLabel: $ticket['seat_label']);
         }
 
         $this->updateTicket([
@@ -307,6 +307,7 @@ class TicketScanService
             $bookingNumber,
             $ticket['scanned_at'],
             ScanDirection::CHECK_OUT,
+            $ticket['seat_label'],
         );
     }
 

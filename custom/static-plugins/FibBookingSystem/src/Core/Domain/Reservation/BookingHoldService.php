@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace FibBookingSystem\Core\Domain\Reservation;
 
 use DateInterval;
-use DateTimeInterface;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Content\BookingHold\BookingHoldCollection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
+use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
+use FibBookingSystem\Core\Domain\Seating\SeatingMode;
 use FibBookingSystem\Core\Domain\Time\UtcDateTime;
 use FibBookingSystem\FibBookingException;
 use Shopware\Core\Framework\Context;
@@ -28,46 +29,21 @@ class BookingHoldService
         private readonly EntityRepository $holdRepository,
         private readonly AvailabilityService $availabilityService,
         private readonly SystemConfigService $systemConfig,
+        private readonly SeatClaimService $seatClaimService,
     ) {
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function createHold(
-        string $resourceId,
-        DateTimeInterface $startsAt,
-        DateTimeInterface $endsAt,
-        int $quantity,
-        ?string $salesChannelId,
-        ?string $customerId,
-        Context $context,
-        array $payload = [],
-        int $ttlMinutes = 15,
-    ): BookingHold {
-        return $this->connection->transactional(function () use (
-            $resourceId,
-            $startsAt,
-            $endsAt,
-            $quantity,
-            $salesChannelId,
-            $customerId,
-            $context,
-            $payload,
-            $ttlMinutes,
-        ): BookingHold {
-            $this->lockResource($resourceId);
-            $this->assertHoldQuota($customerId);
+    public function createHold(BookingHoldRequest $request, Context $context): BookingHold
+    {
+        return $this->connection->transactional(function () use ($request, $context): BookingHold {
+            $seatingMode = $this->lockResource($request->resourceId);
+            $this->assertHoldQuota($request->customerId);
 
-            $availability = $this->availabilityService->check($resourceId, $startsAt, $endsAt, $quantity);
-
-            if (!$availability->isAvailable()) {
-                throw FibBookingException::windowUnavailable();
-            }
+            $this->assertSeatingPreconditions($seatingMode, $request);
 
             $holdId = Uuid::randomHex();
             $token = bin2hex(random_bytes(32));
-            $expiresAt = UtcDateTime::now()->add(new DateInterval(sprintf('PT%dM', max(1, $ttlMinutes))));
+            $expiresAt = UtcDateTime::now()->add(new DateInterval(sprintf('PT%dM', max(1, $request->ttlMinutes))));
 
             // UTC DateTime OBJECTS, not pre-formatted strings: the DAL
             // serializer normalizes objects to UTC itself, while a naive
@@ -75,21 +51,58 @@ class BookingHoldService
             $this->holdRepository->create([
                 [
                     'id' => $holdId,
-                    'resourceId' => $resourceId,
-                    'salesChannelId' => $salesChannelId,
-                    'customerId' => $customerId,
+                    'resourceId' => $request->resourceId,
+                    'salesChannelId' => $request->salesChannelId,
+                    'customerId' => $request->customerId,
                     'token' => $token,
-                    'startsAt' => UtcDateTime::from($startsAt),
-                    'endsAt' => UtcDateTime::from($endsAt),
+                    'startsAt' => UtcDateTime::from($request->startsAt),
+                    'endsAt' => UtcDateTime::from($request->endsAt),
                     'expiresAt' => $expiresAt,
-                    'quantity' => $quantity,
+                    'quantity' => $request->quantity,
                     'status' => 'active',
-                    'payload' => $payload === [] ? null : $payload,
+                    'payload' => $request->payload === [] ? null : $request->payload,
                 ],
             ], $context);
 
+            if ($seatingMode === SeatingMode::SEATMAP) {
+                $slotId = $request->payload['slotId'] ?? null;
+                if (!is_string($slotId) || !Uuid::isValid($slotId)) {
+                    throw FibBookingException::seatSelectionInvalid('seat selection requires a slotId');
+                }
+
+                // Same transaction: a lost seat race rolls the hold back.
+                $this->seatClaimService->claimSeatsForHold($holdId, $request->resourceId, strtolower($slotId), $request->seatIds, $request->quantity);
+            }
+
             return new BookingHold($holdId, $token, $expiresAt);
         });
+    }
+
+    /**
+     * pool: the FOR UPDATE capacity check guards the window; seat picks are
+     * meaningless. seatmap: the claim primitive (UNIQUE seat+slot) is the
+     * authoritative guard — the pool check is skipped on purpose, see
+     * docs/SEATING_PLAN.md.
+     */
+    private function assertSeatingPreconditions(string $seatingMode, BookingHoldRequest $request): void
+    {
+        if ($seatingMode === SeatingMode::SEATMAP) {
+            if ($request->seatIds === []) {
+                throw FibBookingException::seatSelectionInvalid('this resource requires picking seats');
+            }
+
+            return;
+        }
+
+        if ($request->seatIds !== []) {
+            throw FibBookingException::seatSelectionInvalid('this resource has no seat map');
+        }
+
+        $availability = $this->availabilityService->check($request->resourceId, $request->startsAt, $request->endsAt, $request->quantity);
+
+        if (!$availability->isAvailable()) {
+            throw FibBookingException::windowUnavailable();
+        }
     }
 
     /**
@@ -129,17 +142,22 @@ class BookingHoldService
         }
     }
 
-    private function lockResource(string $resourceId): void
+    /**
+     * @return string the resource's seating mode
+     */
+    private function lockResource(string $resourceId): string
     {
-        $resource = $this->connection->fetchOne(
+        $seatingMode = $this->connection->fetchOne(
             <<<'SQL'
-                SELECT id FROM fib_booking_resource WHERE id = :resourceId FOR UPDATE
+                SELECT seating_mode FROM fib_booking_resource WHERE id = :resourceId FOR UPDATE
             SQL,
             ['resourceId' => Uuid::fromHexToBytes($resourceId)],
         );
 
-        if ($resource === false) {
+        if (!is_string($seatingMode)) {
             throw FibBookingException::resourceNotFound();
         }
+
+        return $seatingMode;
     }
 }

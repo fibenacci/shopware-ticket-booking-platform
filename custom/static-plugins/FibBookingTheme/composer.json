@@ -1,9 +1,15 @@
 {
     "name": "fib/fib-booking-theme",
-    "description": "Glassmorphism storefront theme for the FIB ticketing platform: aurora gradients, frosted-glass surfaces and CSS-only motion.",
+    "description": "Glassmorphism storefront theme for the booking and ticketing platform: aurora gradients, frosted-glass surfaces, soft depth and CSS-only motion - configurable in the theme manager.",
     "version": "1.0.0",
     "type": "shopware-platform-plugin",
     "license": "proprietary",
+    "authors": [
+        {
+            "name": "Fibenacci",
+            "homepage": "https://fibenacci.de"
+        }
+    ],
     "autoload": {
         "psr-4": {
             "FibBookingTheme\\": "src/"
@@ -15,13 +21,22 @@
     },
     "extra": {
         "shopware-plugin-class": "FibBookingTheme\\FibBookingTheme",
+        "plugin-icon": "src/Resources/config/plugin.png",
         "label": {
             "de-DE": "FIB Booking Theme",
             "en-GB": "FIB Booking Theme"
         },
         "description": {
-            "de-DE": "Glassmorphism-Theme für die Ticketing-Plattform: Aurora-Verläufe, Frosted-Glass-Oberflächen und CSS-only-Animationen.",
-            "en-GB": "Glassmorphism theme for the ticketing platform: aurora gradients, frosted-glass surfaces and CSS-only motion."
+            "de-DE": "Glassmorphism-Storefront-Theme für die Buchungs- und Ticketing-Plattform: Aurora-Verläufe, Frosted-Glass-Flächen und CSS-only-Animationen - konfigurierbar im Theme-Manager.",
+            "en-GB": "Glassmorphism storefront theme for the booking and ticketing platform: aurora gradients, frosted-glass surfaces, soft depth and CSS-only motion - configurable in the theme manager."
+        },
+        "manufacturerLink": {
+            "de-DE": "https://fibenacci.de",
+            "en-GB": "https://fibenacci.de"
+        },
+        "supportLink": {
+            "de-DE": "https://fibenacci.de",
+            "en-GB": "https://fibenacci.de"
         }
     }
 }

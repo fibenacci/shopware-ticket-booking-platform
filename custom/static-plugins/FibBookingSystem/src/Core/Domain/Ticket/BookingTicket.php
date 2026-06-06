@@ -12,7 +12,14 @@ class BookingTicket
         private readonly string $scanToken,
         private readonly string $qrPayload,
         private readonly string $qrCodeDataUri,
+        private readonly ?string $seatLabel = null,
     ) {
+    }
+
+    /** Numbered seating only — null for pool tickets. */
+    public function getSeatLabel(): ?string
+    {
+        return $this->seatLabel;
     }
 
     public function getId(): string

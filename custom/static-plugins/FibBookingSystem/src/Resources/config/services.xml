@@ -31,7 +31,23 @@
             <tag name="shopware.entity.definition" entity="fib_booking_hold"/>
         </service>
 
+        <service id="FibBookingSystem\Core\Content\BookingSeat\BookingSeatDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_seat"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\BookingSeatClaim\BookingSeatClaimDefinition">
+            <tag name="shopware.entity.definition" entity="fib_booking_seat_claim"/>
+        </service>
+
         <service id="FibBookingSystem\Core\Domain\Availability\AvailabilityService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Seating\SeatClaimService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Seating\SeatmapReadService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
         </service>
 
@@ -40,10 +56,12 @@
             <argument type="service" id="fib_booking_hold.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingHoldExpirationService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
         </service>
 
         <service id="FibBookingSystem\Core\Domain\Reservation\BookingReservationExpirationService">
@@ -58,6 +76,7 @@
             <argument type="service" id="fib_booking_hold.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Availability\AvailabilityService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatClaimService"/>
             <argument type="service" id="Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface"/>
             <argument type="service" id="event_dispatcher"/>
             <argument type="service" id="logger"/>
@@ -287,10 +306,20 @@
         <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute"
                  alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingHoldRoute"/>
 
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingSeatmapRoute" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Seating\SeatmapReadService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingSeatmapRoute"
+                 alias="FibBookingSystem\Core\Content\Booking\SalesChannel\BookingSeatmapRoute"/>
+
         <service id="FibBookingSystem\Storefront\Controller\BookingApiController" public="true">
             <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute"/>
             <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute"/>
             <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute"/>
+            <argument type="service" id="FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingSeatmapRoute"/>
             <argument type="service" id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
             <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>

@@ -39,6 +39,8 @@ class BookingTicketEntity extends Entity
 
     protected ?string $validityDuration = null;
 
+    protected ?string $seatLabel = null;
+
     /**
      * @var array<string, mixed>|null
      */
@@ -94,6 +96,16 @@ class BookingTicketEntity extends Entity
     public function setValidityDuration(?string $validityDuration): void
     {
         $this->validityDuration = $validityDuration;
+    }
+
+    public function getSeatLabel(): ?string
+    {
+        return $this->seatLabel;
+    }
+
+    public function setSeatLabel(?string $seatLabel): void
+    {
+        $this->seatLabel = $seatLabel;
     }
 
     public function getReservationId(): string

@@ -20,6 +20,8 @@ class BookingResourceEntity extends Entity
 
     protected int $capacity = 1;
 
+    protected string $seatingMode = 'pool';
+
     protected bool $active = true;
 
     /**
@@ -28,6 +30,16 @@ class BookingResourceEntity extends Entity
     protected ?array $configuration = null;
 
     protected ?ProductEntity $product = null;
+
+    public function getSeatingMode(): string
+    {
+        return $this->seatingMode;
+    }
+
+    public function setSeatingMode(string $seatingMode): void
+    {
+        $this->seatingMode = $seatingMode;
+    }
 
     public function getProductId(): ?string
     {

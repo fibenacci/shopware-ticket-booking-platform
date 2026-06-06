@@ -14,6 +14,7 @@ final class TicketWalletData
         public readonly string $qrPayload,
         public readonly BookingWindow $window,
         public readonly ?string $customerName,
+        public readonly ?string $seatLabel = null,
     ) {
     }
 }

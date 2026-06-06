@@ -59,9 +59,10 @@ class BookingDemoDataSeeder
         $homepage = $seeds->sectionOrNull('cms')?->sectionOrNull('homepage');
         if ($homepage !== null) {
             $calendarResourceId = $resourceIds[$homepage->string('calendarResource')] ?? $catalog['packages'][0]['resourceId'] ?? null;
+            $cinemaResourceId = $resourceIds[$homepage->sectionOrNull('cinemaCalendar')?->string('resource') ?? ''] ?? null;
 
             if ($calendarResourceId !== null) {
-                $homepageAssigned = $this->cmsSeeder->seedHomepageWithCalendar($homepage, $calendarResourceId, $context);
+                $homepageAssigned = $this->cmsSeeder->seedHomepageWithCalendar($homepage, $calendarResourceId, $context, $cinemaResourceId);
             }
         }
 

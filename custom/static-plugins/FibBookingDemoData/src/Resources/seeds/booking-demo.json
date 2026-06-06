@@ -23,6 +23,26 @@
             "name": "Demo Transit Network",
             "technicalName": "fib_demo_resource_transit",
             "capacity": 100000
+        },
+        {
+            "key": "cinema",
+            "name": "Demo Cinema — Hall 1",
+            "technicalName": "fib_demo_resource_cinema",
+            "capacity": 40,
+            "seating": {
+                "mode": "seatmap",
+                "rows": 5,
+                "seatsPerRow": 8
+            },
+            "slots": {
+                "daysAhead": 14,
+                "durationMinutes": 120,
+                "capacity": 40,
+                "times": [
+                    "17:30",
+                    "20:30"
+                ]
+            }
         }
     ],
     "products": [
@@ -83,6 +103,13 @@
                 "entryPolicy": "multi",
                 "maxEntriesPerDay": 10
             }
+        },
+        {
+            "name": "Cinema Ticket — Hall 1",
+            "productNumber": "FIB-CINEMA-1",
+            "grossPrice": 12.5,
+            "resource": "cinema",
+            "slotMinutes": 120
         }
     ],
     "packages": {
@@ -138,6 +165,10 @@
                 "headline": "Operator area",
                 "label": "Open ticket scanner",
                 "hint": "Sign in with a scanner account (dedicated ACL role — see docs/SCANNER.md). For camera access use http://127.0.0.1:8096 (browsers require a secure context)."
+            },
+            "cinemaCalendar": {
+                "resource": "cinema",
+                "monthsAhead": 1
             }
         }
     },

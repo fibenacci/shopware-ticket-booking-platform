@@ -1,8 +1,20 @@
 # Seating — Numbered Seats (Design)
 
-> Status: **designed, not yet implemented**. This document is the agreed
-> blueprint so implementation can start without re-opening the architecture
-> discussion.
+> Status: **phases 1-3 implemented.**
+> Phase 1 (core): schema, claim primitive, hold/expiry/conversion
+> integration, seatmap Store API (`GET /store-api/fib-booking/seatmap/{slotId}`
+> + storefront proxy) — covered by
+> `tests/Integration/Seating/SeatClaimFlowTest`.
+> Phase 2 (picker): `<fib-seat-picker>` custom element — a Vue 3 island
+> (apps/seat-picker, own Vite build → Resources/public, vitest-covered
+> selection logic) lazy-loaded by the vanilla calendar widget only on
+> seatmap resources; quantity derives from the selection, the hold request
+> carries `slotId` + `seatIds`. Demo cinema (5×8 grid) seeds onto the
+> homepage.
+> Phase 3 (ticket-per-seat): `BookingTicketService::issueTickets()` issues
+> one ticket PER claimed seat with the seat-label snapshot; the seat shows on
+> the scan verdict (scanner app), Apple/Google wallet passes and the ticket
+> PDF. Phases 4-5 (admin generator, realtime push) follow this blueprint.
 
 Numbered seating (cinema, theater) as a **per-resource option** — the
 pool-based model stays the default and remains untouched for everything that

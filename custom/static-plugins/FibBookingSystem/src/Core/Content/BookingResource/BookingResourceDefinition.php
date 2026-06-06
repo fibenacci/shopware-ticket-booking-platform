@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Core\Content\BookingResource;
 
+use FibBookingSystem\Core\Domain\Seating\SeatingMode;
 use Shopware\Core\Content\Product\ProductDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\BoolField;
@@ -38,6 +39,19 @@ class BookingResourceDefinition extends EntityDefinition
         return BookingResourceEntity::class;
     }
 
+    /**
+     * DAL-level default: Required fields validate BEFORE SQL column defaults
+     * could apply — creates without an explicit mode stay pool-based.
+     *
+     * @return array<string, mixed>
+     */
+    public function getDefaults(): array
+    {
+        return [
+            'seatingMode' => SeatingMode::POOL,
+        ];
+    }
+
     protected function defineFields(): FieldCollection
     {
         return new FieldCollection([
@@ -46,6 +60,7 @@ class BookingResourceDefinition extends EntityDefinition
             (new StringField('name', 'name'))->addFlags(new Required()),
             (new StringField('technical_name', 'technicalName'))->addFlags(new Required()),
             (new IntField('capacity', 'capacity'))->addFlags(new Required()),
+            (new StringField('seating_mode', 'seatingMode'))->addFlags(new Required()),
             (new BoolField('active', 'active'))->addFlags(new Required()),
             new JsonField('configuration', 'configuration'),
             new ManyToOneAssociationField('product', 'product_id', ProductDefinition::class, 'id'),

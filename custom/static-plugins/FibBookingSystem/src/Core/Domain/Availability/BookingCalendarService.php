@@ -30,13 +30,22 @@ class BookingCalendarService
     }
 
     /**
-     * @return array{resourceId: string, month: string, days: list<array<string, mixed>>}
+     * @return array{resourceId: string, seatingMode: string, month: string, days: list<array<string, mixed>>}
      */
     public function getMonth(string $resourceId, DateTimeImmutable $month): array
     {
         $resourceBytes = Uuid::fromHexToBytes($resourceId);
         $from = $month->modify('first day of this month')->setTime(0, 0);
         $to = $from->modify('first day of next month');
+
+        // The storefront widget branches on this: seatmap resources swap the
+        // quantity input for the seat picker after a slot is chosen.
+        $seatingMode = $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT seating_mode FROM fib_booking_resource WHERE id = :resourceId
+            SQL,
+            ['resourceId' => $resourceBytes],
+        );
 
         /** @var list<array{id: string, starts_at: string, ends_at: string, capacity: int|numeric-string, booked: int|numeric-string}> $slots */
         $slots = $this->connection->fetchAllAssociative(
@@ -101,6 +110,7 @@ class BookingCalendarService
 
         return [
             'resourceId' => $resourceId,
+            'seatingMode' => is_string($seatingMode) ? $seatingMode : 'pool',
             'month' => $from->format('Y-m'),
             'days' => array_values($days),
         ];

@@ -87,6 +87,39 @@ final class BookingRequestParser
     }
 
     /**
+     * Optional list of UUIDs (e.g. picked seats). Absent/empty → [].
+     *
+     * @param array<string, mixed> $payload
+     *
+     * @return list<string> lowercase hex UUIDs
+     */
+    public static function optionalUuidList(array $payload, string $field, int $maxItems = 100): array
+    {
+        $value = $payload[$field] ?? null;
+
+        if ($value === null) {
+            return [];
+        }
+
+        if (!is_array($value) || count($value) > $maxItems) {
+            throw FibBookingException::invalidPayload($field, sprintf('expected a list of at most %d UUIDs', $maxItems));
+        }
+
+        $uuids = [];
+        foreach ($value as $item) {
+            $normalized = is_string($item) ? strtolower($item) : null;
+
+            if ($normalized === null || !Uuid::isValid($normalized)) {
+                throw FibBookingException::invalidPayload($field, 'expected a list of UUIDs');
+            }
+
+            $uuids[] = $normalized;
+        }
+
+        return $uuids;
+    }
+
+    /**
      * @param array<string, mixed> $payload
      */
     public static function positiveInt(array $payload, string $field): int

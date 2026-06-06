@@ -24,6 +24,8 @@ export default class FibBookingCalendarPlugin extends Plugin {
         holdUrl: null,
         cartUrl: null,
         checkoutUrl: null,
+        seatPickerScript: null,
+        maxSeatsPerBooking: 8,
     };
 
     init() {
@@ -37,6 +39,8 @@ export default class FibBookingCalendarPlugin extends Plugin {
         this._maxMonth = new Date(this._today.getFullYear(), this._today.getMonth() + Math.max(0, (this.options.monthsAhead || 3) - 1), 1);
         this._days = new Map();
         this._selectedSlot = null;
+        this._seatingMode = 'pool';
+        this._selectedSeatIds = [];
 
         this._grid = this.el.querySelector('.fib-booking-calendar-grid');
         this._monthLabel = this.el.querySelector('.fib-booking-calendar-month');
@@ -44,6 +48,8 @@ export default class FibBookingCalendarPlugin extends Plugin {
         this._slotList = this.el.querySelector('.fib-booking-calendar-slot-list');
         this._actions = this.el.querySelector('.fib-booking-calendar-actions');
         this._error = this.el.querySelector('.fib-booking-calendar-error');
+        this._seatPickerContainer = this.el.querySelector('.fib-booking-calendar-seatpicker');
+        this._quantityInput = this.el.querySelector('.fib-booking-calendar-quantity');
 
         this.el.querySelector('.fib-booking-calendar-prev')?.addEventListener('click', () => this._navigate(-1));
         this.el.querySelector('.fib-booking-calendar-next')?.addEventListener('click', () => this._navigate(1));
@@ -94,6 +100,11 @@ export default class FibBookingCalendarPlugin extends Plugin {
         }
 
         this._days = new Map((data.days || []).map((day) => [day.date, day]));
+        this._seatingMode = data.seatingMode || 'pool';
+
+        // Numbered seating: quantity is DERIVED from the seat selection.
+        this._quantityInput?.classList.toggle('d-none', this._seatingMode === 'seatmap');
+
         this._renderGrid();
     }
 
@@ -167,6 +178,52 @@ export default class FibBookingCalendarPlugin extends Plugin {
         if (!slot) {
             this._slotsContainer?.classList.add('d-none');
         }
+
+        if (this._seatingMode === 'seatmap') {
+            this._selectedSeatIds = [];
+            slot ? this._mountSeatPicker(slot) : this._unmountSeatPicker();
+        }
+    }
+
+    /**
+     * Mounts the <fib-seat-picker> Vue island for the chosen showing. The
+     * element script (apps/seat-picker) is lazy-loaded exactly once and only
+     * on seatmap resources — pool calendars never pay for it.
+     */
+    async _mountSeatPicker(slot) {
+        if (!this._seatPickerContainer || !this.options.seatPickerScript) {
+            return;
+        }
+
+        if (!customElements.get('fib-seat-picker')) {
+            try {
+                await import(/* webpackIgnore: true */ this.options.seatPickerScript);
+            } catch (error) {
+                this._showError('Could not load the seat picker.');
+                return;
+            }
+        }
+
+        this._unmountSeatPicker();
+
+        const picker = document.createElement('fib-seat-picker');
+        picker.setAttribute('slot-id', slot.id);
+        picker.setAttribute('max-seats', String(this.options.maxSeatsPerBooking));
+        picker.addEventListener('seats-change', (event) => {
+            // Vue custom elements wrap emit payloads in event.detail[0].
+            const payload = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+            this._selectedSeatIds = payload?.seatIds ?? [];
+        });
+
+        this._seatPickerContainer.appendChild(picker);
+        this._seatPickerContainer.classList.remove('d-none');
+    }
+
+    _unmountSeatPicker() {
+        if (this._seatPickerContainer) {
+            this._seatPickerContainer.innerHTML = '';
+            this._seatPickerContainer.classList.add('d-none');
+        }
     }
 
     _onBook() {
@@ -178,19 +235,30 @@ export default class FibBookingCalendarPlugin extends Plugin {
 
         const packageSelect = this.el.querySelector('.fib-booking-calendar-package');
         const productId = packageSelect ? packageSelect.value : null;
-        const quantityInput = this.el.querySelector('.fib-booking-calendar-quantity');
-        const quantity = Math.max(1, parseInt(quantityInput?.value ?? '1', 10) || 1);
 
         if (!productId) {
             this._showError('No bookable package is configured.');
             return;
         }
 
+        const isSeatmap = this._seatingMode === 'seatmap';
+
+        if (isSeatmap && this._selectedSeatIds.length === 0) {
+            this._showError('Please pick at least one seat.');
+            return;
+        }
+
+        // Seatmap: quantity IS the number of picked seats.
+        const quantity = isSeatmap
+            ? this._selectedSeatIds.length
+            : Math.max(1, parseInt(this._quantityInput?.value ?? '1', 10) || 1);
+
         this._client.post(this.options.holdUrl, JSON.stringify({
             resourceId: this.options.resourceId,
             startsAt: this._selectedSlot.startsAt,
             endsAt: this._selectedSlot.endsAt,
             quantity,
+            ...(isSeatmap ? { slotId: this._selectedSlot.id, seatIds: this._selectedSeatIds } : {}),
         }), (holdResponse) => {
             let hold;
             try {

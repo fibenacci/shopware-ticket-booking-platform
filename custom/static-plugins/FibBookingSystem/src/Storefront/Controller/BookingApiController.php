@@ -8,6 +8,7 @@ use FibBookingSystem\Checkout\Cart\BookingLineItemFactory;
 use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingAvailabilityRoute;
 use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingCalendarRoute;
 use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingHoldRoute;
+use FibBookingSystem\Core\Content\Booking\SalesChannel\AbstractBookingSeatmapRoute;
 use FibBookingSystem\Core\Content\Booking\SalesChannel\BookingRequestParser;
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
@@ -31,10 +32,33 @@ class BookingApiController extends StorefrontController
         private readonly AbstractBookingAvailabilityRoute $availabilityRoute,
         private readonly AbstractBookingHoldRoute $holdRoute,
         private readonly AbstractBookingCalendarRoute $calendarRoute,
+        private readonly AbstractBookingSeatmapRoute $seatmapRoute,
         private readonly BookingLineItemFactory $lineItemFactory,
         private readonly CartService $cartService,
         private readonly BookingRateLimiter $rateLimiter,
     ) {
+    }
+
+    #[Route(
+        path: '/fib-booking/seatmap/{slotId}',
+        name: 'frontend.fib_booking.seatmap',
+        defaults: ['XmlHttpRequest' => true, '_httpCache' => false],
+        methods: ['GET'],
+    )]
+    public function seatmap(string $slotId, Request $request, SalesChannelContext $context): JsonResponse
+    {
+        try {
+            $response = $this->seatmapRoute->load($slotId, $request, $context);
+
+            return $this->noStoreJson($response->getSeatmap());
+        } catch (TooManyRequestsHttpException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            return $this->noStoreJson([
+                'seats' => [],
+                'error' => $exception->getMessage(),
+            ], JsonResponse::HTTP_BAD_REQUEST);
+        }
     }
 
     #[Route(

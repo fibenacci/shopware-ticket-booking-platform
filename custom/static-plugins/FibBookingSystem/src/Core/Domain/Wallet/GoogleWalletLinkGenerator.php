@@ -81,10 +81,13 @@ class GoogleWalletLinkGenerator
                             'start' => ['date' => $data->window->startsAt->format('c')],
                             'end' => ['date' => $data->window->endsAt->modify('+1 day')->format('c')],
                         ],
-                        'textModulesData' => [
+                        'textModulesData' => array_values(array_filter([
                             ['header' => 'Booking', 'body' => $data->bookingNumber, 'id' => 'booking'],
                             ['header' => 'Guests', 'body' => (string) $data->window->quantity, 'id' => 'guests'],
-                        ],
+                            $data->seatLabel !== null
+                                ? ['header' => 'Seat', 'body' => $data->seatLabel, 'id' => 'seat']
+                                : null,
+                        ])),
                     ],
                 ],
             ],

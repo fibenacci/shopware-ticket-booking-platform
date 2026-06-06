@@ -9,7 +9,9 @@ use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityResult;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
+use FibBookingSystem\Core\Domain\Reservation\BookingHoldRequest;
 use FibBookingSystem\Core\Domain\Reservation\BookingHoldService;
+use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
 use FibBookingSystem\FibBookingException;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Context;
@@ -96,15 +98,17 @@ class BookingHoldQuotaTest extends TestCase
             new StaticSystemConfigService([
                 'FibBookingSystem.config.maxActiveHoldsPerCustomer' => $configuredLimit,
             ]),
+            $this->createStub(SeatClaimService::class),
         );
 
         $service->createHold(
-            self::RESOURCE_ID,
-            new DateTimeImmutable('2026-12-01 18:00:00', new DateTimeZone('UTC')),
-            new DateTimeImmutable('2026-12-01 20:00:00', new DateTimeZone('UTC')),
-            1,
-            null,
-            $customerId,
+            new BookingHoldRequest(
+                resourceId: self::RESOURCE_ID,
+                startsAt: new DateTimeImmutable('2026-12-01 18:00:00', new DateTimeZone('UTC')),
+                endsAt: new DateTimeImmutable('2026-12-01 20:00:00', new DateTimeZone('UTC')),
+                quantity: 1,
+                customerId: $customerId,
+            ),
             Context::createDefaultContext(),
         );
     }

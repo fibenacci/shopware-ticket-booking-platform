@@ -7,6 +7,7 @@ namespace FibBookingSystem\Tests\Unit\Reservation;
 use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Availability\AvailabilityService;
 use FibBookingSystem\Core\Domain\Reservation\BookingReservationService;
+use FibBookingSystem\Core\Domain\Seating\SeatClaimService;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -134,6 +135,7 @@ class BookingHoldConversionLoggingTest extends TestCase
             $holdRepository,
             $this->createStub(BookingTicketService::class),
             $this->createStub(AvailabilityService::class),
+            $this->createStub(SeatClaimService::class),
             $this->createStub(NumberRangeValueGeneratorInterface::class),
             $this->createStub(EventDispatcherInterface::class),
             $logger,

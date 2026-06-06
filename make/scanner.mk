@@ -3,7 +3,7 @@
 SCANNER_DIR := $(PLUGIN_DIR)/apps/scanner
 ADMIN_APP_DIR := $(PLUGIN_DIR)/src/Resources/app/administration
 
-.PHONY: scanner-install scanner-dev scanner-build scanner-ngrok scanner-ngrok-stop admin-test
+.PHONY: scanner-install scanner-dev scanner-build scanner-ngrok scanner-ngrok-stop admin-test seatpicker-build seatpicker-test
 
 ##@ Scanner app
 
@@ -50,3 +50,13 @@ scanner-ngrok-stop: ## Stop the ngrok tunnel
 admin-test: ## Run the admin extension's vitest unit tests (pure modules)
 	@cd $(ADMIN_APP_DIR) && npm install --silent >/dev/null && npm test
 	@echo "✅ Admin extension tests passed"
+
+SEATPICKER_DIR := $(PLUGIN_DIR)/apps/seat-picker
+
+seatpicker-build: ## Build the <fib-seat-picker> custom element (→ plugin Resources/public)
+	@cd $(SEATPICKER_DIR) && npm install --silent >/dev/null && npm run build
+	@echo "✅ Seat picker built — run 'bin/console assets:install' to publish"
+
+seatpicker-test: ## Run the seat picker's vitest unit tests
+	@cd $(SEATPICKER_DIR) && npm install --silent >/dev/null && npm test
+	@echo "✅ Seat picker tests passed"

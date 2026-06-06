@@ -21,6 +21,8 @@ class FibBookingException extends HttpException
     public const INVALID_PAYLOAD = 'FIB_BOOKING__INVALID_PAYLOAD';
     public const NO_TICKETS_FOR_ORDER = 'FIB_BOOKING__NO_TICKETS_FOR_ORDER';
     public const SCAN_CHECK_OUT_DISABLED = 'FIB_BOOKING__SCAN_CHECK_OUT_DISABLED';
+    public const SEATS_TAKEN = 'FIB_BOOKING__SEATS_TAKEN';
+    public const SEAT_SELECTION_INVALID = 'FIB_BOOKING__SEAT_SELECTION_INVALID';
 
     public static function resourceNotFound(): self
     {
@@ -37,6 +39,29 @@ class FibBookingException extends HttpException
             Response::HTTP_BAD_REQUEST,
             self::SCAN_CHECK_OUT_DISABLED,
             'Check-out scanning is disabled. Enable "scanCheckOutEnabled" in the plugin configuration first.',
+        );
+    }
+
+    /**
+     * @param list<string> $seatLabels
+     */
+    public static function seatsTaken(array $seatLabels): self
+    {
+        return new self(
+            Response::HTTP_CONFLICT,
+            self::SEATS_TAKEN,
+            'The following seats were just taken: {{ seats }}. Please pick different seats.',
+            ['seats' => implode(', ', $seatLabels)],
+        );
+    }
+
+    public static function seatSelectionInvalid(string $reason): self
+    {
+        return new self(
+            Response::HTTP_BAD_REQUEST,
+            self::SEAT_SELECTION_INVALID,
+            'Invalid seat selection: {{ reason }}',
+            ['reason' => $reason],
         );
     }
 

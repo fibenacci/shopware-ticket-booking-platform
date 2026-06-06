@@ -135,6 +135,7 @@ class WalletPassService
                 quantity: $reservation->getQuantity(),
             ),
             customerName: $customerName === '' ? null : $customerName,
+            seatLabel: $ticket->getSeatLabel(),
         );
     }
 

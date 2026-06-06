@@ -33,6 +33,7 @@ class CatalogSeeder
      * @param EntityRepository<\FibBookingSystem\Core\Content\BookingResource\BookingResourceCollection>           $resourceRepository
      * @param EntityRepository<\FibBookingSystem\Core\Content\ProductBookingConfig\ProductBookingConfigCollection> $productConfigRepository
      * @param EntityRepository<\FibBookingSystem\Core\Content\BookingSlot\BookingSlotCollection>                   $slotRepository
+     * @param EntityRepository<\FibBookingSystem\Core\Content\BookingSeat\BookingSeatCollection>                   $seatRepository
      */
     public function __construct(
         private readonly EntityRepository $productRepository,
@@ -41,6 +42,7 @@ class CatalogSeeder
         private readonly EntityRepository $resourceRepository,
         private readonly EntityRepository $productConfigRepository,
         private readonly EntityRepository $slotRepository,
+        private readonly EntityRepository $seatRepository,
     ) {
     }
 
@@ -58,6 +60,18 @@ class CatalogSeeder
             $resourceId = $this->upsertResource($resource, $context);
             $resourceIds[$resource->string('key')] = $resourceId;
             $resources[] = ['id' => $resourceId, 'name' => $resource->string('name')];
+
+            // Numbered seating (e.g. the demo cinema): generate the seat grid.
+            $seating = $resource->sectionOrNull('seating');
+            if ($seating !== null && $seating->string('mode', 'pool') === 'seatmap') {
+                $this->seedSeatGrid($seating, $resource->string('key'), $resourceId, $context);
+            }
+
+            // Standalone slot plans (resources outside the packages scenario).
+            $resourceSlots = $resource->sectionOrNull('slots');
+            if ($resourceSlots !== null) {
+                $this->seedSlots($resourceSlots, $resourceId, $context);
+            }
         }
 
         $products = [];
@@ -89,18 +103,50 @@ class CatalogSeeder
 
         $id = is_string($existingId) ? $existingId : SeedIds::stable('resource:' . $resource->string('key'));
 
+        $seating = $resource->sectionOrNull('seating');
+
         $this->resourceRepository->upsert([
             [
                 'id' => $id,
                 'name' => $resource->string('name'),
                 'technicalName' => $resource->string('technicalName'),
                 'capacity' => $resource->int('capacity'),
+                'seatingMode' => $seating?->string('mode', 'pool') ?? 'pool',
                 'active' => true,
                 'configuration' => ['demo' => true],
             ],
         ], $context);
 
         return $id;
+    }
+
+    /**
+     * Cinema-style rectangle: rows × seatsPerRow, row labels A, B, C, …
+     * Idempotent via stable ids — re-seeding updates in place.
+     */
+    private function seedSeatGrid(SeedSection $seating, string $resourceKey, string $resourceId, Context $context): void
+    {
+        $rows = max(1, min(26, $seating->int('rows', 5)));
+        $seatsPerRow = max(1, $seating->int('seatsPerRow', 8));
+
+        $payload = [];
+        for ($row = 0; $row < $rows; ++$row) {
+            $rowLabel = chr(ord('A') + $row);
+
+            for ($seat = 1; $seat <= $seatsPerRow; ++$seat) {
+                $payload[] = [
+                    'id' => SeedIds::stable(sprintf('seat:%s:%s%d', $resourceKey, $rowLabel, $seat)),
+                    'resourceId' => $resourceId,
+                    'rowLabel' => $rowLabel,
+                    'seatLabel' => (string) $seat,
+                    'posX' => $seat,
+                    'posY' => $row + 1,
+                    'active' => true,
+                ];
+            }
+        }
+
+        $this->seatRepository->upsert($payload, $context);
     }
 
     /**
