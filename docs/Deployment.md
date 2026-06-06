@@ -49,11 +49,14 @@ ACME_EMAIL=ops@example.com                # Let's Encrypt notifications
 SHOPWARE_IMAGE=ghcr.io/<owner>/fib-booking-system:latest
 SCANNER_IMAGE=ghcr.io/<owner>/fib-booking-scanner:latest
 APP_SECRET=<openssl rand -hex 32>
+ALTCHA_SECRET_KEY=<openssl rand -hex 32>  # HMAC secret for the ALTCHA captcha (see Bot-Protection)
 DB_PASSWORD=<secret>
 DB_ROOT_PASSWORD=<secret>
 REDIS_PASSWORD=<secret>
 MAILER_DSN=smtp://...
 TRUSTED_PROXIES=...                       # optional; defaults cover the compose network
+SENTRY_DSN=...                            # optional; empty = error tracking disabled
+SENTRY_RELEASE=...                        # optional; e.g. the deployed image tag
 ```
 
 DNS: point `SHOP_DOMAIN` **and** `scanner.SHOP_DOMAIN` at the host, then:

@@ -5,11 +5,18 @@
     "require": {
         "composer-runtime-api": "^2.0",
         "fib/fib-booking-system": "*",
+        "frosh/altcha-captcha": "*",
+        "frosh/mail-platform-archive": "*",
+        "frosh/platform-html-minify": "*",
+        "frosh/sentry-bundle": "*",
+        "frosh/tools": "*",
+        "sentry/sentry-symfony": "*",
         "shopware/administration": "*",
         "shopware/core": "~v6.7.0",
         "shopware/deployment-helper": "*",
         "shopware/elasticsearch": "*",
         "shopware/storefront": "*",
+        "swag/paypal": "*",
         "symfony/flex": "~2"
     },
     "require-dev": {

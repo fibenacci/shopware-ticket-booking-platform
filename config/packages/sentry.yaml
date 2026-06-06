@@ -1,0 +1,31 @@
+# Sentry error tracking (frosh/sentry-bundle).
+# Disabled unless SENTRY_DSN is set — safe default for dev and for prod
+# hosts that have no Sentry/GlitchTip instance yet.
+# https://github.com/FriendsOfShopware/shopware-sentry-bundle
+
+parameters:
+    env(SENTRY_DSN): ''
+    env(SENTRY_RELEASE): ''
+    env(SENTRY_ENVIRONMENT): '%kernel.environment%'
+
+# Forward Shopware profiler traces to Sentry
+shopware:
+    profiler:
+        integrations:
+            - Sentry
+
+sentry:
+    dsn: '%env(SENTRY_DSN)%'
+    options:
+        release: '%env(SENTRY_RELEASE)%'
+        environment: '%env(SENTRY_ENVIRONMENT)%'
+    tracing:
+        enabled: true
+        dbal:
+            enabled: false
+        cache:
+            enabled: false
+        twig:
+            enabled: false
+        http_client:
+            enabled: true

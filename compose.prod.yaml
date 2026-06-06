@@ -29,6 +29,13 @@ x-environment: &shopware-env
     PHP_SESSION_HANDLER: redis
     PHP_SESSION_SAVE_PATH: tcp://redis:6379/1?auth=${REDIS_PASSWORD}
     TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,REMOTE_ADDR}
+    # HMAC secret for the self-hosted ALTCHA captcha (config/packages/bot_protection.yaml).
+    # Generate once: openssl rand -hex 32
+    ALTCHA_SECRET_KEY: ${ALTCHA_SECRET_KEY:?ALTCHA_SECRET_KEY is required — generate with `openssl rand -hex 32`}
+    # Optional: Sentry/GlitchTip error tracking (config/packages/sentry.yaml).
+    # Empty = disabled.
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    SENTRY_RELEASE: ${SENTRY_RELEASE:-}
 
 x-volumes: &shopware-volumes
     - files:/var/www/html/files
@@ -82,6 +89,19 @@ services:
             - 'traefik.http.routers.shop.entrypoints=websecure'
             - 'traefik.http.routers.shop.tls.certresolver=letsencrypt'
             - 'traefik.http.services.shop.loadbalancer.server.port=8000'
+            # Edge rate limit for account registration (anti bot-flood,
+            # OWASP OAT-019): ~5 registrations per hour per client IP with a
+            # small burst allowance. Legitimate users register once; this only
+            # bites scripted mass sign-ups. The dedicated router matches before
+            # the catch-all `shop` router (longer rule = higher priority).
+            - 'traefik.http.middlewares.register-ratelimit.ratelimit.average=5'
+            - 'traefik.http.middlewares.register-ratelimit.ratelimit.period=1h'
+            - 'traefik.http.middlewares.register-ratelimit.ratelimit.burst=3'
+            - 'traefik.http.routers.shop-register.rule=Host(`${SHOP_DOMAIN}`) && Method(`POST`) && (Path(`/account/register`) || Path(`/store-api/account/register`))'
+            - 'traefik.http.routers.shop-register.entrypoints=websecure'
+            - 'traefik.http.routers.shop-register.tls.certresolver=letsencrypt'
+            - 'traefik.http.routers.shop-register.middlewares=register-ratelimit'
+            - 'traefik.http.routers.shop-register.service=shop'
         depends_on:
             init:
                 condition: service_completed_successfully
