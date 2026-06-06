@@ -12,6 +12,11 @@ concurrency:
     group: shopware-ci-${{ github.ref }}
     cancel-in-progress: true
 
+# Least privilege for the GITHUB_TOKEN — read-only by default. Jobs that need
+# more (publish-results: checks + PR description) declare their own block.
+permissions:
+    contents: read
+
 env:
     PHP_VERSION: '8.3'
     PHP_EXTENSIONS: gd, intl, mbstring, pdo_mysql, zip, curl, dom, fileinfo, opcache
