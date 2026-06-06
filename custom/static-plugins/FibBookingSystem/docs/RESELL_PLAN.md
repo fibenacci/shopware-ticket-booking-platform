@@ -1,8 +1,10 @@
 # Resell & Auctions (Design)
 
-> Status: **phase 1 implemented** (transfer primitive + listing guardrails).
-> This is the agreed blueprint — later phases build on it without re-opening
-> the architecture discussion.
+> Status: **phases 1 + 2 implemented** (transfer primitive + listing
+> guardrails; fixed-price end-to-end: `fib-resale` cart line item, payment
+> settlement with ticket-level ownership transfer, refund unwind, account
+> sell/cancel UI and a public browse page). This is the agreed blueprint —
+> later phases build on it without re-opening the architecture discussion.
 
 Secondary market for issued tickets: owners list their ticket for resale at
 a fixed price **or** as an auction; the platform handles the transfer so the

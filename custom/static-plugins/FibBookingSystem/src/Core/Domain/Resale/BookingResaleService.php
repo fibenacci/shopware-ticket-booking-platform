@@ -131,7 +131,9 @@ class BookingResaleService
         $ticket = $this->connection->fetchAssociative(
             <<<'SQL'
                 SELECT ticket.status, ticket.expires_at,
-                LOWER(HEX(reservation.customer_id)) AS owner_customer_id,
+                -- effective owner: a transfer override (resale) wins over the
+                -- reservation customer (primary market default)
+                LOWER(HEX(COALESCE(ticket.owner_customer_id, reservation.customer_id))) AS owner_customer_id,
                 reservation.starts_at,
                 config.validity_mode,
                 line_item.unit_price

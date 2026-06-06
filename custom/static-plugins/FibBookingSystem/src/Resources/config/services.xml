@@ -71,6 +71,20 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
         </service>
 
+        <service id="FibBookingSystem\Core\Domain\Resale\ListingCartReader">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Resale\ListingReadService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+        </service>
+
+        <service id="FibBookingSystem\Core\Domain\Resale\ResaleSettlementService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\TicketTransferService"/>
+            <argument type="service" id="logger"/>
+        </service>
+
         <service id="FibBookingSystem\Core\Domain\Seating\SeatmapUpdatePublisher">
             <argument type="service" id="mercure.hub.default"/>
             <argument type="service" id="logger"/>
@@ -361,6 +375,18 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
             <argument type="service" id="fib_booking_ticket.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingReadService"/>
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="FibBookingSystem\Storefront\Controller\BookingResaleController" public="true">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\BookingResaleService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingReadService"/>
+            <argument type="service" id="FibBookingSystem\Checkout\Cart\Resale\ResaleLineItemFactory"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>
@@ -387,6 +413,17 @@
 
         <service id="FibBookingSystem\Checkout\Cart\BookingLineItemFactory"/>
 
+        <service id="FibBookingSystem\Checkout\Cart\Resale\ResaleLineItemFactory">
+            <tag name="shopware.cart.line_item.factory"/>
+        </service>
+
+        <service id="FibBookingSystem\Checkout\Cart\Resale\ResaleCartProcessor">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingCartReader"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\Price\QuantityPriceCalculator"/>
+            <tag name="shopware.cart.collector"/>
+            <tag name="shopware.cart.processor" priority="4100"/>
+        </service>
+
         <service id="FibBookingSystem\Checkout\Cart\BookingCartProcessor">
             <argument type="service" id="fib_booking_hold.repository"/>
             <argument type="service" id="fib_booking_product_config.repository"/>
@@ -406,6 +443,7 @@
 
         <service id="FibBookingSystem\Checkout\Payment\BookingPaymentStateSubscriber">
             <argument type="service" id="FibBookingSystem\Core\Domain\Reservation\BookingReservationService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ResaleSettlementService"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
             <tag name="kernel.event_subscriber"/>
         </service>

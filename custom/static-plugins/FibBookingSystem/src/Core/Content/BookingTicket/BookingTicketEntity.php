@@ -43,6 +43,8 @@ class BookingTicketEntity extends Entity
 
     protected ?string $replacedTicketId = null;
 
+    protected ?string $ownerCustomerId = null;
+
     /**
      * @var array<string, mixed>|null
      */
@@ -118,6 +120,16 @@ class BookingTicketEntity extends Entity
     public function setReplacedTicketId(?string $replacedTicketId): void
     {
         $this->replacedTicketId = $replacedTicketId;
+    }
+
+    public function getOwnerCustomerId(): ?string
+    {
+        return $this->ownerCustomerId;
+    }
+
+    public function setOwnerCustomerId(?string $ownerCustomerId): void
+    {
+        $this->ownerCustomerId = $ownerCustomerId;
     }
 
     public function getReservationId(): string

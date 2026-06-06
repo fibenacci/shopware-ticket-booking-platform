@@ -6,14 +6,17 @@ namespace FibBookingSystem\Storefront\Controller;
 
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketEntity;
+use FibBookingSystem\Core\Domain\Resale\ListingReadService;
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
 use FibBookingSystem\Core\Domain\Wallet\TicketWalletData;
 use FibBookingSystem\Core\Domain\Wallet\WalletPassService;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\AndFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\OrFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -42,6 +45,7 @@ class BookingWalletController extends StorefrontController
         private readonly WalletPassService $walletService,
         private readonly EntityRepository $ticketRepository,
         private readonly BookingRateLimiter $rateLimiter,
+        private readonly ListingReadService $listingReadService,
     ) {
     }
 
@@ -115,6 +119,10 @@ class BookingWalletController extends StorefrontController
 
         $response = $this->renderStorefront('@FibBookingSystem/storefront/page/account/fib-booking-tickets.html.twig', [
             'tickets' => $tickets,
+            // ticket id → active listing (sell/cancel state per ticket card)
+            'resaleListings' => $this->listingReadService->fetchActiveForTickets(
+                array_column($tickets, 'ticketId'),
+            ),
         ]);
         $this->hardenResponse($response);
 
@@ -130,7 +138,13 @@ class BookingWalletController extends StorefrontController
     private function fetchCustomerTickets(string $customerId, SalesChannelContext $context): array
     {
         $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('reservation.customerId', $customerId));
+        $criteria->addFilter(new OrFilter([
+            new EqualsFilter('ownerCustomerId', $customerId),
+            new AndFilter([
+                new EqualsFilter('ownerCustomerId', null),
+                new EqualsFilter('reservation.customerId', $customerId),
+            ]),
+        ]));
         $criteria->addFilter(new EqualsAnyFilter('status', ['issued', 'sent', 'scanned']));
         $criteria->addAssociation('reservation.resource');
         $criteria->addSorting(new FieldSorting('reservation.startsAt', FieldSorting::DESCENDING));

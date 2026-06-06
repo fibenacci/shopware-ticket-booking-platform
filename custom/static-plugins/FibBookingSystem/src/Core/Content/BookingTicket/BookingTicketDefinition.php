@@ -6,6 +6,7 @@ namespace FibBookingSystem\Core\Content\BookingTicket;
 
 use FibBookingSystem\Core\Content\BookingReservation\BookingReservationDefinition;
 use FibBookingSystem\Core\Domain\Validity\EntryPolicy;
+use Shopware\Core\Checkout\Customer\CustomerDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityDefinition;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\CreatedAtField;
 use Shopware\Core\Framework\DataAbstractionLayer\Field\DateTimeField;
@@ -73,6 +74,7 @@ class BookingTicketDefinition extends EntityDefinition
             new StringField('validity_duration', 'validityDuration'),
             new StringField('seat_label', 'seatLabel'),
             new FkField('replaced_ticket_id', 'replacedTicketId', self::class),
+            new FkField('owner_customer_id', 'ownerCustomerId', CustomerDefinition::class),
             new JsonField('payload', 'payload'),
             new ManyToOneAssociationField('reservation', 'reservation_id', BookingReservationDefinition::class, 'id'),
             new CreatedAtField(),

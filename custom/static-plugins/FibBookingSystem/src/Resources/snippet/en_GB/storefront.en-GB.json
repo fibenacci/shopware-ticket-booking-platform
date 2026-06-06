@@ -55,6 +55,24 @@
                 "sixMonths": "6 months",
                 "year": "1 year"
             }
+        },
+        "resale": {
+            "headline": "Ticket resale market",
+            "subline": "Tickets offered by other customers — private sales between customers; the platform charges no fees.",
+            "noListings": "No tickets are currently offered for resale.",
+            "seat": "Seat",
+            "buyButton": "Buy ticket",
+            "loginToBuy": "Log in to buy",
+            "listedAt": "Listed for resale at",
+            "cancelListing": "Cancel listing",
+            "priceLabel": "Resale price",
+            "sellButton": "Offer for resale",
+            "flash": {
+                "listed": "Your ticket is now offered for resale.",
+                "cancelled": "Your listing was cancelled.",
+                "sellFailed": "The ticket could not be listed: %reason%",
+                "cancelFailed": "The listing could not be cancelled: %reason%"
+            }
         }
     },
     "checkout": {

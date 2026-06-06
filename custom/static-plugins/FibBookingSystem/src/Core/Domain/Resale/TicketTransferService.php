@@ -32,7 +32,7 @@ use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInt
  * Invariant: no two live tickets per lineage — the old row is revoked in
  * the same transaction that creates the new one.
  *
- * @phpstan-type TransferableRow array{id: string, reservation_id: string, status: string, expires_at: string|null, valid_from: string|null, entry_policy: string, max_entries_per_day: int|string|null, validity_anchor: string|null, validity_duration: string|null, seat_label: string|null, payload: string|null, sales_channel_id: string|null}
+ * @phpstan-type TransferableRow array{id: string, reservation_id: string, status: string, expires_at: string|null, valid_from: string|null, entry_policy: string, max_entries_per_day: int|string|null, validity_anchor: string|null, validity_duration: string|null, seat_label: string|null, payload: string|null, owner_customer_id: string|null, sales_channel_id: string|null}
  */
 class TicketTransferService
 {
@@ -46,15 +46,22 @@ class TicketTransferService
     ) {
     }
 
-    public function transfer(string $ticketId, Context $context): BookingTicket
+    /**
+     * @param string|null $newOwnerCustomerId the buyer — stamped as
+     *                                        owner_customer_id on the replacement so ownership moves at
+     *                                        ticket level while the reservation (capacity) stays untouched;
+     *                                        null re-issues for the current owner (e.g. lost-ticket flows)
+     */
+    public function transfer(string $ticketId, Context $context, ?string $newOwnerCustomerId = null): BookingTicket
     {
-        return $this->connection->transactional(function () use ($ticketId, $context): BookingTicket {
+        return $this->connection->transactional(function () use ($ticketId, $context, $newOwnerCustomerId): BookingTicket {
             /** @var TransferableRow|false $ticket */
             $ticket = $this->connection->fetchAssociative(
                 <<<'SQL'
                     SELECT ticket.id, LOWER(HEX(ticket.reservation_id)) AS reservation_id, ticket.status,
                     ticket.expires_at, ticket.valid_from, ticket.entry_policy, ticket.max_entries_per_day,
                     ticket.validity_anchor, ticket.validity_duration, ticket.seat_label, ticket.payload,
+                    LOWER(HEX(ticket.owner_customer_id)) AS owner_customer_id,
                     LOWER(HEX(`order`.sales_channel_id)) AS sales_channel_id
                     FROM fib_booking_ticket ticket
                     INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
@@ -88,14 +95,14 @@ class TicketTransferService
             );
 
             // 2. Fresh identity for the buyer, snapshots carried over.
-            return $this->issueReplacement($ticket, $ticketId, $context);
+            return $this->issueReplacement($ticket, $ticketId, $context, $newOwnerCustomerId);
         });
     }
 
     /**
      * @param TransferableRow $ticket
      */
-    private function issueReplacement(array $ticket, string $oldTicketId, Context $context): BookingTicket
+    private function issueReplacement(array $ticket, string $oldTicketId, Context $context, ?string $newOwnerCustomerId): BookingTicket
     {
         $newTicketId = Uuid::randomHex();
         $ticketNumber = $this->numberRangeValueGenerator->getValue(
@@ -127,6 +134,9 @@ class TicketTransferService
             'validity_duration' => $ticket['validity_duration'],
             'seat_label' => $ticket['seat_label'],
             'replaced_ticket_id' => Uuid::fromHexToBytes($oldTicketId),
+            'owner_customer_id' => ($newOwnerCustomerId ?? $ticket['owner_customer_id']) !== null
+                ? Uuid::fromHexToBytes((string) ($newOwnerCustomerId ?? $ticket['owner_customer_id']))
+                : null,
             'payload' => $ticket['payload'],
             'created_at' => $now,
         ]);

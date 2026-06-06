@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FibBookingSystem\Checkout\Payment;
 
+use FibBookingSystem\Core\Domain\Resale\ResaleSettlementService;
 use FibBookingSystem\Core\Domain\Reservation\BookingReservationService;
 use Shopware\Core\System\StateMachine\Event\StateMachineStateChangeEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -35,6 +36,7 @@ class BookingPaymentStateSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly BookingReservationService $reservationService,
+        private readonly ResaleSettlementService $resaleSettlement,
         private readonly SystemConfigService $systemConfig,
     ) {
     }
@@ -57,6 +59,7 @@ class BookingPaymentStateSubscriber implements EventSubscriberInterface
 
         if (in_array($state, $this->confirmingTransactionStates(), true)) {
             $this->reservationService->confirmReservationsForOrderTransaction($event->getTransition()->getEntityId(), $event->getContext());
+            $this->resaleSettlement->settleForOrderTransaction($event->getTransition()->getEntityId(), $event->getContext());
 
             return;
         }
@@ -67,6 +70,7 @@ class BookingPaymentStateSubscriber implements EventSubscriberInterface
                 $event->getContext(),
                 'payment refunded',
             );
+            $this->resaleSettlement->revokeForOrderTransaction($event->getTransition()->getEntityId(), 'payment refunded');
         }
     }
 
@@ -80,6 +84,7 @@ class BookingPaymentStateSubscriber implements EventSubscriberInterface
 
         if (in_array($state, ['completed', 'in_progress'], true)) {
             $this->reservationService->confirmReservationsForOrder($event->getTransition()->getEntityId(), $event->getContext());
+            $this->resaleSettlement->settleForOrder($event->getTransition()->getEntityId(), $event->getContext());
 
             return;
         }
@@ -90,6 +95,7 @@ class BookingPaymentStateSubscriber implements EventSubscriberInterface
                 $event->getContext(),
                 'order cancelled',
             );
+            $this->resaleSettlement->revokeForOrder($event->getTransition()->getEntityId(), 'order cancelled');
         }
     }
 

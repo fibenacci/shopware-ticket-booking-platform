@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FibBookingSystem\Tests\Unit\Checkout;
 
 use FibBookingSystem\Checkout\Payment\BookingPaymentStateSubscriber;
+use FibBookingSystem\Core\Domain\Resale\ResaleSettlementService;
 use FibBookingSystem\Core\Domain\Reservation\BookingReservationService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -26,17 +27,23 @@ class BookingPaymentStateSubscriberTest extends TestCase
 
     private BookingReservationService&MockObject $reservationService;
 
+    private ResaleSettlementService&MockObject $resaleSettlement;
+
     protected function setUp(): void
     {
         $this->reservationService = $this->createMock(BookingReservationService::class);
+        $this->resaleSettlement = $this->createMock(ResaleSettlementService::class);
     }
 
-    public function testPaidConfirmsReservations(): void
+    public function testPaidConfirmsReservationsAndSettlesResaleListings(): void
     {
         $this->reservationService->expects(static::once())
             ->method('confirmReservationsForOrderTransaction')
             ->with(self::ENTITY_ID);
         $this->reservationService->expects(static::never())->method('cancelReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::once())
+            ->method('settleForOrderTransaction')
+            ->with(self::ENTITY_ID);
 
         $this->subscriber()->onOrderTransactionStateChanged($this->transactionEvent('paid'));
     }
@@ -44,6 +51,7 @@ class BookingPaymentStateSubscriberTest extends TestCase
     public function testAuthorizedConfirmsReservations(): void
     {
         $this->reservationService->expects(static::once())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::once())->method('settleForOrderTransaction');
 
         $this->subscriber()->onOrderTransactionStateChanged($this->transactionEvent('authorized'));
     }
@@ -51,6 +59,7 @@ class BookingPaymentStateSubscriberTest extends TestCase
     public function testPartialPaymentDoesNotConfirmByDefault(): void
     {
         $this->reservationService->expects(static::never())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::never())->method('settleForOrderTransaction');
 
         $this->subscriber()->onOrderTransactionStateChanged($this->transactionEvent('paid_partially'));
     }
@@ -58,17 +67,22 @@ class BookingPaymentStateSubscriberTest extends TestCase
     public function testPartialPaymentConfirmsWhenOperatorOptedIn(): void
     {
         $this->reservationService->expects(static::once())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::once())->method('settleForOrderTransaction');
 
         $this->subscriber(ticketsOnPartialPayment: true)
             ->onOrderTransactionStateChanged($this->transactionEvent('paid_partially'));
     }
 
-    public function testRefundCancelsReservations(): void
+    public function testRefundCancelsReservationsAndRevokesResaleTickets(): void
     {
         $this->reservationService->expects(static::once())
             ->method('cancelReservationsForOrderTransaction')
             ->with(self::ENTITY_ID, static::anything(), 'payment refunded');
         $this->reservationService->expects(static::never())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::once())
+            ->method('revokeForOrderTransaction')
+            ->with(self::ENTITY_ID, 'payment refunded');
+        $this->resaleSettlement->expects(static::never())->method('settleForOrderTransaction');
 
         $this->subscriber()->onOrderTransactionStateChanged($this->transactionEvent('refunded'));
     }
@@ -77,6 +91,8 @@ class BookingPaymentStateSubscriberTest extends TestCase
     {
         $this->reservationService->expects(static::never())->method('cancelReservationsForOrderTransaction');
         $this->reservationService->expects(static::never())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::never())->method('settleForOrderTransaction');
+        $this->resaleSettlement->expects(static::never())->method('revokeForOrderTransaction');
 
         $this->subscriber()->onOrderTransactionStateChanged($this->transactionEvent('refunded_partially'));
     }
@@ -88,25 +104,33 @@ class BookingPaymentStateSubscriberTest extends TestCase
         // reservations on the way OUT of the refund.
         $this->reservationService->expects(static::never())->method('cancelReservationsForOrderTransaction');
         $this->reservationService->expects(static::never())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::never())->method('settleForOrderTransaction');
+        $this->resaleSettlement->expects(static::never())->method('revokeForOrderTransaction');
 
         $this->subscriber()->onOrderTransactionStateChanged(
             $this->transactionEvent('refunded', StateMachineStateChangeEvent::STATE_MACHINE_TRANSITION_SIDE_LEAVE),
         );
     }
 
-    public function testOrderCancelledCancelsReservations(): void
+    public function testOrderCancelledCancelsReservationsAndRevokesResaleTickets(): void
     {
         $this->reservationService->expects(static::once())
             ->method('cancelReservationsForOrder')
             ->with(self::ENTITY_ID, static::anything(), 'order cancelled');
+        $this->resaleSettlement->expects(static::once())
+            ->method('revokeForOrder')
+            ->with(self::ENTITY_ID, 'order cancelled');
 
         $this->subscriber()->onOrderStateChanged($this->orderEvent('cancelled'));
     }
 
-    public function testOrderCompletedConfirmsReservations(): void
+    public function testOrderCompletedConfirmsReservationsAndSettlesResaleListings(): void
     {
         $this->reservationService->expects(static::once())
             ->method('confirmReservationsForOrder')
+            ->with(self::ENTITY_ID);
+        $this->resaleSettlement->expects(static::once())
+            ->method('settleForOrder')
             ->with(self::ENTITY_ID);
 
         $this->subscriber()->onOrderStateChanged($this->orderEvent('completed'));
@@ -115,6 +139,7 @@ class BookingPaymentStateSubscriberTest extends TestCase
     public function testForeignEntityIsIgnored(): void
     {
         $this->reservationService->expects(static::never())->method('confirmReservationsForOrderTransaction');
+        $this->resaleSettlement->expects(static::never())->method('settleForOrderTransaction');
 
         $this->subscriber()->onOrderTransactionStateChanged($this->event('order_delivery', 'paid'));
     }
@@ -123,6 +148,7 @@ class BookingPaymentStateSubscriberTest extends TestCase
     {
         return new BookingPaymentStateSubscriber(
             $this->reservationService,
+            $this->resaleSettlement,
             new StaticSystemConfigService([
                 'FibBookingSystem.config.ticketsOnPartialPayment' => $ticketsOnPartialPayment,
             ]),

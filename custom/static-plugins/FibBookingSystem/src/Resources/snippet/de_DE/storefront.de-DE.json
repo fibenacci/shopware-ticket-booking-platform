@@ -55,6 +55,24 @@
                 "sixMonths": "6 Monate",
                 "year": "1 Jahr"
             }
+        },
+        "resale": {
+            "headline": "Ticket-Zweitmarkt",
+            "subline": "Tickets von anderen Kunden — private Verkäufe zwischen Kunden; die Plattform erhebt keine Gebühren.",
+            "noListings": "Derzeit werden keine Tickets zum Weiterverkauf angeboten.",
+            "seat": "Sitzplatz",
+            "buyButton": "Ticket kaufen",
+            "loginToBuy": "Zum Kauf anmelden",
+            "listedAt": "Zum Weiterverkauf eingestellt für",
+            "cancelListing": "Angebot zurückziehen",
+            "priceLabel": "Verkaufspreis",
+            "sellButton": "Zum Weiterverkauf anbieten",
+            "flash": {
+                "listed": "Dein Ticket wird jetzt zum Weiterverkauf angeboten.",
+                "cancelled": "Dein Angebot wurde zurückgezogen.",
+                "sellFailed": "Das Ticket konnte nicht eingestellt werden: %reason%",
+                "cancelFailed": "Das Angebot konnte nicht zurückgezogen werden: %reason%"
+            }
         }
     },
     "checkout": {
