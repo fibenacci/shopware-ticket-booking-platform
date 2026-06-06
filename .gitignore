@@ -23,6 +23,7 @@ node_modules/
 /custom/static-plugins/*/.phpunit.cache/
 /custom/static-plugins/*/apps/*/dist/
 /custom/static-plugins/*/build/
+/junit-artifacts/
 
 ###> shopware/core ###
 .env.local

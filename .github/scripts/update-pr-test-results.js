@@ -37,13 +37,19 @@ module.exports = async ({ github, context, core }) => {
         {
             key: 'phpunit',
             label: 'PHPUnit',
-            file: 'junit-results/custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml',
+            file: 'junit-results/phpunit-fib-booking-system.xml',
             urlEnv: 'PHPUNIT_REPORT_URL',
+        },
+        {
+            key: 'phpunit_demodata',
+            label: 'PHPUnit — DemoData',
+            file: 'junit-results/phpunit-fib-booking-demo-data.xml',
+            urlEnv: 'PHPUNIT_DEMODATA_REPORT_URL',
         },
         {
             key: 'e2e_booking',
             label: 'Playwright — Booking',
-            file: 'junit-results/custom/static-plugins/FibBookingSystem/test-results/junit.xml',
+            file: 'junit-results/playwright-booking.xml',
             urlEnv: 'E2E_BOOKING_REPORT_URL',
         },
     ];

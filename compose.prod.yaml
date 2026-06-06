@@ -1,19 +1,23 @@
-# Production deployment — single-host Docker Compose.
+# Production deployment — single-host Docker Compose with a Traefik edge.
 #
 # Usage:
-#   1. Create a `.env.prod` next to this file (see the ${...} variables below).
-#   2. docker compose -f compose.prod.yaml --env-file .env.prod up -d
+#   1. Point DNS A/AAAA records for ${SHOP_DOMAIN} and scanner.${SHOP_DOMAIN}
+#      at the host.
+#   2. Create a `.env.prod` next to this file (see the ${...} variables below).
+#   3. docker compose -f compose.prod.yaml --env-file .env.prod up -d
 #
-# The `init` service runs the deployment-helper once per deploy (system
-# install / migrations / plugin lifecycle), then web/worker/scheduler start.
-# Image is built + pushed by .github/workflows/docker-publish.yml.
+# Traefik terminates TLS (Let's Encrypt, auto-renewal), redirects HTTP→HTTPS
+# and routes by hostname via the labels on `web` and `scanner`. The `init`
+# service runs the deployment-helper once per deploy (system install /
+# migrations / plugin lifecycle), then web/worker/scheduler start.
+# Images are built + pushed by .github/workflows/docker-publish.yml.
 
 x-shopware-image: &shopware-image ${SHOPWARE_IMAGE:-ghcr.io/CHANGEME/fib-booking-system:latest}
 
 x-environment: &shopware-env
     APP_ENV: prod
     APP_DEBUG: 0
-    APP_URL: ${APP_URL:?APP_URL is required, e.g. https://booking.example.com}
+    APP_URL: https://${SHOP_DOMAIN:?SHOP_DOMAIN is required, e.g. booking.example.com}
     APP_SECRET: ${APP_SECRET:?APP_SECRET is required}
     DATABASE_URL: mysql://shopware:${DB_PASSWORD:?DB_PASSWORD is required}@db:3306/shopware
     MAILER_DSN: ${MAILER_DSN:-null://null}
@@ -34,6 +38,28 @@ x-volumes: &shopware-volumes
     - sitemap:/var/www/html/public/sitemap
 
 services:
+    traefik:
+        image: traefik:v3
+        command:
+            - '--providers.docker=true'
+            - '--providers.docker.exposedbydefault=false'
+            - '--entrypoints.web.address=:80'
+            - '--entrypoints.websecure.address=:443'
+            # Force HTTPS everywhere
+            - '--entrypoints.web.http.redirections.entrypoint.to=websecure'
+            - '--entrypoints.web.http.redirections.entrypoint.scheme=https'
+            # Let's Encrypt with automatic renewal
+            - '--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required for the ACME/TLS certificate resolver}'
+            - '--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json'
+            - '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web'
+        ports:
+            - '80:80'
+            - '443:443'
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - traefik_certs:/letsencrypt
+        restart: always
+
     init:
         image: *shopware-image
         entrypoint: /setup
@@ -50,8 +76,12 @@ services:
         image: *shopware-image
         environment: *shopware-env
         volumes: *shopware-volumes
-        ports:
-            - '${WEB_PORT:-8000}:8000'
+        labels:
+            - 'traefik.enable=true'
+            - 'traefik.http.routers.shop.rule=Host(`${SHOP_DOMAIN:?SHOP_DOMAIN is required, e.g. booking.example.com}`)'
+            - 'traefik.http.routers.shop.entrypoints=websecure'
+            - 'traefik.http.routers.shop.tls.certresolver=letsencrypt'
+            - 'traefik.http.services.shop.loadbalancer.server.port=8000'
         depends_on:
             init:
                 condition: service_completed_successfully
@@ -61,6 +91,21 @@ services:
             timeout: 10s
             retries: 5
             start_period: 60s
+        restart: always
+
+    # Operator scanner app: static SPA + same-origin /api proxy to `web`
+    # (image built from custom/static-plugins/FibBookingSystem/apps/scanner).
+    scanner:
+        image: ${SCANNER_IMAGE:-ghcr.io/CHANGEME/fib-booking-scanner:latest}
+        labels:
+            - 'traefik.enable=true'
+            - 'traefik.http.routers.scanner.rule=Host(`scanner.${SHOP_DOMAIN}`)'
+            - 'traefik.http.routers.scanner.entrypoints=websecure'
+            - 'traefik.http.routers.scanner.tls.certresolver=letsencrypt'
+            - 'traefik.http.services.scanner.loadbalancer.server.port=80'
+        depends_on:
+            web:
+                condition: service_healthy
         restart: always
 
     worker:
@@ -120,6 +165,7 @@ services:
 volumes:
     db_data:
     redis_data:
+    traefik_certs:
     files:
     theme:
     media:

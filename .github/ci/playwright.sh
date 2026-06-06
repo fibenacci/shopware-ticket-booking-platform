@@ -5,12 +5,24 @@
 # The demo data is baked into the CI image with deterministic ids; re-running
 # the (idempotent) seed command prints them as a machine-readable block which
 # we eval here.
+#
+# The JUnit report lands in junit-artifacts/ under a flat, stable name — same
+# rationale as in phpunit.sh (deterministic artifact layout for the
+# publish-results job). It is staged even when the suite fails.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${REPO_ROOT}"
 
 E2E_DIR="${REPO_ROOT}/custom/static-plugins/FibBookingSystem"
+ARTIFACT_DIR="${REPO_ROOT}/junit-artifacts"
+mkdir -p "${ARTIFACT_DIR}"
+
+stage_junit() {
+    cp "${E2E_DIR}/test-results/junit.xml" "${ARTIFACT_DIR}/playwright-booking.xml" 2>/dev/null \
+        || echo "::warning::No Playwright JUnit report found to stage"
+}
+trap stage_junit EXIT
 
 STOREFRONT_PORT="${STOREFRONT_PORT:-8080}"
 STOREFRONT_HOST_DEFAULT="localhost"

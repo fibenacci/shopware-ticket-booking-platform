@@ -1,0 +1,25 @@
+# Project-specific CodeQL configuration.
+#
+# Scope: CodeQL has no PHP support — PHP security coverage comes from PHPStan
+# (level 6) and composer audit. CodeQL covers what it CAN analyze here:
+#   - javascript-typescript: scanner app (Vue SPA handling operator
+#     credentials + scan tokens) and the plugin storefront/admin JS
+#   - actions: all GitHub workflows (untrusted-input/injection patterns)
+name: FIB Booking CodeQL config
+
+queries:
+    - uses: security-extended
+
+paths:
+    - custom/static-plugins/FibBookingSystem/apps/scanner/src
+    - custom/static-plugins/FibBookingSystem/src/Resources/app
+    - custom/static-plugins/FibBookingDemoData/src/Resources/app
+    - .github
+
+paths-ignore:
+    - '**/node_modules'
+    - '**/dist'
+    - '**/vendor'
+    - '**/*.test.js'
+    - '**/test-results'
+    - '**/playwright-report'

@@ -7,6 +7,11 @@ failed=0
 for dir in custom/static-plugins/*/ custom/plugins/*/; do
     dir=${dir%/}
 
+    # Unexpanded glob (directory does not exist) — nothing to validate.
+    if [ ! -d "$dir" ]; then
+        continue
+    fi
+
     if [ ! -f "$dir/composer.json" ] && [ ! -f "$dir/manifest.xml" ]; then
         echo "::notice::Skipping $dir (no composer.json or manifest.xml)"
         continue

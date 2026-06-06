@@ -8,8 +8,9 @@ a strict final gate reports.
 Static Quality ──┐
 JS/TS Lint ──────┼─► Quality Gate ──┐
 Shopware Extension Validate ─┘      ├─► PHPUnit + Playwright ─► Publish Test Results ─► Report CI
-Composer Audit ──┬─► Security Gate ─┘
-NPM Audit ───────┘
+Composer Audit ──┐                  │
+NPM Audit ───────┼─► Security Gate ─┘
+CodeQL ──────────┘
 ```
 
 ## Jobs
@@ -20,6 +21,7 @@ NPM Audit ───────┘
 | **JS/TS Lint** | Scanner app production build (type/syntax gate) + `node --check` over plugin storefront JS |
 | **Composer Audit** | Known vulnerabilities in `composer.lock` |
 | **NPM Audit** | High advisories in scanner app + Playwright suite |
+| **CodeQL** | SAST (`security-extended`) over the scanner app + plugin JS and all workflows — reusable workflow (`codeql.yml`), also re-scans weekly; scope in `.github/codeql/codeql-config.yml`. PHP is not CodeQL-supported — covered by PHPStan + composer audit |
 | **Shopware Extension Validate** | `shopware-cli extension validate` over all plugins |
 | **Quality Gate / Security Gate** | Aggregate gates — tests only run when both are green |
 | **PHPUnit + Playwright** | Pre-baked CI stack (see below): PHPUnit unit+integration inside the container, booking Playwright suite against the storefront with seeded demo data |

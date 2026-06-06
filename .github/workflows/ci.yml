@@ -75,9 +75,7 @@ jobs:
 
             -   id: node_syntax
                 name: Plugin storefront JS — syntax check
-                run: |
-                    find custom/static-plugins/*/src/Resources/app -name '*.js' -not -path '*/node_modules/*' -print0 \
-                        | xargs -0 -n1 node --check
+                run: .github/scripts/check-plugin-js.sh
 
             -   name: Gate — fail on any lint finding
                 if: always()
@@ -140,13 +138,22 @@ jobs:
             -   name: Validate maintained plugins
                 run: .github/scripts/validate-plugins.sh
 
+    codeql:
+        name: CodeQL
+        uses: ./.github/workflows/codeql.yml
+        permissions:
+            security-events: write
+            packages: read
+            actions: read
+            contents: read
+
     security-gate:
         name: Security Gate
-        needs: [npm-audit, composer-audit]
+        needs: [npm-audit, composer-audit, codeql]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            -   run: echo "✅ npm audit + composer audit passed."
+            -   run: echo "✅ npm audit + composer audit + CodeQL analysis passed."
 
     quality-gate:
         name: Quality Gate
@@ -196,10 +203,7 @@ jobs:
                 uses: actions/upload-artifact@v7
                 with:
                     name: junit-results
-                    path: |
-                        custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml
-                        custom/static-plugins/FibBookingDemoData/build/junit-phpunit.xml
-                        custom/static-plugins/FibBookingSystem/test-results/junit.xml
+                    path: junit-artifacts/
                     if-no-files-found: ignore
 
             -   name: Upload Playwright reports
@@ -252,7 +256,7 @@ jobs:
                 uses: dorny/test-reporter@v3
                 with:
                     name: PHPUnit
-                    path: 'junit-results/custom/static-plugins/FibBookingSystem/build/junit-phpunit.xml'
+                    path: 'junit-results/phpunit-fib-booking-system.xml'
                     reporter: java-junit
                     list-tests: failed
                     list-suites: all
@@ -265,7 +269,7 @@ jobs:
                 uses: dorny/test-reporter@v3
                 with:
                     name: PHPUnit — DemoData
-                    path: 'junit-results/custom/static-plugins/FibBookingDemoData/build/junit-phpunit.xml'
+                    path: 'junit-results/phpunit-fib-booking-demo-data.xml'
                     reporter: java-junit
                     list-tests: failed
                     list-suites: all
@@ -278,7 +282,7 @@ jobs:
                 uses: dorny/test-reporter@v3
                 with:
                     name: Playwright — Booking
-                    path: 'junit-results/custom/static-plugins/FibBookingSystem/test-results/junit.xml'
+                    path: 'junit-results/playwright-booking.xml'
                     reporter: java-junit
                     list-tests: failed
                     list-suites: all
@@ -290,6 +294,7 @@ jobs:
                 uses: actions/github-script@v9
                 env:
                     PHPUNIT_REPORT_URL: ${{ steps.phpunit-report.outputs.url_html }}
+                    PHPUNIT_DEMODATA_REPORT_URL: ${{ steps.phpunit-demodata-report.outputs.url_html }}
                     E2E_BOOKING_REPORT_URL: ${{ steps.e2e-booking-report.outputs.url_html }}
                     TESTS_RESULT: ${{ needs.tests.result }}
                     QUALITY_GATE_RESULT: ${{ needs.quality-gate.result }}
@@ -315,5 +320,5 @@ jobs:
                     GATE_STRICT=1 .github/scripts/gate.sh \
                         "One or more required CI jobs failed, were cancelled, or were skipped (upstream gate red)." \
                         "quality-gate (quality + lint + shopware-validate)=${{ needs.quality-gate.result }}" \
-                        "security-gate (npm-audit + composer-audit)=${{ needs.security-gate.result }}" \
+                        "security-gate (npm-audit + composer-audit + codeql)=${{ needs.security-gate.result }}" \
                         "tests=${{ needs.tests.result }}"
