@@ -46,4 +46,12 @@ docker exec fib-shopware-ci mysql -u root -proot shopware -e \
 # mapping compiled at image build time.
 docker exec fib-shopware-ci bin/console cache:clear --no-warmup --no-interaction >/dev/null
 
+echo "▶ Storefront smoke check (Host: ${STOREFRONT_HOST}:${STOREFRONT_PORT})"
+if ! docker exec fib-shopware-ci curl -sf -o /dev/null \
+    -H "Host: ${STOREFRONT_HOST}:${STOREFRONT_PORT}" http://localhost/; then
+    echo "❌ Storefront did not return 2xx — recent app logs:"
+    docker exec fib-shopware-ci sh -c 'tail -n 80 var/log/*.log 2>/dev/null' || true
+    exit 1
+fi
+
 echo "✅ Ready — storefront on http://${STOREFRONT_HOST}:${STOREFRONT_PORT}"
