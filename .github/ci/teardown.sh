@@ -14,8 +14,10 @@ cd "${REPO_ROOT}"
 if [ "${1:-}" = "--with-logs" ]; then
     echo "▶ Service status"
     docker compose -f .github/ci/compose.ci.yml ps || true
-    echo "▶ Recent shopware logs"
-    docker compose -f .github/ci/compose.ci.yml logs --tail=300 shopware || true
+    echo "▶ Container stdout (dockware boot)"
+    docker compose -f .github/ci/compose.ci.yml logs --tail=120 shopware || true
+    echo "▶ Shopware app logs (var/log)"
+    docker exec fib-shopware-ci sh -c 'tail -n 200 var/log/*.log 2>/dev/null' || true
 fi
 
 echo "▶ Stopping stack"

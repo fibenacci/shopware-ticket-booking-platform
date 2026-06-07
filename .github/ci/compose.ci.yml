@@ -27,9 +27,7 @@ services:
             - SHOPWARE_ADMIN_ES_ENABLED=0
             - SHOPWARE_ES_THROW_EXCEPTION=0
         healthcheck:
-            # Full-app readiness — the image already has the shop installed,
-            # so curl-on-/ is the right gate.
-            test: ['CMD-SHELL', 'curl -sf http://localhost/ >/dev/null']
+            test: ['CMD-SHELL', 'curl -sf http://localhost/admin >/dev/null']
             interval: 5s
             timeout: 5s
             retries: 24

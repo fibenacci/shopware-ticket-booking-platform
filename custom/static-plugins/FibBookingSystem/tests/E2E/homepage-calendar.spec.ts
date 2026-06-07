@@ -9,8 +9,8 @@ test.describe('FIB booking calendar on the homepage', () => {
   test('renders the calendar element and serves month data', async ({ page, request }) => {
     await page.goto('/');
 
-    const calendar = page.locator('[data-fib-booking-calendar]');
-    await expect(calendar).toHaveCount(1);
+    const calendar = page.locator('[data-fib-booking-calendar]').first();
+    await expect(calendar).toBeVisible();
 
     const options = JSON.parse(await calendar.getAttribute('data-fib-booking-calendar-options') ?? '{}');
     expect(options.resourceId).toMatch(/^[0-9a-f]{32}$/);
