@@ -25,17 +25,9 @@ USER root
 WORKDIR /var/www/html
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
-
-# The project lock file targets PHP 8.3; dockware defaults its CLI to 8.2 but
-# ships 8.3 alongside. Switch both the build-time CLI and the runtime
-# (entrypoint reads PHP_VERSION) before composer runs.
 ENV PHP_VERSION=8.3
 RUN update-alternatives --set php /usr/bin/php8.3
 
-# dockware/shopware ships the project AND node/nvm as tarballs that its
-# entrypoint extracts on FIRST BOOT — too late for image baking. Extract both
-# at build time instead (the entrypoint skips extraction when the tarballs
-# are gone / already extracted).
 RUN set -eux; \
     zstd -d /var/www/html/shopware.tar.zst -o /var/www/html/shopware.tar; \
     tar -xf /var/www/html/shopware.tar -C /var/www/html; \
@@ -51,15 +43,10 @@ ENV SHOPWARE_ES_ENABLED=0 \
     SHOPWARE_ADMIN_ES_ENABLED=0 \
     SHOPWARE_ES_THROW_EXCEPTION=0
 
-# PHPUnit runs via `docker exec` (no dotenv loading) — the integration suite
-# needs the database connection from the process environment.
 ENV DATABASE_URL=mysql://root:root@127.0.0.1:3306/shopware \
-    APP_URL=http://localhost:8080
+    APP_URL=http://localhost:8080 \
+    APP_SECRET=ci0123456789abcdef0123456789abcdef
 
-# Build-stage dummies (the running CI stack injects real values via compose):
-# seeding issues tickets, which dispatches the ticket-issued event → the mail
-# subscriber lazily builds mercure.hub.default. Without a URL the Hub ctor
-# throws on null. Same build-only pattern as REDIS_DSN; never a runtime value.
 ENV MERCURE_URL=http://localhost/.well-known/mercure \
     MERCURE_PUBLIC_URL=http://localhost/.well-known/mercure \
     MERCURE_JWT_SECRET=ci-build-dummy-secret-0123456789abcdef \
@@ -70,8 +57,6 @@ COPY custom ./custom
 RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts \
     && rm -rf /root/.composer/cache
 
-# Replace the extracted template's config entirely — it carries dev-only
-# drop-ins (web_profiler, …) for bundles that OUR composer.json doesn't ship.
 RUN rm -rf ./config ./var/cache
 COPY config ./config
 COPY src ./src
@@ -85,16 +70,21 @@ RUN set -eux; \
     done; \
     bin/console database:migrate --all --no-interaction || true; \
     bin/console plugin:refresh --no-interaction; \
-    # FibBookingSystem first (creates the booking tables + number ranges),
-    # then the demo data plugin which seeds against them, then the theme.
     bin/console plugin:install --activate --no-interaction FibBookingSystem; \
     bin/console plugin:install --activate --no-interaction FibBookingDemoData; \
     bin/console plugin:install --activate --no-interaction FibBookingTheme; \
     bin/console theme:change --all FibBookingTheme --no-interaction; \
     bin/console fib-booking:demodata; \
-    # node/npm come from the nvm extracted above (boot-time setup in stock dockware)
     export NVM_DIR=/var/www/.nvm; \
     source "$NVM_DIR/nvm.sh"; \
     ./bin/build-storefront.sh; \
     service mysql stop; \
     chown -R www-data:www-data /var/www/html
+
+RUN printf '%s\n' \
+        "MERCURE_URL=${MERCURE_URL}" \
+        "MERCURE_PUBLIC_URL=${MERCURE_PUBLIC_URL}" \
+        "MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET}" \
+        "MERCURE_SUBSCRIBER_JWT_SECRET=${MERCURE_SUBSCRIBER_JWT_SECRET}" \
+        > .env.local \
+    && chown www-data:www-data .env.local
