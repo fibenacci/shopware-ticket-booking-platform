@@ -216,33 +216,67 @@ class CatalogSeeder
 
         $this->productRepository->upsert([$payload], $context);
 
-        $config = [
-            'id' => $configId,
-            'productId' => $productId,
-            'productVersionId' => Defaults::LIVE_VERSION,
-            'resourceId' => $resourceId,
-            'enabled' => true,
-            'slotMinutes' => $slotMinutes ?? $product->int('slotMinutes', 60),
-        ];
-
-        // Optional generic validity model (period passes etc.) — defaults to
-        // the slot/single behavior when absent.
-        $validity = $product->sectionOrNull('validity');
-        if ($validity !== null) {
-            $config['validityMode'] = $validity->string('mode', 'slot');
-            $config['validityDuration'] = $validity->has('duration') ? $validity->string('duration') : null;
-            $config['validityAnchor'] = $validity->has('anchor') ? $validity->string('anchor') : null;
-            $config['entryPolicy'] = $validity->string('entryPolicy', 'single');
-            $config['maxEntriesPerDay'] = $validity->has('maxEntriesPerDay') ? $validity->int('maxEntriesPerDay') : null;
-        }
-
-        $this->productConfigRepository->upsert([$config], $context);
+        $this->productConfigRepository->upsert([
+            [
+                'id' => $configId,
+                'productId' => $productId,
+                'productVersionId' => Defaults::LIVE_VERSION,
+                'resourceId' => $resourceId,
+                'enabled' => true,
+                'slotMinutes' => $slotMinutes ?? $product->int('slotMinutes', 60),
+                ...$this->validityConfig($product),
+                ...$this->rotatingQrConfig($product),
+            ],
+        ], $context);
 
         return [
             'id' => $productId,
             'number' => $productNumber,
             'name' => $product->string('name'),
             'resourceId' => $resourceId,
+        ];
+    }
+
+    /**
+     * Optional generic validity model (period passes etc.) — empty (slot/single
+     * defaults) when the seed omits it.
+     *
+     * @return array<string, mixed>
+     */
+    private function validityConfig(SeedSection $product): array
+    {
+        $validity = $product->sectionOrNull('validity');
+
+        if ($validity === null) {
+            return [];
+        }
+
+        return [
+            'validityMode' => $validity->string('mode', 'slot'),
+            'validityDuration' => $validity->has('duration') ? $validity->string('duration') : null,
+            'validityAnchor' => $validity->has('anchor') ? $validity->string('anchor') : null,
+            'entryPolicy' => $validity->string('entryPolicy', 'single'),
+            'maxEntriesPerDay' => $validity->has('maxEntriesPerDay') ? $validity->int('maxEntriesPerDay') : null,
+        ];
+    }
+
+    /**
+     * Optional rotating QR (TOTP) — the operator switch, off unless the seed
+     * opts in (the transit passes do, as the demo's "Fahrkarten").
+     *
+     * @return array<string, mixed>
+     */
+    private function rotatingQrConfig(SeedSection $product): array
+    {
+        $rotating = $product->sectionOrNull('rotatingQr');
+
+        if ($rotating === null) {
+            return [];
+        }
+
+        return [
+            'rotatingQrEnabled' => $rotating->bool('enabled'),
+            'rotatingQrInterval' => $rotating->has('interval') ? $rotating->int('interval') : null,
         ];
     }
 

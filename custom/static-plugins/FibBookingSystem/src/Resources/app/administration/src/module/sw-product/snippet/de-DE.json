@@ -48,7 +48,11 @@
                 "saved": "Buchungskonfiguration gespeichert.",
                 "saveError": "Speichern der Buchungskonfiguration fehlgeschlagen.",
                 "invalidDuration": "Zeitraum-Tickets benötigen eine gültige ISO-8601-Dauer (z. B. P1D, P1M, P1Y)."
-            }
+            },
+            "rotatingQrEnabledLabel": "Rotierender QR-Code (Sicherheit)",
+            "rotatingQrEnabledHelp": "Der Ticket-QR rotiert zeitbasiert (TOTP). Ein Screenshot verfällt nach Sekunden — schützt vor Ticket-Weitergabe. Der Live-Code wird im Konto/App gezeigt; der Scanner prüft online.",
+            "rotatingQrIntervalLabel": "Rotationsintervall (Sekunden)",
+            "rotatingQrIntervalHelp": "Wie oft der Code wechselt. Standard 30s (10–120)."
         }
     }
 }

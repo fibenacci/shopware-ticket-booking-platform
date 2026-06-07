@@ -11,6 +11,7 @@ use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketEntity;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
 use RuntimeException;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\Context;
@@ -52,7 +53,77 @@ class WalletPassService
         private readonly GoogleWalletLinkGenerator $googleGenerator,
         private readonly WalletLinkSigner $linkSigner,
         private readonly QrCodeGenerator $qrCodeGenerator,
+        private readonly RotatingCodeService $rotatingCodeService,
     ) {
+    }
+
+    /**
+     * Current rotating-QR image + the seconds left in its window, for a
+     * ticket the given customer OWNS (effective owner = transfer override or
+     * reservation customer). Returns null when the customer is not the owner,
+     * the ticket does not rotate, or it is no longer in a pass-worthy state —
+     * the storefront endpoint polls this and swaps the image each window.
+     *
+     * Deliberate raw SQL: scan_token_cipher is intentionally NOT part of the
+     * DAL definition (see plugin Security.md); the secret never leaves the
+     * server — only the time-based code does.
+     *
+     * @return array{qrCodeDataUri: string, ttl: int}|null
+     */
+    public function rotatingQrForOwner(
+        string $ticketId,
+        string $customerId,
+        int $now,
+    ): ?array {
+        if (!Uuid::isValid($ticketId) || !Uuid::isValid($customerId)) {
+            return null;
+        }
+
+        /** @var array{ticket_number: string, rotating_qr_enabled: int, rotating_qr_interval: int|string|null, scan_token_cipher: string|null, status: string, owner: string|null}|false $row */
+        $row = $this->connection->fetchAssociative(
+            <<<'SQL'
+                SELECT ticket.ticket_number, ticket.rotating_qr_enabled, ticket.rotating_qr_interval,
+                ticket.scan_token_cipher, ticket.status,
+                LOWER(HEX(COALESCE(ticket.owner_customer_id, reservation.customer_id))) AS owner
+                FROM fib_booking_ticket ticket
+                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
+                WHERE ticket.id = :ticketId
+            SQL,
+            ['ticketId' => Uuid::fromHexToBytes($ticketId)],
+        );
+
+        if ($row === false || !$this->isOwnedRotatingTicket($row, $customerId)) {
+            return null;
+        }
+
+        try {
+            $scanToken = $this->tokenCipher->decrypt((string) $row['scan_token_cipher']);
+        } catch (RuntimeException) {
+            return null;
+        }
+
+        $interval = $this->rotatingCodeService->normalizeInterval(
+            is_numeric($row['rotating_qr_interval'] ?? null) ? (int) $row['rotating_qr_interval'] : null,
+        );
+        $wire = $this->rotatingCodeService->wireToken($row['ticket_number'], $scanToken, $interval, $now);
+
+        return [
+            'qrCodeDataUri' => $this->qrCodeGenerator->generateDataUri($wire),
+            'ttl' => $this->rotatingCodeService->secondsUntilNextWindow($interval, $now),
+        ];
+    }
+
+    /**
+     * @param array{rotating_qr_enabled: int, scan_token_cipher: string|null, status: string, owner: string|null} $row
+     */
+    private function isOwnedRotatingTicket(
+        array $row,
+        string $customerId,
+    ): bool {
+        return (bool) $row['rotating_qr_enabled']
+            && $row['owner'] === strtolower($customerId)
+            && in_array($row['status'], ['issued', 'sent', 'scanned'], true)
+            && is_string($row['scan_token_cipher']) && $row['scan_token_cipher'] !== '';
     }
 
     /**
@@ -154,6 +225,7 @@ class WalletPassService
             ),
             customerName: $customerName === '' ? null : $customerName,
             seatLabel: $ticket->getSeatLabel(),
+            rotating: $ticket->getRotatingQrEnabled(),
         );
     }
 

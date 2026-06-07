@@ -15,6 +15,7 @@ final class TicketScanResult
     public const EXPIRED = 'expired';
     public const REVOKED = 'revoked';
     public const NOT_FOUND = 'not_found';
+    public const INVALID_CODE = 'invalid_code';
 
     public function __construct(
         public readonly string $verdict,

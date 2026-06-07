@@ -37,7 +37,8 @@
             "end": "End",
             "guest": "Guest",
             "footer": "Please present the QR code at the entrance. Each code is valid once.",
-            "seat": "Seat"
+            "seat": "Seat",
+            "rotatingNote": "This ticket uses a rotating security code — open it in your account or wallet to show the live QR at the entrance."
         },
         "pass": {
             "validFor": "Valid for",

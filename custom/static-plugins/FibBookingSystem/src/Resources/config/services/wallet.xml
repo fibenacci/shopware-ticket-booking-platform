@@ -27,6 +27,7 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\GoogleWalletLinkGenerator"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletLinkSigner"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\RotatingCodeService"/>
         </service>
     </services>
 </container>

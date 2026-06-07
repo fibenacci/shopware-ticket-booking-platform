@@ -67,7 +67,9 @@
                         </table>
                     </td>
                     <td class="qr">
-                        {% if ticket.qrCodeDataUri %}
+                        {% if ticket.rotatingQrEnabled %}
+                            <div class="rotating-note">{{ 'fibBooking.document.rotatingNote'|trans|sw_sanitize }}</div>
+                        {% elseif ticket.qrCodeDataUri %}
                             <img src="{{ ticket.qrCodeDataUri }}" alt="QR {{ ticket.number }}">
                         {% endif %}
                         <div class="ticket-number">{{ ticket.number }}</div>

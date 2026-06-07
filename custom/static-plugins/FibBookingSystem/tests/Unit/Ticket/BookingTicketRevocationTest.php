@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
 use FibBookingSystem\Core\Domain\Validity\TicketValidityResolver;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Framework\Context;
@@ -84,6 +85,7 @@ class BookingTicketRevocationTest extends TestCase
             new TokenCipher('test-secret'),
             new TicketValidityResolver(),
             new StaticSystemConfigService(),
+            new RotatingCodeService(),
         );
     }
 }

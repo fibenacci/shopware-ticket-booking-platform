@@ -77,6 +77,10 @@
                 "duration": "P1D",
                 "anchor": "first_use",
                 "entryPolicy": "multi"
+            },
+            "rotatingQr": {
+                "enabled": true,
+                "interval": 30
             }
         },
         {
@@ -89,6 +93,10 @@
                 "duration": "P1M",
                 "anchor": "purchase",
                 "entryPolicy": "multi"
+            },
+            "rotatingQr": {
+                "enabled": true,
+                "interval": 30
             }
         },
         {
@@ -102,6 +110,10 @@
                 "anchor": "customer",
                 "entryPolicy": "multi",
                 "maxEntriesPerDay": 10
+            },
+            "rotatingQr": {
+                "enabled": true,
+                "interval": 30
             }
         },
         {

@@ -80,7 +80,9 @@ class AppleWalletPassGenerator
             'description' => sprintf('Ticket %s — %s', $data->ticketNumber, $data->window->resourceName),
             'relevantDate' => $data->window->startsAt->format('c'),
             'expirationDate' => $data->window->endsAt->modify('+1 day')->format('c'),
-            'barcodes' => [
+            // Rotating tickets carry NO static barcode — it would be dead at
+            // the gate. The holder shows the live code from the account/app.
+            'barcodes' => $data->rotating ? [] : [
                 [
                     'format' => 'PKBarcodeFormatQR',
                     'message' => $data->qrPayload,
@@ -104,6 +106,9 @@ class AppleWalletPassGenerator
                     ['key' => 'booking', 'label' => 'BOOKING', 'value' => $data->bookingNumber],
                     ['key' => 'ticket', 'label' => 'TICKET', 'value' => $data->ticketNumber],
                 ],
+                'backFields' => $data->rotating ? [
+                    ['key' => 'rotating', 'label' => 'ENTRY CODE', 'value' => 'This ticket uses a rotating security code. Open it in your account or app to show the live QR at the entrance.'],
+                ] : [],
             ],
             'backgroundColor' => 'rgb(28, 30, 38)',
             'foregroundColor' => 'rgb(255, 255, 255)',

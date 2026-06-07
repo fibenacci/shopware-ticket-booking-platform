@@ -6,7 +6,11 @@ namespace FibBookingSystem\Tests\Integration\Ticket;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Security\TokenCipher;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
+use FibBookingSystem\Core\Domain\Ticket\RotatingScanVerifier;
 use FibBookingSystem\Core\Domain\Ticket\ScanDirection;
+use FibBookingSystem\Core\Domain\Ticket\ScanVerdictResolver;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanResult;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use FibBookingSystem\FibBookingException;
@@ -42,15 +46,18 @@ class TicketScanServiceTest extends TestCase
         $this->seedReservation();
     }
 
+    private const ROTATING_SECRET = 'scan-rotating-test-secret';
+
     private function createScanService(bool $checkOutEnabled): TicketScanService
     {
         return new TicketScanService(
             $this->connection,
-            self::container()->get('fib_booking_ticket.repository'),
             self::container()->get('fib_booking_scan_log.repository'),
             new StaticSystemConfigService([
                 'FibBookingSystem.config.scanCheckOutEnabled' => $checkOutEnabled,
             ]),
+            new RotatingScanVerifier(new RotatingCodeService(), new TokenCipher(self::ROTATING_SECRET)),
+            new ScanVerdictResolver($this->connection, self::container()->get('fib_booking_ticket.repository')),
         );
     }
 
@@ -261,6 +268,87 @@ class TicketScanServiceTest extends TestCase
         foreach ($loggedTokens as $fingerprint) {
             static::assertSame(12, strlen((string) $fingerprint), 'only the fingerprint may be persisted');
         }
+    }
+
+    public function testRotatingTicketAcceptsACurrentCodeAndBurnsTheWindow(): void
+    {
+        $token = $this->seedRotatingTicket('T-SCAN-R1');
+        $rotating = new RotatingCodeService();
+        $now = time();
+
+        $wire = $rotating->wireToken('T-SCAN-R1', $token, 30, $now);
+        [$number, $code] = $rotating->parseWireToken($wire);
+
+        $first = $this->scanService->scanRotating($number, $code, $this->context, 'rot-user', 'phpunit');
+        static::assertSame(TicketScanResult::VALID, $first->verdict);
+        static::assertSame('T-SCAN-R1', $first->ticketNumber);
+
+        // Same code again within the window → single-use guard rejects it.
+        $replay = $this->scanService->scanRotating($number, $code, $this->context, 'rot-user', 'phpunit');
+        static::assertSame(TicketScanResult::INVALID_CODE, $replay->verdict, 'a burned window code must not be redeemable again');
+    }
+
+    public function testRotatingTicketRejectsAWrongCodeAndAStaleStaticToken(): void
+    {
+        $token = $this->seedRotatingTicket('T-SCAN-R2');
+
+        // Wrong rotating code.
+        static::assertSame(
+            TicketScanResult::INVALID_CODE,
+            $this->scanService->scanRotating('T-SCAN-R2', str_repeat('a', 16), $this->context, 'rot-user', 'phpunit')->verdict,
+        );
+
+        // The static token still exists in the DB but must NOT scan a
+        // rotating ticket — otherwise rotation would be pointless.
+        static::assertSame(
+            TicketScanResult::INVALID_CODE,
+            $this->scanService->scan($token, $this->context, 'rot-user', 'phpunit')->verdict,
+        );
+    }
+
+    public function testRotatingCodeForUnknownTicketIsNotFound(): void
+    {
+        static::assertSame(
+            TicketScanResult::NOT_FOUND,
+            $this->scanService->scanRotating('T-SCAN-DOES-NOT-EXIST', str_repeat('a', 16), $this->context, 'rot-user', 'phpunit')->verdict,
+        );
+    }
+
+    public function testRotatingCodePresentedForANonRotatingTicketIsInvalid(): void
+    {
+        $this->seedTicket('T-SCAN-R3', 'sent');
+
+        static::assertSame(
+            TicketScanResult::INVALID_CODE,
+            $this->scanService->scanRotating('T-SCAN-R3', str_repeat('a', 16), $this->context, 'rot-user', 'phpunit')->verdict,
+        );
+    }
+
+    /**
+     * Stores a rotating ticket and returns its raw scan token (the TOTP key),
+     * so the test can compute valid wire codes.
+     */
+    private function seedRotatingTicket(string $ticketNumber): string
+    {
+        $token = bin2hex(random_bytes(32));
+
+        $this->connection->executeStatement(
+            <<<'SQL'
+                INSERT INTO fib_booking_ticket (id, reservation_id, ticket_number, scan_token_hash, scan_token_cipher, status, issued_at,
+                entry_policy, rotating_qr_enabled, rotating_qr_interval, created_at)
+                VALUES (:id, :reservationId, :ticketNumber, :tokenHash, :cipher, 'sent', NOW(3),
+                'single', 1, 30, NOW(3))
+                SQL,
+            [
+                'id' => Uuid::randomBytes(),
+                'reservationId' => Uuid::fromHexToBytes(self::RESERVATION_ID),
+                'ticketNumber' => $ticketNumber,
+                'tokenHash' => hash('sha256', $token),
+                'cipher' => (new TokenCipher(self::ROTATING_SECRET))->encrypt($token),
+            ],
+        );
+
+        return $token;
     }
 
     private function seedReservation(): void

@@ -15,6 +15,7 @@ final class TicketWalletData
         public readonly BookingWindow $window,
         public readonly ?string $customerName,
         public readonly ?string $seatLabel = null,
+        public readonly bool $rotating = false,
     ) {
     }
 }

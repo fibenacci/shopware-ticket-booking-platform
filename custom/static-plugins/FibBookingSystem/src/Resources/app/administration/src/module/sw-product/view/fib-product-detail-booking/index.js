@@ -123,6 +123,7 @@ Component.register('fib-product-detail-booking', {
             config.slotMinutes = 60;
             config.validityMode = 'slot';
             config.entryPolicy = 'single';
+            config.rotatingQrEnabled = false;
 
             return config;
         },

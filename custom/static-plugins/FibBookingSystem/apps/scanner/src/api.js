@@ -10,6 +10,9 @@
  */
 
 const TOKEN_PATTERN = /^[0-9a-f]{64}$/;
+// Rotating QR (TOTP) wire format: FIBR1:<ticketNumber>:<code>. The scanner
+// forwards it verbatim; the server routes static vs rotating by this shape.
+const ROTATING_PATTERN = /^FIBR1:[A-Za-z0-9-]{1,40}:[0-9a-f]{16}$/;
 
 export const DIRECTION_CHECK_IN = 'check_in';
 export const DIRECTION_CHECK_OUT = 'check_out';
@@ -82,12 +85,16 @@ function storeTokens(payload) {
 }
 
 export function isLikelyScanToken(value) {
-    return typeof value === 'string' && TOKEN_PATTERN.test(value);
+    return typeof value === 'string' && (TOKEN_PATTERN.test(value) || ROTATING_PATTERN.test(value));
 }
 
 /**
- * Extracts the scan token from raw QR content. Accepts the canonical JSON
- * payload ({type, ticketNumber, scanToken}) or a bare token.
+ * Extracts the scan value from raw QR content. Accepts:
+ * - the canonical static JSON payload ({type, ticketNumber, scanToken}),
+ * - a bare static token (64 hex),
+ * - a rotating wire string (FIBR1:<ticketNumber>:<code>).
+ * The value is forwarded to the server unchanged; the server decides static
+ * vs rotating.
  */
 export function extractScanToken(rawContent) {
     if (typeof rawContent !== 'string' || rawContent.length > 4096) {

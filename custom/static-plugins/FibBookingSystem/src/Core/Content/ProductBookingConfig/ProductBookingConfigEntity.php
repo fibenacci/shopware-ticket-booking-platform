@@ -33,6 +33,10 @@ class ProductBookingConfigEntity extends Entity
 
     protected ?int $maxEntriesPerDay = null;
 
+    protected bool $rotatingQrEnabled = false;
+
+    protected ?int $rotatingQrInterval = null;
+
     protected ?ProductEntity $product = null;
 
     protected ?BookingResourceEntity $resource = null;
@@ -85,6 +89,26 @@ class ProductBookingConfigEntity extends Entity
     public function setMaxEntriesPerDay(?int $maxEntriesPerDay): void
     {
         $this->maxEntriesPerDay = $maxEntriesPerDay;
+    }
+
+    public function getRotatingQrEnabled(): bool
+    {
+        return $this->rotatingQrEnabled;
+    }
+
+    public function setRotatingQrEnabled(bool $rotatingQrEnabled): void
+    {
+        $this->rotatingQrEnabled = $rotatingQrEnabled;
+    }
+
+    public function getRotatingQrInterval(): ?int
+    {
+        return $this->rotatingQrInterval;
+    }
+
+    public function setRotatingQrInterval(?int $rotatingQrInterval): void
+    {
+        $this->rotatingQrInterval = $rotatingQrInterval;
     }
 
     public function getProductId(): string

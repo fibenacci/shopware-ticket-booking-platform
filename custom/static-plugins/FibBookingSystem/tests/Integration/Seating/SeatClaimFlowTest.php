@@ -253,6 +253,7 @@ class SeatClaimFlowTest extends TestCase
             new \FibBookingSystem\Core\Domain\Security\TokenCipher('seat-test-secret'),
             new \FibBookingSystem\Core\Domain\Validity\TicketValidityResolver(),
             new StaticSystemConfigService([]),
+            new \FibBookingSystem\Core\Domain\Ticket\RotatingCodeService(),
         );
     }
 

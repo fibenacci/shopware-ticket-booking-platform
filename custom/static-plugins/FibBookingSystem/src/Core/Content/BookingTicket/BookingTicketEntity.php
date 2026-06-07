@@ -43,6 +43,10 @@ class BookingTicketEntity extends Entity
 
     protected ?string $replacedTicketId = null;
 
+    protected bool $rotatingQrEnabled = false;
+
+    protected ?int $rotatingQrInterval = null;
+
     protected ?string $ownerCustomerId = null;
 
     /**
@@ -120,6 +124,26 @@ class BookingTicketEntity extends Entity
     public function setReplacedTicketId(?string $replacedTicketId): void
     {
         $this->replacedTicketId = $replacedTicketId;
+    }
+
+    public function getRotatingQrEnabled(): bool
+    {
+        return $this->rotatingQrEnabled;
+    }
+
+    public function setRotatingQrEnabled(bool $rotatingQrEnabled): void
+    {
+        $this->rotatingQrEnabled = $rotatingQrEnabled;
+    }
+
+    public function getRotatingQrInterval(): ?int
+    {
+        return $this->rotatingQrInterval;
+    }
+
+    public function setRotatingQrInterval(?int $rotatingQrInterval): void
+    {
+        $this->rotatingQrInterval = $rotatingQrInterval;
     }
 
     public function getOwnerCustomerId(): ?string

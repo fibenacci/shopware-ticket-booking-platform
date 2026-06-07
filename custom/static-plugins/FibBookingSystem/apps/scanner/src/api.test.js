@@ -12,10 +12,15 @@ import {
 } from './api.js';
 
 const VALID_TOKEN = 'a'.repeat(64);
+const VALID_ROTATING = 'FIBR1:T10477:0123456789abcdef';
 
 describe('isLikelyScanToken', () => {
     it('accepts 64 lowercase hex chars', () => {
         expect(isLikelyScanToken(VALID_TOKEN)).toBe(true);
+    });
+
+    it('accepts a rotating wire token (FIBR1:number:code)', () => {
+        expect(isLikelyScanToken(VALID_ROTATING)).toBe(true);
     });
 
     it.each([
@@ -23,6 +28,8 @@ describe('isLikelyScanToken', () => {
         ['too long', 'a'.repeat(65)],
         ['uppercase', 'A'.repeat(64)],
         ['non-hex', 'g'.repeat(64)],
+        ['rotating wrong prefix', 'FIBR2:T1:0123456789abcdef'],
+        ['rotating short code', 'FIBR1:T1:0123'],
         ['empty', ''],
         ['null', null],
         ['number', 1234],
@@ -34,6 +41,10 @@ describe('isLikelyScanToken', () => {
 describe('extractScanToken', () => {
     it('accepts a bare token (trimmed)', () => {
         expect(extractScanToken(`  ${VALID_TOKEN}\n`)).toBe(VALID_TOKEN);
+    });
+
+    it('forwards a rotating wire token verbatim', () => {
+        expect(extractScanToken(`  ${VALID_ROTATING}\n`)).toBe(VALID_ROTATING);
     });
 
     it('accepts the canonical QR JSON payload', () => {

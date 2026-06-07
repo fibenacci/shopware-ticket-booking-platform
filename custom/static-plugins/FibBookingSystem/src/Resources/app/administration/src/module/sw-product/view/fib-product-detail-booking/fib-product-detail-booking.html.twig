@@ -78,6 +78,25 @@
                 :help-text="$tc('fibBooking.product.maxEntriesPerDayHelp')"
             />
 
+            {# Rotating QR (TOTP): the displayed code changes every interval —
+               a screenshot is worthless after it passes (anti-sharing). #}
+            <sw-switch-field
+                v-model:value="config.rotatingQrEnabled"
+                :label="$tc('fibBooking.product.rotatingQrEnabledLabel')"
+                :help-text="$tc('fibBooking.product.rotatingQrEnabledHelp')"
+            />
+
+            <sw-number-field
+                v-if="config.rotatingQrEnabled"
+                v-model:value="config.rotatingQrInterval"
+                number-type="int"
+                :min="10"
+                :max="120"
+                :placeholder="30"
+                :label="$tc('fibBooking.product.rotatingQrIntervalLabel')"
+                :help-text="$tc('fibBooking.product.rotatingQrIntervalHelp')"
+            />
+
             <sw-button-process
                 class="fib-product-detail-booking__save"
                 variant="primary"

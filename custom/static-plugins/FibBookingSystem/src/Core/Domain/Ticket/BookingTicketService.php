@@ -47,6 +47,7 @@ class BookingTicketService
         private readonly TokenCipher $tokenCipher,
         private readonly TicketValidityResolver $validityResolver,
         private readonly SystemConfigService $systemConfig,
+        private readonly RotatingCodeService $rotatingCodeService,
     ) {
     }
 
@@ -86,7 +87,8 @@ class BookingTicketService
                     SELECT reservation.id, reservation.booking_number, reservation.payload,
                     reservation.starts_at, reservation.ends_at, `order`.sales_channel_id,
                     config.validity_mode, config.validity_duration, config.validity_anchor,
-                    config.entry_policy, config.max_entries_per_day
+                    config.entry_policy, config.max_entries_per_day,
+                    config.rotating_qr_enabled, config.rotating_qr_interval
                     FROM fib_booking_reservation reservation
                     LEFT JOIN `order` ON `order`.id = reservation.order_id AND `order`.version_id = reservation.order_version_id
                     LEFT JOIN order_line_item line_item
@@ -166,8 +168,18 @@ class BookingTicketService
             is_string($reservation['sales_channel_id'] ?? null) ? Uuid::fromBytesToHex($reservation['sales_channel_id']) : null,
         );
         $scanToken = bin2hex(random_bytes(32));
+
+        // Rotating-QR snapshot: a rotating ticket's QR carries a time-based
+        // code (built on demand from this scan token), so its issue-time QR
+        // would be stale by the time the holder opens it — emit no static
+        // image, the account page renders the live one.
+        $rotatingEnabled = (bool) ($reservation['rotating_qr_enabled'] ?? false);
+        $rotatingInterval = $rotatingEnabled
+            ? $this->rotatingCodeService->normalizeInterval(is_numeric($reservation['rotating_qr_interval'] ?? null) ? (int) $reservation['rotating_qr_interval'] : null)
+            : null;
+
         $qrPayload = $this->createQrPayload($ticketNumber, $scanToken);
-        $qrCodeDataUri = $this->qrCodeGenerator->generateDataUri($qrPayload);
+        $qrCodeDataUri = $rotatingEnabled ? '' : $this->qrCodeGenerator->generateDataUri($qrPayload);
 
         // Deliberate raw INSERT: scan_token_cipher is intentionally NOT
         // part of the DAL definition (see plugin Security.md), so the
@@ -191,6 +203,8 @@ class BookingTicketService
             'validity_anchor' => $validity->anchor,
             'validity_duration' => $validity->duration,
             'seat_label' => $seatLabel,
+            'rotating_qr_enabled' => $rotatingEnabled ? 1 : 0,
+            'rotating_qr_interval' => $rotatingInterval,
             'payload' => $payload === [] ? null : json_encode($payload, JSON_THROW_ON_ERROR),
             'created_at' => $this->formatDateTime($issuedAt),
         ]);

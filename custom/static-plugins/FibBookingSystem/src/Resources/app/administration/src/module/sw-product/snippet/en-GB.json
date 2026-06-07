@@ -48,7 +48,11 @@
                 "saved": "Booking configuration saved.",
                 "saveError": "Saving the booking configuration failed.",
                 "invalidDuration": "Period tickets need a valid ISO-8601 duration (e.g. P1D, P1M, P1Y)."
-            }
+            },
+            "rotatingQrEnabledLabel": "Rotating QR code (security)",
+            "rotatingQrEnabledHelp": "The ticket QR rotates over time (TOTP). A screenshot expires within seconds — protects against ticket sharing. Holders show the live code in their account/app; the scanner verifies it online.",
+            "rotatingQrIntervalLabel": "Rotation interval (seconds)",
+            "rotatingQrIntervalHelp": "How often the code changes. Default 30s (10–120)."
         }
     }
 }

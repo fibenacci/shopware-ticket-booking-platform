@@ -160,7 +160,7 @@ final class BookingTicketRenderer extends AbstractDocumentRenderer
     }
 
     /**
-     * @return list<array{number: string, status: string, issuedAt: ?DateTimeInterface, bookingNumber: ?string, resourceName: ?string, startsAt: ?DateTimeInterface, endsAt: ?DateTimeInterface, qrCodeDataUri: ?string}>
+     * @return list<array{number: string, status: string, issuedAt: ?DateTimeInterface, bookingNumber: ?string, resourceName: ?string, startsAt: ?DateTimeInterface, endsAt: ?DateTimeInterface, rotatingQrEnabled: bool, qrCodeDataUri: ?string}>
      */
     private function loadTickets(
         string $orderId,
@@ -196,7 +196,13 @@ final class BookingTicketRenderer extends AbstractDocumentRenderer
                 'seatLabel' => $ticket->getSeatLabel(),
                 'startsAt' => $reservation?->getStartsAt(),
                 'endsAt' => $reservation?->getEndsAt(),
-                'qrCodeDataUri' => $this->buildQrCodeDataUri($ticket, $ciphers[$ticket->getId()] ?? null),
+                // Rotating tickets: NO static QR on a printable PDF — a frozen
+                // code never scans (and would defeat rotation). The holder
+                // shows the live code from the account/app instead.
+                'rotatingQrEnabled' => $ticket->getRotatingQrEnabled(),
+                'qrCodeDataUri' => $ticket->getRotatingQrEnabled()
+                    ? null
+                    : $this->buildQrCodeDataUri($ticket, $ciphers[$ticket->getId()] ?? null),
             ];
         }
 

@@ -14,7 +14,19 @@
             <div class="card mb-3 fib-booking-ticket-card" data-ticket-number="{{ ticket.ticketNumber }}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-                        {% if ticket.qrCodeDataUri %}
+                        {% if ticket.rotatingQrEnabled %}
+                            {# Rotating ticket: the QR is fetched live and refreshed
+                               every window — a screenshot expires within seconds. #}
+                            <div class="fib-booking-ticket-qr fib-rotating-qr"
+                                 data-fib-rotating-qr="true"
+                                 data-fib-rotating-qr-options="{{ {
+                                     codeUrl: path('frontend.account.fib_booking.tickets.rotating_qr', { ticketId: ticket.ticketId }),
+                                     alt: 'fibBooking.account.qrAlt'|trans|striptags,
+                                 }|json_encode }}">
+                                <div class="fib-rotating-qr-image" aria-live="polite"></div>
+                                <div class="fib-rotating-qr-countdown" role="timer"></div>
+                            </div>
+                        {% elseif ticket.qrCodeDataUri %}
                             <div class="fib-booking-ticket-qr">
                                 <img src="{{ ticket.qrCodeDataUri }}"
                                      alt="{{ 'fibBooking.account.qrAlt'|trans|striptags }}"

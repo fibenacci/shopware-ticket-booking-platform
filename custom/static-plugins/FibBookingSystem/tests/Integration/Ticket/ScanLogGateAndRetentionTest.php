@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace FibBookingSystem\Tests\Integration\Ticket;
 
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use FibBookingSystem\Core\Domain\Ticket\BookingScanLogRetentionService;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
+use FibBookingSystem\Core\Domain\Ticket\RotatingScanVerifier;
+use FibBookingSystem\Core\Domain\Ticket\ScanVerdictResolver;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use FibBookingSystem\Migration\Migration1781100000AddScanLogGate;
 use PHPUnit\Framework\TestCase;
@@ -137,9 +141,10 @@ class ScanLogGateAndRetentionTest extends TestCase
     {
         return new TicketScanService(
             $this->connection,
-            self::container()->get('fib_booking_ticket.repository'),
             self::container()->get('fib_booking_scan_log.repository'),
             new StaticSystemConfigService([]),
+            new RotatingScanVerifier(new RotatingCodeService(), new TokenCipher('scan-test-secret')),
+            new ScanVerdictResolver($this->connection, self::container()->get('fib_booking_ticket.repository')),
         );
     }
 

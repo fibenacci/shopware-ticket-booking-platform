@@ -94,6 +94,7 @@
         <service id="FibBookingSystem\Api\Controller\BookingTicketScanController" public="true">
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketScanService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\RotatingCodeService"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>

@@ -760,6 +760,26 @@ textarea.form-control {
     }
 }
 
+// Rotating QR: reserve the box so the chip doesn't collapse before the first
+// image loads, plus the live countdown badge below.
+.fib-rotating-qr {
+    text-align: center;
+
+    .fib-rotating-qr-image {
+        min-width: 132px;
+        min-height: 132px;
+    }
+
+    .fib-rotating-qr-countdown {
+        margin-top: 0.4rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #1f2430;
+        font-feature-settings: 'tnum';
+    }
+}
+
 .alert {
     @include fib-glass(rgba(22, 25, 38, 0.65));
 

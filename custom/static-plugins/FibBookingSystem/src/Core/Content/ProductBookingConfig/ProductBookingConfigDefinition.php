@@ -71,6 +71,8 @@ class ProductBookingConfigDefinition extends EntityDefinition
             new StringField('validity_anchor', 'validityAnchor'),
             (new StringField('entry_policy', 'entryPolicy'))->addFlags(new Required()),
             new IntField('max_entries_per_day', 'maxEntriesPerDay'),
+            new BoolField('rotating_qr_enabled', 'rotatingQrEnabled'),
+            new IntField('rotating_qr_interval', 'rotatingQrInterval'),
             new OneToOneAssociationField('product', 'product_id', 'id', ProductDefinition::class, false),
             new ManyToOneAssociationField('resource', 'resource_id', BookingResourceDefinition::class, 'id'),
             new CreatedAtField(),

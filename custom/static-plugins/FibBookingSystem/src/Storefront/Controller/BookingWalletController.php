@@ -21,6 +21,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -97,6 +98,44 @@ class BookingWalletController extends StorefrontController
         return $response;
     }
 
+    /**
+     * Live rotating-QR image for one of the logged-in customer's own tickets.
+     * The account page polls this every window; the secret never leaves the
+     * server (only the time-based code does). A non-owner / non-rotating /
+     * gone ticket yields a uniform 404 — no oracle.
+     */
+    #[Route(
+        path: '/account/fib-booking/tickets/{ticketId}/rotating-qr',
+        name: 'frontend.account.fib_booking.tickets.rotating_qr',
+        defaults: ['_loginRequired' => true, '_noStore' => true, 'XmlHttpRequest' => true],
+        methods: ['GET'],
+    )]
+    public function rotatingQr(
+        string $ticketId,
+        Request $request,
+        SalesChannelContext $context,
+    ): JsonResponse {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WALLET, $request->getClientIp());
+
+        $customer = $context->getCustomer();
+
+        if (!$customer instanceof CustomerEntity) {
+            throw new NotFoundHttpException();
+        }
+
+        $rotating = $this->walletService->rotatingQrForOwner($ticketId, $customer->getId(), time());
+
+        if ($rotating === null) {
+            throw new NotFoundHttpException();
+        }
+
+        $response = new JsonResponse($rotating);
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+
+        return $response;
+    }
+
     #[Route(
         path: '/account/fib-booking/tickets',
         name: 'frontend.account.fib_booking.tickets',
@@ -136,7 +175,7 @@ class BookingWalletController extends StorefrontController
     }
 
     /**
-     * @return list<array{ticketId: string, ticketNumber: string, status: string, hasWalletToken: bool, qrCodeDataUri: string|null, bookingNumber: string, startsAt: string|null, endsAt: string|null, quantity: int, resourceName: string}>
+     * @return list<array{ticketId: string, ticketNumber: string, status: string, hasWalletToken: bool, rotatingQrEnabled: bool, qrCodeDataUri: string|null, bookingNumber: string, startsAt: string|null, endsAt: string|null, quantity: int, resourceName: string}>
      */
     private function fetchCustomerTickets(
         string $customerId,
@@ -174,6 +213,9 @@ class BookingWalletController extends StorefrontController
                 'ticketNumber' => $ticket->getTicketNumber(),
                 'status' => $ticket->getStatus(),
                 'hasWalletToken' => isset($ticketsWithToken[$ticket->getId()]),
+                // Rotating tickets have no stored static QR; the page polls
+                // the live one. Non-rotating keep their static image.
+                'rotatingQrEnabled' => $ticket->getRotatingQrEnabled(),
                 'qrCodeDataUri' => $qrDataUris[$ticket->getId()] ?? null,
                 'bookingNumber' => (string) $reservation?->getBookingNumber(),
                 'startsAt' => $reservation?->getStartsAt()->format(\DATE_ATOM),

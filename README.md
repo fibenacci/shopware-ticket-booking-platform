@@ -1,3 +1,13 @@
+```
+  ███████╗██╗██████╗     ██████╗  ██████╗  ██████╗ ██╗  ██╗██╗███╗   ██╗ ██████╗
+  ██╔════╝██║██╔══██╗    ██╔══██╗██╔═══██╗██╔═══██╗██║ ██╔╝██║████╗  ██║██╔════╝
+  █████╗  ██║██████╔╝    ██████╔╝██║   ██║██║   ██║█████╔╝ ██║██╔██╗ ██║██║  ███╗
+  ██╔══╝  ██║██╔══██╗    ██╔══██╗██║   ██║██║   ██║██╔═██╗ ██║██║╚██╗██║██║   ██║
+  ██║     ██║██████╔╝    ██████╔╝╚██████╔╝╚██████╔╝██║  ██╗██║██║ ╚████║╚██████╔╝
+  ╚═╝     ╚═╝╚═════╝     ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝
+        booking · ticketing · seating · resale — on Shopware 6.7
+```
+
 # FIB Booking System — Shopware 6 Shop
 
 > ⚠️ **Prototype** — this project is a prototype for evaluating a
@@ -7,8 +17,36 @@
 > still need productization before going live.
 
 Shopware 6.7 project (based on `shopware/production`) containing the
-**FibBookingSystem** plugin (`custom/static-plugins/FibBookingSystem`) — a
-reservation and booking system with holds, reservations, tickets and QR codes.
+**FibBookingSystem** plugin (`custom/static-plugins/FibBookingSystem`) — an
+all-round reservation, ticketing and access-control platform built natively on
+Shopware's cart, order and DAL primitives.
+
+## Core features
+
+- **Bookings & capacity** — operator-defined resources & time slots, a
+  storefront booking calendar (CMS element + product pages), and overbooking-safe
+  holds → reservations via insert-wins UNIQUE guards (no double-booking).
+- **Generic validity model** — one flexible ticket model covers event tickets,
+  day/monthly/annual passes and transit fares: mode (slot · period · unlimited)
+  × anchor (purchase · first-use · customer-chosen) × entry policy (single ·
+  multi, optional max entries/day). Snapshotted onto the ticket at issue.
+- **Tickets & QR** — one ticket per claimed seat; scan tokens stored hashed +
+  encrypted; PDF document, e-mail delivery and Apple/Google Wallet passes.
+- **Rotating QR (TOTP)** — optional per product: the entry code rotates every
+  window (RFC 6238), single-use per window, verified online — a screenshot is
+  worthless. See [`docs/ROTATING_QR.md`](custom/static-plugins/FibBookingSystem/docs/ROTATING_QR.md).
+- **Numbered seating** — cinema-style seat maps, claim-on-hold, a Vue seat
+  picker island (TypeScript) and live updates via Mercure SSE.
+- **Scanning** — least-privilege scanner app (own ACL role), race-safe
+  check-in/out with re-entry, daily limits and an append-only audit log.
+- **Resale & auctions** — private C2C secondary market: list/buy with transfer
+  by token rotation (seller's copy dies), guardrails (cutoff, anti-scalping,
+  one-live-listing), double-sell + scan-then-sell protection. Platform takes
+  **no fee**. See [`docs/RESELL_PLAN.md`](custom/static-plugins/FibBookingSystem/docs/RESELL_PLAN.md).
+- **Statistics** — purchase and dwell-time (check-in/out) tracking behind its
+  own ACL, exposed via Admin API + scanner dashboard.
+- **Storefront** — glassmorphism theme (`FibBookingTheme`), navigation, legal
+  & service pages, account "My tickets" with wallet downloads.
 
 ## Quickstart
 

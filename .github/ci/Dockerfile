@@ -56,6 +56,15 @@ ENV SHOPWARE_ES_ENABLED=0 \
 ENV DATABASE_URL=mysql://root:root@127.0.0.1:3306/shopware \
     APP_URL=http://localhost:8080
 
+# Build-stage dummies (the running CI stack injects real values via compose):
+# seeding issues tickets, which dispatches the ticket-issued event → the mail
+# subscriber lazily builds mercure.hub.default. Without a URL the Hub ctor
+# throws on null. Same build-only pattern as REDIS_DSN; never a runtime value.
+ENV MERCURE_URL=http://localhost/.well-known/mercure \
+    MERCURE_PUBLIC_URL=http://localhost/.well-known/mercure \
+    MERCURE_JWT_SECRET=ci-build-dummy-secret-0123456789abcdef \
+    MERCURE_SUBSCRIBER_JWT_SECRET=ci-build-dummy-subscriber-0123456789abcdef
+
 COPY composer.json composer.lock symfony.lock ./
 COPY custom ./custom
 RUN composer install --no-interaction --prefer-dist --no-progress --no-scripts \

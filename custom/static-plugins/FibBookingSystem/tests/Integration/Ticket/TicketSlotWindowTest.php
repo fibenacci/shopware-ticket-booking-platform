@@ -10,6 +10,9 @@ use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
+use FibBookingSystem\Core\Domain\Ticket\RotatingScanVerifier;
+use FibBookingSystem\Core\Domain\Ticket\ScanVerdictResolver;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanResult;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use FibBookingSystem\Core\Domain\Validity\TicketValidityResolver;
@@ -140,6 +143,7 @@ class TicketSlotWindowTest extends TestCase
             new StaticSystemConfigService([
                 'FibBookingSystem.config.scanEarlyEntryMinutes' => $earlyEntryMinutes,
             ]),
+            new RotatingCodeService(),
         );
     }
 
@@ -147,9 +151,10 @@ class TicketSlotWindowTest extends TestCase
     {
         return new TicketScanService(
             $this->connection,
-            self::container()->get('fib_booking_ticket.repository'),
             self::container()->get('fib_booking_scan_log.repository'),
             new StaticSystemConfigService([]),
+            new RotatingScanVerifier(new RotatingCodeService(), new TokenCipher('scan-test-secret')),
+            new ScanVerdictResolver($this->connection, self::container()->get('fib_booking_ticket.repository')),
         );
     }
 

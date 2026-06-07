@@ -18,13 +18,24 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Validity\TicketValidityResolver"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\RotatingCodeService"/>
         </service>
         <service id="FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator"/>
-        <service id="FibBookingSystem\Core\Domain\Ticket\TicketScanService">
+        <service id="FibBookingSystem\Core\Domain\Ticket\RotatingCodeService"/>
+        <service id="FibBookingSystem\Core\Domain\Ticket\RotatingScanVerifier">
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\RotatingCodeService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\TokenCipher"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\ScanVerdictResolver">
             <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="fib_booking_ticket.repository"/>
+        </service>
+        <service id="FibBookingSystem\Core\Domain\Ticket\TicketScanService">
+            <argument type="service" id="Doctrine\DBAL\Connection"/>
             <argument type="service" id="fib_booking_scan_log.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\RotatingScanVerifier"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\ScanVerdictResolver"/>
         </service>
         <service id="FibBookingSystem\Core\Domain\Statistics\BookingStatisticsService">
             <argument type="service" id="Doctrine\DBAL\Connection"/>

@@ -37,7 +37,8 @@
             "end": "Ende",
             "guest": "Gast",
             "footer": "Bitte zeige den QR-Code am Einlass vor. Jeder Code ist einmal gültig.",
-            "seat": "Sitzplatz"
+            "seat": "Sitzplatz",
+            "rotatingNote": "Dieses Ticket nutzt einen rotierenden Sicherheitscode — öffne es in deinem Konto oder Wallet, um den Live-QR am Einlass zu zeigen."
         },
         "pass": {
             "validFor": "Gültig für",

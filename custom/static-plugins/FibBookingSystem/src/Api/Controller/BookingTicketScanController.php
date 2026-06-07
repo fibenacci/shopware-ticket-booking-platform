@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FibBookingSystem\Api\Controller;
 
 use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
 use FibBookingSystem\Core\Domain\Ticket\ScanDirection;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use Shopware\Core\Framework\Api\Context\AdminApiSource;
@@ -22,6 +23,7 @@ class BookingTicketScanController extends AbstractController
     public function __construct(
         private readonly TicketScanService $scanService,
         private readonly BookingRateLimiter $rateLimiter,
+        private readonly RotatingCodeService $rotatingCodeService,
     ) {
     }
 
@@ -41,10 +43,8 @@ class BookingTicketScanController extends AbstractController
 
         $scanToken = $dataBag->get('scanToken');
 
-        // Tokens are produced by bin2hex(random_bytes(32)) — anything else is
-        // rejected before touching the database.
-        if (!is_string($scanToken) || !preg_match('/^[0-9a-f]{64}$/', $scanToken)) {
-            throw new BadRequestHttpException('Missing or malformed parameter "scanToken".');
+        if (!is_string($scanToken)) {
+            throw new BadRequestHttpException('Missing parameter "scanToken".');
         }
 
         $direction = $dataBag->get('direction', ScanDirection::CHECK_IN);
@@ -52,7 +52,20 @@ class BookingTicketScanController extends AbstractController
             throw new BadRequestHttpException('Malformed parameter "direction" (expected "check_in" or "check_out").');
         }
 
-        $result = $this->scanService->scan($scanToken, $context, $actor, 'admin-api', $direction, $this->resolveGate($dataBag));
+        $gate = $this->resolveGate($dataBag);
+
+        // Two wire formats in ONE field so the scanner forwards whatever the
+        // QR carried, unchanged: a static 64-hex token, or the rotating
+        // FIBR1:<ticketNumber>:<code> composite.
+        $rotating = $this->rotatingCodeService->parseWireToken($scanToken);
+
+        if ($rotating !== null) {
+            $result = $this->scanService->scanRotating($rotating[0], $rotating[1], $context, $actor, 'admin-api', $direction, $gate);
+        } elseif (preg_match('/^[0-9a-f]{64}$/', $scanToken)) {
+            $result = $this->scanService->scan($scanToken, $context, $actor, 'admin-api', $direction, $gate);
+        } else {
+            throw new BadRequestHttpException('Malformed parameter "scanToken".');
+        }
 
         $response = new JsonResponse($result->toArray());
         $response->headers->set('Cache-Control', 'no-store, private');

@@ -14,6 +14,9 @@ use FibBookingSystem\Core\Domain\Resale\ResaleSettlementService;
 use FibBookingSystem\Core\Domain\Resale\TicketTransferService;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator;
+use FibBookingSystem\Core\Domain\Ticket\RotatingCodeService;
+use FibBookingSystem\Core\Domain\Ticket\RotatingScanVerifier;
+use FibBookingSystem\Core\Domain\Ticket\ScanVerdictResolver;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanResult;
 use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use PHPUnit\Framework\TestCase;
@@ -400,9 +403,10 @@ class ResaleFixedPriceFlowTest extends TestCase
     {
         return new TicketScanService(
             $this->connection,
-            self::container()->get('fib_booking_ticket.repository'),
             self::container()->get('fib_booking_scan_log.repository'),
             new StaticSystemConfigService([]),
+            new RotatingScanVerifier(new RotatingCodeService(), new TokenCipher('scan-test-secret')),
+            new ScanVerdictResolver($this->connection, self::container()->get('fib_booking_ticket.repository')),
         );
     }
 

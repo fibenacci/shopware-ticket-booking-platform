@@ -70,10 +70,6 @@ class GoogleWalletLinkGenerator
                         'classId' => $classId,
                         'state' => 'ACTIVE',
                         'ticketNumber' => $data->ticketNumber,
-                        'barcode' => [
-                            'type' => 'QR_CODE',
-                            'value' => $data->qrPayload,
-                        ],
                         'eventName' => [
                             'defaultValue' => ['language' => 'en-US', 'value' => $data->window->resourceName],
                         ],
@@ -87,11 +83,24 @@ class GoogleWalletLinkGenerator
                             $data->seatLabel !== null
                                 ? ['header' => 'Seat', 'body' => $data->seatLabel, 'id' => 'seat']
                                 : null,
+                            $data->rotating
+                                ? ['header' => 'Entry code', 'body' => 'Rotating security code — open the ticket in your account or app to show the live QR at the entrance.', 'id' => 'rotating']
+                                : null,
                         ])),
                     ],
                 ],
             ],
         ];
+
+        // Static barcode only for non-rotating tickets — a frozen code never
+        // scans. Native rotating barcodes (RotatingBarcode.totpDetails) are a
+        // documented follow-up; rotating passes point to the app (note above).
+        if (!$data->rotating) {
+            $claims['payload']['eventTicketObjects'][0]['barcode'] = [
+                'type' => 'QR_CODE',
+                'value' => $data->qrPayload,
+            ];
+        }
 
         return self::SAVE_URL . $this->signJwt($claims, $serviceAccount['private_key']);
     }
