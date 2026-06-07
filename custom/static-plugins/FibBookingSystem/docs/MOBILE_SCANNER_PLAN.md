@@ -10,6 +10,13 @@ the existing web scanner (`apps/scanner`) already uses. No new server code is
 required for a minimum-viable app; the server is the single source of truth and
 stays unchanged.
 
+> **Status:** MVP scaffolded under `apps/scanner-mobile/` — the contract port
+> (`lib/api/`, `lib/config/`) with Dart unit tests, the UI (`lib/ui/`), the CI
+> (`.github/scripts/build-*.sh`, `.github/workflows/mobile-release.yml`) and
+> `SIDELOADING.md` are in place. First `flutter` toolchain run happens in CI
+> (no SDK in the dev image); package versions and the `mobile_scanner` widget
+> API are validated/bumped on that first run.
+
 ---
 
 ## 1. Framework decision: Flutter
@@ -120,51 +127,69 @@ gated by `scannerConfig.checkOutEnabled`.
 
 ---
 
-## 5. CI: build + ship to GitHub Releases
+## 5. CI: build + ship to GitHub Releases — the **zero-cost, open-source path**
+
+This project is open source, so the distribution strategy is deliberately
+**free of any paid account or store fee**. GitHub Actions (including macOS
+runners) is **free for public repos**, so CI itself costs nothing either.
 
 New workflow `.github/workflows/mobile-release.yml`, triggered on a
 `scanner-v*` tag (and `workflow_dispatch`). **Thin workflow, logic in scripts**
 (matches the repo convention — see `.github/scripts/`):
 
 - `.github/scripts/build-android.sh` — sets up Flutter, `flutter build apk
-  --release` (+ optional `appbundle`), signs with a keystore decoded from
-  secrets, emits `scanner-<version>.apk`.
-- `.github/scripts/build-ios.sh` — macOS runner, imports signing assets,
-  `flutter build ipa`, emits `scanner-<version>.ipa`.
+  --release`, signs with a keystore decoded from secrets, emits
+  `scanner-<version>.apk`.
+- `.github/scripts/build-ios.sh` — macOS runner, `flutter build ios
+  --release --no-codesign`, then repackages the `.app` into an **unsigned**
+  `Payload/…` zip → `scanner-<version>-unsigned.ipa`.
 - The workflow's only inline step is `gh release` upload of both artifacts.
 
 ```
 jobs:
   android:  runs-on: ubuntu-latest   → build-android.sh → upload .apk
-  ios:      runs-on: macos-latest    → build-ios.sh     → upload .ipa
+  ios:      runs-on: macos-latest    → build-ios.sh     → upload unsigned .ipa
   release:  needs: [android, ios]    → gh release upload
 ```
 
-### Android — straightforward
+### Android — fully free, tap-to-install
 
-Direct `.apk` download works: users enable "install from unknown sources" and
-install. Signing keystore (base64) + passwords live in repo secrets. This path
-is fully self-service and needs no Google account.
+Direct `.apk` download works out of the box: the user enables "install from
+unknown sources" and taps it. The signing keystore is the app's **own**
+self-generated key (base64 + passwords in repo secrets) — no Google account,
+no Play Store fee, no expiry. This is the primary, friction-free path.
 
-### iOS — the honest reality (a real decision, not a footnote)
+### iOS — free via user-side sideloading (the OSS standard)
 
-iOS does **not** allow installing an arbitrary `.ipa` from a web link the way
-Android does. Options, pick one:
+Apple has **no free distribution licence**: ad-hoc, TestFlight and the App
+Store all require the paid Developer Program ($99/yr). A free Apple ID can only
+run a build on the developer's *own* device, tethered to a Mac, expiring after
+7 days — useless for distribution. This is an Apple platform constraint, not a
+tooling gap.
 
-1. **TestFlight** (recommended for real use) — CI uploads to App Store Connect
-   via the API key; testers install through the TestFlight app. Needs a paid
-   Apple Developer account ($99/yr). The "GitHub download" is then a TestFlight
-   invite link, not an `.ipa`.
-2. **Ad-hoc signed `.ipa`** — installable only on devices whose UDIDs are
-   registered in the provisioning profile. Works as a GitHub download for a
-   *known* set of gate devices. Needs the Developer account + UDID management.
-3. **Unsigned / simulator build** — attachable to the release but only runs in
-   the iOS Simulator / for developers. Fine as a "here's the build" artifact,
-   useless on a real iPhone at the gate.
+The zero-cost route that keeps the project free is to **ship an unsigned
+`.ipa` and let each user sign it with their own free Apple ID**:
 
-Android can ship a usable artifact from day one with just a keystore. iOS needs
-an Apple Developer account before *any* device-installable build exists — this
-is an Apple platform constraint, not a tooling gap. **Decision needed** (below).
+1. CI publishes `scanner-<version>-unsigned.ipa` to the GitHub Release.
+2. The end-user installs it with **AltStore / SideStore / Sideloadly**, which
+   re-sign the app with the user's **own free Apple ID** and **auto-refresh the
+   7-day signature** in the background. The project pays nothing; the per-user
+   7-day limit is handled by their sideloader.
+3. **Build-from-source** is documented as the developer route: clone, open in
+   Xcode, run on your own device with a free Apple ID.
+
+Honest trade-off: iOS install is **power-user level** (set up AltStore/Sideloadly
+once, accept the 7-day auto-refresh) — not "tap to install" like Android. For
+an open-source operator tool this is the accepted norm. If a friction-free iOS
+experience (TestFlight invite link, auto-update for non-technical staff) is
+ever wanted, the *only* lever is the $99/yr Apple account — a later, optional
+upgrade, never a blocker for shipping.
+
+| Platform | Artifact | Install method | Cost | Comfort |
+|---|---|---|---|---|
+| Android | signed `.apk` | direct download, tap-to-install | 0 | easy |
+| iOS | **unsigned** `.ipa` | sideload w/ own free Apple ID (AltStore/Sideloadly) | 0 | power-user, 7-day auto-refresh |
+| iOS (devs) | from source | Xcode + free Apple ID, own device | 0 | dev only |
 
 ---
 
@@ -188,25 +213,30 @@ is an Apple platform constraint, not a tooling gap. **Decision needed** (below).
    (handles static **and** rotating, since both are just strings).
 3. Check-in/out mode from `scannerConfig`; torch; duplicate-debounce.
 4. Dart unit tests (ported) green.
-5. `build-android.sh` + workflow → signed `.apk` on a test release.
-6. iOS path per the decision in §5.
+5. `build-android.sh` + workflow → signed `.apk` on a test release (the
+   primary, fully-free artifact).
+6. `build-ios.sh` → unsigned `.ipa` on the release + a `SIDELOADING.md`
+   documenting AltStore/Sideloadly and the build-from-source route (§5).
 
 Stats dashboard, biometric refresh-token persistence, and i18n are fast
 follow-ups, not MVP.
 
 ---
 
-## 8. Decisions to confirm before building
+## 8. Distribution decision — settled: zero-cost
 
-1. **iOS distribution** — TestFlight (paid Apple account, proper beta) vs
-   ad-hoc `.ipa` for registered devices vs unsigned-only-for-now? (Android is
-   unaffected and ships immediately.)
-2. **Apple Developer account** — does one exist / will one be obtained? Gates
-   every device-installable iOS build.
-3. **Biometric refresh-token persistence** — keep the strict memory-only
+iOS distribution is **settled on the free, open-source path** (§5): unsigned
+`.ipa` + user-side sideloading (AltStore/Sideloadly) + build-from-source.
+**No paid Apple account, no UDID management, no store fee.** A $99/yr Apple
+account (for TestFlight/App Store convenience) is explicitly out of scope — a
+later optional upgrade, not a prerequisite for shipping.
+
+## 9. Remaining decisions to confirm before building
+
+1. **Biometric refresh-token persistence** — keep the strict memory-only
    posture (re-login each session), or allow opt-in keychain storage of the
    refresh token behind Face ID / fingerprint for shift changes?
-4. **App identity** — name shown on the home screen + bundle id
-   (e.g. `group.<generic>.scanner`), icon. Generic, no foreign-project names.
-5. **Release trigger** — dedicated `scanner-v*` tags (keeps mobile releases
+2. **App identity** — name shown on the home screen + bundle id
+   (e.g. `<generic>.scanner`), icon. Generic, no foreign-project names.
+3. **Release trigger** — dedicated `scanner-v*` tags (keeps mobile releases
    independent of the Docker image release cadence)? Assumed yes above.
