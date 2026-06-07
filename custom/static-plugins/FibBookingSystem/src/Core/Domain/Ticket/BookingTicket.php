@@ -13,6 +13,7 @@ class BookingTicket
         private readonly string $qrPayload,
         private readonly string $qrCodeDataUri,
         private readonly ?string $seatLabel = null,
+        private readonly bool $calendarInviteEnabled = true,
     ) {
     }
 
@@ -20,6 +21,12 @@ class BookingTicket
     public function getSeatLabel(): ?string
     {
         return $this->seatLabel;
+    }
+
+    /** Whether the confirmation mail attaches an .ics invite (per-product). */
+    public function isCalendarInviteEnabled(): bool
+    {
+        return $this->calendarInviteEnabled;
     }
 
     public function getId(): string

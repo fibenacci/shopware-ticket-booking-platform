@@ -52,7 +52,9 @@
             "rotatingQrEnabledLabel": "Rotating QR code (security)",
             "rotatingQrEnabledHelp": "The ticket QR rotates over time (TOTP). A screenshot expires within seconds — protects against ticket sharing. Holders show the live code in their account/app; the scanner verifies it online.",
             "rotatingQrIntervalLabel": "Rotation interval (seconds)",
-            "rotatingQrIntervalHelp": "How often the code changes. Default 30s (10–120)."
+            "rotatingQrIntervalHelp": "How often the code changes. Default 30s (10–120).",
+            "calendarInviteEnabledLabel": "Calendar invite (.ics) by email",
+            "calendarInviteEnabledHelp": "Attaches an event for the booked time slot to the confirmation email. The customer can add it to their calendar — and, when a shop email is configured, accept/decline. Enabled by default."
         }
     }
 }

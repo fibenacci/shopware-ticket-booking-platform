@@ -37,6 +37,8 @@ class ProductBookingConfigEntity extends Entity
 
     protected ?int $rotatingQrInterval = null;
 
+    protected bool $calendarInviteEnabled = true;
+
     protected ?ProductEntity $product = null;
 
     protected ?BookingResourceEntity $resource = null;
@@ -109,6 +111,16 @@ class ProductBookingConfigEntity extends Entity
     public function setRotatingQrInterval(?int $rotatingQrInterval): void
     {
         $this->rotatingQrInterval = $rotatingQrInterval;
+    }
+
+    public function getCalendarInviteEnabled(): bool
+    {
+        return $this->calendarInviteEnabled;
+    }
+
+    public function setCalendarInviteEnabled(bool $calendarInviteEnabled): void
+    {
+        $this->calendarInviteEnabled = $calendarInviteEnabled;
     }
 
     public function getProductId(): string

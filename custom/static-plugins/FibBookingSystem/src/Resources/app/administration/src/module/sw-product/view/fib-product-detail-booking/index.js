@@ -124,6 +124,7 @@ Component.register('fib-product-detail-booking', {
             config.validityMode = 'slot';
             config.entryPolicy = 'single';
             config.rotatingQrEnabled = false;
+            config.calendarInviteEnabled = true;
 
             return config;
         },

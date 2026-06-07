@@ -97,6 +97,14 @@
                 :help-text="$tc('fibBooking.product.rotatingQrIntervalHelp')"
             />
 
+            {# Calendar invite (.ics) in the confirmation mail — opt-out,
+               enabled by default. #}
+            <sw-switch-field
+                v-model:value="config.calendarInviteEnabled"
+                :label="$tc('fibBooking.product.calendarInviteEnabledLabel')"
+                :help-text="$tc('fibBooking.product.calendarInviteEnabledHelp')"
+            />
+
             <sw-button-process
                 class="fib-product-detail-booking__save"
                 variant="primary"
