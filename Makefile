@@ -20,7 +20,13 @@ help: ## Show available targets
 		/^[A-Za-z0-9_.-]+:.*##/ {printf "  \033[36m%-28s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@printf "\n"
 
-.PHONY: help
+list: ## List all documented target names (one per line; used by shell completion)
+	@awk -F: '/^[A-Za-z0-9][A-Za-z0-9_.-]*:.*##/ {print $$1}' $(MAKEFILE_LIST) | sort -u
+
+completion: ## Enable `make <TAB>` completion — run: eval "$$(make completion)" (or add to your shell rc)
+	@echo "source \"$(CURDIR)/tools/completion.sh\""
+
+.PHONY: help list completion
 
 # ── Modules ──────────────────────────────────────────────────────────────────
 include make/stack.mk     # lifecycle: preflight, up, stop, down, logs, shell
@@ -31,4 +37,5 @@ include make/quality.mk   # phpstan, php-cs-fixer
 include make/tests.mk     # phpunit (unit + integration)
 include make/e2e.mk       # playwright
 include make/scanner.mk   # vue scanner app
+include make/mobile.mk    # flutter mobile scanner app
 include make/ci.mk        # CI pipeline helpers (.github/ci)

@@ -1,0 +1,16 @@
+# Dart/Flutter build output
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# Generated platform shells — CI (and local devs) regenerate these with
+# `flutter create .`, then patch the camera permission via tool/patch_permissions.sh.
+# Keeping them out of the repo avoids committing ~hundreds of generated files.
+/android/
+/ios/
+/linux/
+/macos/
+/windows/
+/web/
+.metadata

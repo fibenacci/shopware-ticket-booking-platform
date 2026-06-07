@@ -1,0 +1,27 @@
+name: booking_scanner
+description: "Native iOS/Android gate scanner for the FIB Booking System — a thin client over the Admin-API scan contract."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Native barcode scanning (MLKit on Android, Vision/AVFoundation on iOS).
+  mobile_scanner: ^6.0.0
+  # HTTP client for the Admin API.
+  http: ^1.2.0
+  # OS keystore — used ONLY for the server base URL (and, opt-in later, the
+  # refresh token). The access token never leaves memory.
+  flutter_secure_storage: ^9.2.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
