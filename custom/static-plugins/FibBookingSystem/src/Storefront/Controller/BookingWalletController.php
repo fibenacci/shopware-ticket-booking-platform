@@ -136,10 +136,7 @@ class BookingWalletController extends StorefrontController
     }
 
     /**
-     * @return list<array<string, mixed>>
-     */
-    /**
-     * @return list<array{ticketId: string, ticketNumber: string, status: string, hasWalletToken: bool, bookingNumber: string, startsAt: string|null, endsAt: string|null, quantity: int, resourceName: string}>
+     * @return list<array{ticketId: string, ticketNumber: string, status: string, hasWalletToken: bool, qrCodeDataUri: string|null, bookingNumber: string, startsAt: string|null, endsAt: string|null, quantity: int, resourceName: string}>
      */
     private function fetchCustomerTickets(
         string $customerId,
@@ -161,9 +158,10 @@ class BookingWalletController extends StorefrontController
         $tickets = $this->ticketRepository->search($criteria, $context->getContext())->getEntities();
 
         // scan_token_cipher is not in the DAL definition (security), so the
-        // wallet-token flag comes from a separate, batched raw lookup that
-        // owns that documented exception.
+        // wallet-token flag and the QR images come from separate, batched raw
+        // lookups that own that documented exception.
         $ticketsWithToken = $this->walletService->ticketsWithWalletToken($tickets->getIds());
+        $qrDataUris = $this->walletService->qrDataUris($tickets->getIds());
 
         $result = [];
 
@@ -176,6 +174,7 @@ class BookingWalletController extends StorefrontController
                 'ticketNumber' => $ticket->getTicketNumber(),
                 'status' => $ticket->getStatus(),
                 'hasWalletToken' => isset($ticketsWithToken[$ticket->getId()]),
+                'qrCodeDataUri' => $qrDataUris[$ticket->getId()] ?? null,
                 'bookingNumber' => (string) $reservation?->getBookingNumber(),
                 'startsAt' => $reservation?->getStartsAt()->format(\DATE_ATOM),
                 'endsAt' => $reservation?->getEndsAt()->format(\DATE_ATOM),

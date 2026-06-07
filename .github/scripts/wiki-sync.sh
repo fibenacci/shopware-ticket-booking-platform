@@ -23,7 +23,10 @@ done
 ls -la "$STAGING"/
 
 echo "▶ Cloning wiki repository..."
-if ! git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki-repo; then
+# Token via header, NOT in the URL: keeps it out of argv, the remote config
+# on disk and any later `git remote -v` / error output.
+AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 | tr -d '\n')"
+if ! git -c http.extraHeader="$AUTH_HEADER" clone "https://github.com/${GITHUB_REPOSITORY}.wiki.git" wiki-repo; then
     echo "::warning::Wiki repo not found — one-time setup needed: open the repository's Wiki tab, click 'Create the first page', save it (any content), then re-run this workflow. Docs will sync automatically afterwards."
     exit 0
 fi
@@ -38,6 +41,6 @@ if git diff --cached --quiet; then
     echo "✅ Wiki already up to date."
 else
     git commit -m "docs: sync from ${GITHUB_SHA}"
-    git push
+    git -c http.extraHeader="$AUTH_HEADER" push
     echo "✅ Wiki updated."
 fi

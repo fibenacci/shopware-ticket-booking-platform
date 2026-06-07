@@ -174,6 +174,8 @@ class TicketScanService
 
         $this->activateFirstUse($ticket, $context);
 
+        $this->cancelLiveResaleListings($ticket['id']);
+
         // Re-entry keeps the FIRST entry time on the ticket; the per-session
         // history is reconstructed from the scan log.
         $scannedAt = $ticket['scanned_at'] !== null
@@ -192,6 +194,23 @@ class TicketScanService
         }
 
         return new TicketScanResult(TicketScanResult::VALID, $ticket['ticket_number'], $ticket['booking_number'], $this->formatDateTime($scannedAt), seatLabel: $ticket['seat_label']);
+    }
+
+    /**
+     * Scan-then-sell guard: releases the unique active_ticket_id guard and
+     * cancels every non-final listing of the just-used ticket. Status list
+     * covers 'active' and the order-placed claim state ('pending').
+     */
+    private function cancelLiveResaleListings(string $ticketIdBytes): void
+    {
+        $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE fib_booking_listing
+                SET status = 'cancelled', active_ticket_id = NULL, updated_at = UTC_TIMESTAMP(3)
+                WHERE ticket_id = :ticketId AND status IN ('active', 'pending')
+            SQL,
+            ['ticketId' => $ticketIdBytes],
+        );
     }
 
     /**

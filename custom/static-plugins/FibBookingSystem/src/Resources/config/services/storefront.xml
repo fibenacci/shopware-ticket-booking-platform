@@ -85,6 +85,7 @@
             <argument type="service" id="FibBookingSystem\Core\Domain\Resale\ListingReadService"/>
             <argument type="service" id="FibBookingSystem\Checkout\Cart\Resale\ResaleLineItemFactory"/>
             <argument type="service" id="Shopware\Core\Checkout\Cart\SalesChannel\CartService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Security\BookingRateLimiter"/>
             <call method="setContainer">
                 <argument type="service" id="service_container"/>
             </call>

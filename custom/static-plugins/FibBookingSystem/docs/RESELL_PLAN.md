@@ -129,6 +129,19 @@ This is a marketplace problem, and Shopware is a shop, not a payout engine:
 - Listable only: status issued/sent, not expired, not revoked, and (slot
   tickets) before a cutoff relative to slot start (`resaleCutoffMinutes`).
 - Seller must own the ticket (account-area listing flow only).
+- **Double-sell guard**: a buyer order CLAIMS the listing atomically at
+  placement (`active → pending`); other carts drop the lot immediately.
+  Cancelled/refunded orders release the claim. No claim TTL on purpose —
+  invoice payments legitimately take days.
+- **Scan-then-sell guard**: a successful check-in cancels every live
+  listing of the ticket inside the scan lock; a settlement that still
+  loses a race conflicts loudly (operator refund) and never throws into
+  the payment state transition.
+- All resale routes are rate-limited (read on browse, write on
+  buy/sell/cancel) like the rest of the surface.
+- Price cap follows the lineage: a re-listed resale ticket caps against
+  the price its current owner actually paid (prior `sold_price`), not the
+  original face value.
 - **C2C only**: seller and buyer are always customer accounts — there is no
   operator-side listing path, by design (see legal framing).
 - **Non-personalized only**: a future `personalized` flag blocks listing

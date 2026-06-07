@@ -26,7 +26,8 @@
                 "issued": "Valid",
                 "sent": "Valid",
                 "scanned": "Already used"
-            }
+            },
+            "qrAlt": "Ticket QR code — scanned at the entrance"
         },
         "document": {
             "title": "Ticket",
@@ -72,7 +73,8 @@
                 "cancelled": "Your listing was cancelled.",
                 "sellFailed": "The ticket could not be listed: %reason%",
                 "cancelFailed": "The listing could not be cancelled: %reason%"
-            }
+            },
+            "salePending": "Sale in progress"
         }
     },
     "checkout": {

@@ -23,7 +23,7 @@ x-environment: &shopware-env
     MAILER_DSN: ${MAILER_DSN:-null://null}
     MESSENGER_TRANSPORT_DSN: doctrine://default
     LOCK_DSN: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/2
-    REDIS_DSN: redis://:${REDIS_PASSWORD}@redis:6379
+    REDIS_DSN: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
     SHOPWARE_HTTP_CACHE_ENABLED: 1
     # Search: defaults to MySQL. For large catalogs start the `search` profile
     # and set SHOPWARE_ES_ENABLED=1 (see docs/Deployment.md).
@@ -33,7 +33,7 @@ x-environment: &shopware-env
     SHOPWARE_ES_INDEX_PREFIX: sw
     SHOPWARE_ES_THROW_EXCEPTION: 0
     PHP_SESSION_HANDLER: redis
-    PHP_SESSION_SAVE_PATH: tcp://redis:6379/1?auth=${REDIS_PASSWORD}
+    PHP_SESSION_SAVE_PATH: tcp://redis:6379/1?auth=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,REMOTE_ADDR}
     # HMAC secret for the self-hosted ALTCHA captcha (config/packages/bot_protection.yaml).
     # Generate once: openssl rand -hex 32
@@ -306,7 +306,7 @@ services:
         environment:
             MARIADB_DATABASE: shopware
             MARIADB_USER: shopware
-            MARIADB_PASSWORD: ${DB_PASSWORD}
+            MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
             MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required}
         volumes:
             - db_data:/var/lib/mysql
@@ -353,8 +353,10 @@ services:
         image: dunglas/mercure:latest
         environment:
             SERVER_NAME: ':80'
-            MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET}
-            MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET}
+            MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET is required}
+            # Separate subscriber key (role separation): a leaked subscriber
+            # token must never double as a publish credential.
+            MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_SECRET:?MERCURE_SUBSCRIBER_JWT_SECRET is required — generate with `openssl rand -hex 32`}
             MERCURE_EXTRA_DIRECTIVES: |
                 anonymous
                 cors_origins https://${SHOP_DOMAIN}

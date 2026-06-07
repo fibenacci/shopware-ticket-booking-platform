@@ -188,5 +188,164 @@
             "email": "scanner@fibenacci.de"
         },
         "checkOutEnabled": true
-    }
+    },
+    "shop": {
+        "navigation": [
+            {
+                "key": "events",
+                "name": "Events & Shows",
+                "description": "Concerts and event packages with bookable time slots.",
+                "products": [
+                    "FIB-DEMO-1",
+                    "FIB-PKG-STARTER",
+                    "FIB-PKG-PREMIUM",
+                    "FIB-PKG-LUXURY"
+                ]
+            },
+            {
+                "key": "experiences",
+                "name": "Workshops & Experiences",
+                "description": "Guided workshops and escape rooms — book your slot.",
+                "products": [
+                    "FIB-DEMO-2",
+                    "FIB-DEMO-3"
+                ]
+            },
+            {
+                "key": "cinema",
+                "name": "Cinema",
+                "description": "Numbered seats — pick yours on the seat map.",
+                "products": [
+                    "FIB-CINEMA-1"
+                ]
+            },
+            {
+                "key": "passes",
+                "name": "Tickets & Passes",
+                "description": "Day, monthly and annual passes for the demo transit network.",
+                "products": [
+                    "FIB-PASS-DAY",
+                    "FIB-PASS-MONTH",
+                    "FIB-PASS-YEAR"
+                ]
+            }
+        ],
+        "footer": {
+            "rootName": "Demo Footer",
+            "columns": [
+                {
+                    "key": "legal",
+                    "name": "Legal",
+                    "pages": [
+                        {
+                            "key": "imprint",
+                            "name": "Imprint",
+                            "content": "<h2>Imprint</h2><p><strong>Demo placeholder — replace with your real legal notice before going live.</strong></p><p>FIB Booking Demo Operator<br>Demo Street 1<br>00000 Demo City</p><p>Represented by: The Demo Operator<br>Contact: hello@example.invalid</p>"
+                        },
+                        {
+                            "key": "privacy",
+                            "name": "Privacy Policy",
+                            "content": "<h2>Privacy Policy</h2><p><strong>Demo placeholder — replace with your real privacy policy before going live.</strong></p><p>This demo shop processes personal data for ticket purchases (name, e-mail, address), ticket fulfilment (QR scan logs with configurable retention and anonymization) and the customer-to-customer resale market (listing and settlement data). Scan logs store only a token fingerprint, never the scan credential itself.</p>"
+                        },
+                        {
+                            "key": "terms",
+                            "name": "Terms & Conditions",
+                            "content": "<h2>Terms &amp; Conditions</h2><p><strong>Demo placeholder — replace with your real terms before going live.</strong></p><p>Tickets are personal entitlements represented by a QR code. Reselling is only available between private customers through the integrated resale market; the platform charges no fee on resales. A resold ticket is re-issued with a fresh QR code — the seller's copy becomes invalid at the moment of sale.</p>"
+                        },
+                        {
+                            "key": "withdrawal",
+                            "name": "Right of Withdrawal",
+                            "content": "<h2>Right of Withdrawal</h2><p><strong>Demo placeholder — replace with your real withdrawal policy before going live.</strong></p><p>Note for ticket shops: leisure-event tickets for a specific date are commonly exempt from the statutory right of withdrawal (e.g. § 312g (2) No. 9 BGB) — verify with your legal counsel which of your products are affected.</p>"
+                        }
+                    ]
+                }
+            ]
+        },
+        "service": {
+            "rootName": "Demo Service",
+            "pages": [
+                {
+                    "key": "how-it-works",
+                    "name": "How Booking Works",
+                    "content": "<h2>How booking works</h2><ol><li>Pick a date and time in the calendar — the seat or capacity is held for you for a short time.</li><li>Check out as usual; payment confirms the booking.</li><li>You receive your ticket as a QR code: by e-mail (PDF), in your account area, and as an Apple/Google Wallet pass.</li><li>At the entrance the QR code is scanned — multi-entry passes can check in and out as often as their validity allows.</li><li>Plans changed? Offer your ticket on the resale market: another customer buys it, you get the full price — the old QR code is invalidated automatically.</li></ol>"
+                },
+                {
+                    "key": "faq",
+                    "name": "FAQ",
+                    "content": "<h2>Frequently asked questions</h2><h3>Where do I find my tickets?</h3><p>In your account under “My tickets” — including wallet downloads.</p><h3>Can I resell my ticket?</h3><p>Yes — list it from your account at a price of your choice. The sale is private customer-to-customer; the platform charges no fee. After the sale the buyer receives a fresh QR code and your copy stops working.</p><h3>What if I scanned my ticket already?</h3><p>Used tickets cannot be listed, and listing a ticket and then using it cancels the listing automatically.</p><h3>How long are passes valid?</h3><p>Day passes 24h from first use, monthly passes one month from purchase, annual passes one year from your chosen start date.</p>"
+                },
+                {
+                    "key": "contact",
+                    "name": "Contact",
+                    "content": "<h2>Contact</h2><p>Questions about a booking? Include your booking number (starts with “B-”) or ticket number and we will get back to you.</p>",
+                    "contactForm": true
+                }
+            ]
+        }
+    },
+    "customers": [
+        {
+            "key": "anna",
+            "customerNumber": "FIB-DEMO-CUST-1",
+            "email": "anna.demo@fibenacci.de",
+            "password": "fib-demo-customer!",
+            "firstName": "Anna",
+            "lastName": "Beispiel",
+            "street": "Musterallee 12",
+            "zipcode": "10115",
+            "city": "Berlin"
+        },
+        {
+            "key": "max",
+            "customerNumber": "FIB-DEMO-CUST-2",
+            "email": "max.demo@fibenacci.de",
+            "password": "fib-demo-customer!",
+            "firstName": "Max",
+            "lastName": "Muster",
+            "street": "Beispielweg 3",
+            "zipcode": "20095",
+            "city": "Hamburg"
+        }
+    ],
+    "orders": [
+        {
+            "key": "anna-concert",
+            "customer": "anna",
+            "productNumber": "FIB-DEMO-1",
+            "resource": "main_stage",
+            "orderNumber": "FIB-DEMO-ORDER-1",
+            "bookingNumber": "B-DEMO-ANNA-1",
+            "startsAtOffsetDays": 3,
+            "startTime": "18:00",
+            "durationMinutes": 120,
+            "quantity": 1
+        },
+        {
+            "key": "max-concert",
+            "customer": "max",
+            "productNumber": "FIB-DEMO-1",
+            "resource": "main_stage",
+            "orderNumber": "FIB-DEMO-ORDER-2",
+            "bookingNumber": "B-DEMO-MAX-1",
+            "startsAtOffsetDays": 10,
+            "startTime": "20:00",
+            "durationMinutes": 120,
+            "quantity": 1,
+            "resale": {
+                "askPrice": 39.0
+            }
+        },
+        {
+            "key": "anna-daypass",
+            "customer": "anna",
+            "productNumber": "FIB-PASS-DAY",
+            "resource": "transit_network",
+            "orderNumber": "FIB-DEMO-ORDER-3",
+            "bookingNumber": "B-DEMO-ANNA-2",
+            "startsAtOffsetDays": 1,
+            "startTime": "00:00",
+            "durationMinutes": 1440,
+            "quantity": 1
+        }
+    ]
 }

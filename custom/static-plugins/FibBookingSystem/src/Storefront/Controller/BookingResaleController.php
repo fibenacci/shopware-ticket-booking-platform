@@ -8,6 +8,7 @@ use FibBookingSystem\Checkout\Cart\Resale\ResaleLineItemFactory;
 use FibBookingSystem\Core\Domain\Resale\BookingResaleService;
 use FibBookingSystem\Core\Domain\Resale\ListingMode;
 use FibBookingSystem\Core\Domain\Resale\ListingReadService;
+use FibBookingSystem\Core\Domain\Security\BookingRateLimiter;
 use FibBookingSystem\FibBookingException;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartService;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
@@ -35,6 +36,7 @@ class BookingResaleController extends StorefrontController
         private readonly ListingReadService $listingReadService,
         private readonly ResaleLineItemFactory $lineItemFactory,
         private readonly CartService $cartService,
+        private readonly BookingRateLimiter $rateLimiter,
     ) {
     }
 
@@ -44,8 +46,12 @@ class BookingResaleController extends StorefrontController
         defaults: ['_httpCache' => false],
         methods: ['GET'],
     )]
-    public function index(SalesChannelContext $context): Response
-    {
+    public function index(
+        Request $request,
+        SalesChannelContext $context,
+    ): Response {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::READ, $request->getClientIp());
+
         return $this->renderStorefront('@FibBookingSystem/storefront/page/fib-booking/resale-index.html.twig', [
             'listings' => $this->listingReadService->fetchActiveFixedPrice(),
         ]);
@@ -59,8 +65,11 @@ class BookingResaleController extends StorefrontController
     )]
     public function buy(
         string $listingId,
+        Request $request,
         SalesChannelContext $context,
     ): Response {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
+
         if (!Uuid::isValid($listingId)) {
             throw new NotFoundHttpException();
         }
@@ -86,6 +95,8 @@ class BookingResaleController extends StorefrontController
         Request $request,
         SalesChannelContext $context,
     ): Response {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
+
         $customer = $this->requireCustomer($context);
 
         if (!Uuid::isValid($ticketId)) {
@@ -118,8 +129,11 @@ class BookingResaleController extends StorefrontController
     )]
     public function cancel(
         string $listingId,
+        Request $request,
         SalesChannelContext $context,
     ): Response {
+        $this->rateLimiter->ensureAccepted(BookingRateLimiter::WRITE, $request->getClientIp());
+
         $customer = $this->requireCustomer($context);
 
         if (!Uuid::isValid($listingId)) {

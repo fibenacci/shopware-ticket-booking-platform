@@ -26,7 +26,7 @@ class SeededScannerAccessTest extends TestCase
     {
         $this->connection = self::container()->get(Connection::class);
 
-        $this->createSeeder(self::container())->seed(Context::createCLIContext(), withReservation: false);
+        $this->createSeeder(self::container())->seed(Context::createCLIContext(), withReservation: false, withOrders: false);
     }
 
     public function testScannerUserIsNotAnAdmin(): void
@@ -90,7 +90,7 @@ class SeededScannerAccessTest extends TestCase
 
     public function testSeedingTwiceDoesNotDuplicateRoleOrUser(): void
     {
-        $this->createSeeder(self::container())->seed(Context::createCLIContext(), withReservation: false);
+        $this->createSeeder(self::container())->seed(Context::createCLIContext(), withReservation: false, withOrders: false);
 
         static::assertSame('1', (string) $this->connection->fetchOne(
             <<<'SQL'

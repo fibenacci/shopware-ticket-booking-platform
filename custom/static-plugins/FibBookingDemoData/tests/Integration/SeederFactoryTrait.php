@@ -6,9 +6,14 @@ namespace FibBookingDemoData\Tests\Integration;
 
 use FibBookingDemoData\Service\BookingDemoDataSeeder;
 use FibBookingDemoData\Service\CatalogSeeder;
+use FibBookingDemoData\Service\CustomerSeeder;
 use FibBookingDemoData\Service\DemoCmsSeeder;
+use FibBookingDemoData\Service\OrderSeeder;
 use FibBookingDemoData\Service\ReservationSeeder;
 use FibBookingDemoData\Service\ScannerAccessSeeder;
+use FibBookingDemoData\Service\ShopLookups;
+use FibBookingDemoData\Service\ShopStructureSeeder;
+use FibBookingSystem\Core\Domain\Resale\BookingResaleService;
 use FibBookingSystem\Core\Domain\Ticket\BookingTicketService;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -23,6 +28,12 @@ trait SeederFactoryTrait
 {
     private function createSeeder(ContainerInterface $container): BookingDemoDataSeeder
     {
+        $lookups = new ShopLookups(
+            $container->get('sales_channel.repository'),
+            $container->get('country.repository'),
+            $container->get('salutation.repository'),
+        );
+
         return new BookingDemoDataSeeder(
             new CatalogSeeder(
                 $container->get('product.repository'),
@@ -47,6 +58,26 @@ trait SeederFactoryTrait
                 $container->get('user.repository'),
                 $container->get('locale.repository'),
                 $container->get(SystemConfigService::class),
+            ),
+            new ShopStructureSeeder(
+                $container->get('cms_page.repository'),
+                $container->get('category.repository'),
+                $container->get('sales_channel.repository'),
+                $container->get('product.repository'),
+            ),
+            new CustomerSeeder(
+                $container->get('customer.repository'),
+                $lookups,
+            ),
+            new OrderSeeder(
+                $container->get('order.repository'),
+                $container->get('product.repository'),
+                $container->get('fib_booking_reservation.repository'),
+                $container->get('fib_booking_ticket.repository'),
+                $container->get('state_machine_state.repository'),
+                $lookups,
+                $this->createStub(BookingTicketService::class),
+                $this->createStub(BookingResaleService::class),
             ),
         );
     }

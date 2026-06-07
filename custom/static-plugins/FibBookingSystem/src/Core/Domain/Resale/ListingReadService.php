@@ -17,7 +17,7 @@ use Shopware\Core\Framework\Uuid\Uuid;
  * set-based reads over guard columns that are not in the DAL definition.
  *
  * @phpstan-type BrowseRow array{listing_id: string, ask_price: float, created_at: string, ticket_number: string, seat_label: string|null, resource_name: string, starts_at: string, ends_at: string}
- * @phpstan-type AccountListing array{listingId: string, askPrice: float}
+ * @phpstan-type AccountListing array{listingId: string, askPrice: float, status: string}
  */
 class ListingReadService
 {
@@ -67,7 +67,9 @@ class ListingReadService
 
     /**
      * Listing state for the account ticket list: which of MY tickets are
-     * currently up for sale, and at what price.
+     * currently up for sale (or claimed by a buyer order), and at what price.
+     * `pending` is included so the seller sees WHY the sell form is gone —
+     * but only `active` listings are seller-cancellable.
      *
      * @param list<string> $ticketIds
      *
@@ -86,15 +88,15 @@ class ListingReadService
             return [];
         }
 
-        /** @var list<array{ticket_id: string, listing_id: string, ask_price: string|float}> $rows */
+        /** @var list<array{ticket_id: string, listing_id: string, ask_price: string|float, status: string}> $rows */
         $rows = $this->connection->fetchAllAssociative(
             <<<'SQL'
-                SELECT LOWER(HEX(ticket_id)) AS ticket_id, LOWER(HEX(id)) AS listing_id, ask_price
+                SELECT LOWER(HEX(ticket_id)) AS ticket_id, LOWER(HEX(id)) AS listing_id, ask_price, status
                 FROM fib_booking_listing
-                WHERE ticket_id IN (:ids) AND status = :active
+                WHERE ticket_id IN (:ids) AND status IN (:live)
             SQL,
-            ['ids' => $ids, 'active' => ListingStatus::ACTIVE],
-            ['ids' => ArrayParameterType::BINARY],
+            ['ids' => $ids, 'live' => [ListingStatus::ACTIVE, ListingStatus::PENDING]],
+            ['ids' => ArrayParameterType::BINARY, 'live' => ArrayParameterType::STRING],
         );
 
         $result = [];
@@ -103,6 +105,7 @@ class ListingReadService
             $result[$row['ticket_id']] = [
                 'listingId' => $row['listing_id'],
                 'askPrice' => (float) $row['ask_price'],
+                'status' => $row['status'],
             ];
         }
 

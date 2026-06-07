@@ -10,12 +10,12 @@ use Doctrine\DBAL\Connection;
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketCollection;
 use FibBookingSystem\Core\Content\BookingTicket\BookingTicketEntity;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
+use FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator;
 use RuntimeException;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Uuid\Uuid;
 
 /**
@@ -26,7 +26,15 @@ class WalletPassService
 {
     public const PROVIDER_APPLE = 'apple';
     public const PROVIDER_GOOGLE = 'google';
-    public const DEFAULT_LINK_TTL_DAYS = 90;
+
+    /**
+     * Wallet links are bearer credentials (no login behind them): a leaked
+     * URL downloads the pass until it expires, and HMAC signatures cannot be
+     * revoked short of rotating the app secret. 14 days covers the mail
+     * use case (download right after purchase) while the account area mints
+     * fresh links on every page view anyway.
+     */
+    public const DEFAULT_LINK_TTL_DAYS = 14;
 
     /**
      * The DBAL connection is used for one thing only: reading the
@@ -43,6 +51,7 @@ class WalletPassService
         private readonly AppleWalletPassGenerator $appleGenerator,
         private readonly GoogleWalletLinkGenerator $googleGenerator,
         private readonly WalletLinkSigner $linkSigner,
+        private readonly QrCodeGenerator $qrCodeGenerator,
     ) {
     }
 
@@ -149,25 +158,6 @@ class WalletPassService
     }
 
     /**
-     * Whether the given customer owns the ticket — used by the account area.
-     */
-    public function isOwnedByCustomer(
-        string $ticketId,
-        string $customerId,
-        Context $context,
-    ): bool {
-        if (!Uuid::isValid($ticketId) || !Uuid::isValid($customerId)) {
-            return false;
-        }
-
-        $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('id', $ticketId));
-        $criteria->addFilter(new EqualsFilter('reservation.customerId', $customerId));
-
-        return $this->ticketRepository->searchIds($criteria, $context)->firstId() !== null;
-    }
-
-    /**
      * Which of the given tickets have a stored wallet token. scan_token_cipher
      * is intentionally NOT part of the DAL definition (see plugin Security.md),
      * so presence is read via the same documented raw exception as
@@ -191,6 +181,54 @@ class WalletPassService
         );
 
         return array_fill_keys($rows, true);
+    }
+
+    /**
+     * Batched QR data URIs for the account ticket list: rebuilds each scan
+     * QR from the encrypted token (same documented raw exception as
+     * loadTicketData — scan_token_cipher is not in the DAL definition).
+     * Tickets without a stored cipher (pre-wallet era) are simply absent.
+     *
+     * @param array<string> $ticketIds
+     *
+     * @return array<string, string> ticket id (hex) => image data URI
+     */
+    public function qrDataUris(array $ticketIds): array
+    {
+        if ($ticketIds === []) {
+            return [];
+        }
+
+        /** @var list<array{id: string, ticket_number: string, scan_token_cipher: string}> $rows */
+        $rows = $this->connection->fetchAllAssociative(
+            <<<'SQL'
+                SELECT LOWER(HEX(id)) AS id, ticket_number, scan_token_cipher
+                FROM fib_booking_ticket
+                WHERE id IN (:ids) AND scan_token_cipher IS NOT NULL
+            SQL,
+            ['ids' => Uuid::fromHexToBytesList($ticketIds)],
+            ['ids' => ArrayParameterType::BINARY],
+        );
+
+        $result = [];
+
+        foreach ($rows as $row) {
+            try {
+                $scanToken = $this->tokenCipher->decrypt($row['scan_token_cipher']);
+            } catch (RuntimeException) {
+                continue; // undecryptable (rotated secret) — no QR, no crash
+            }
+
+            $qrPayload = json_encode([
+                'type' => 'fib_booking_ticket',
+                'ticketNumber' => $row['ticket_number'],
+                'scanToken' => $scanToken,
+            ], JSON_THROW_ON_ERROR);
+
+            $result[$row['id']] = $this->qrCodeGenerator->generateDataUri($qrPayload);
+        }
+
+        return $result;
     }
 
     private function fetchPassWorthyTicket(

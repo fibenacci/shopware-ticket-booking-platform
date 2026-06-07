@@ -321,6 +321,7 @@ a:focus-visible,
     border-color: var(--fib-glass-border);
     color: var(--fib-text);
     border-radius: 0.75rem;
+    padding: 0.625rem 0.875rem;
 
     &:focus {
         background: rgba(255, 255, 255, 0.09);
@@ -332,6 +333,60 @@ a:focus-visible,
     &::placeholder {
         color: var(--fib-text-dim);
     }
+}
+
+// Vertical rhythm for EVERY form (contact, account, checkout, newsletter):
+// Storefront zeroes the card spacers and keeps labels at 3px — on our glass
+// surfaces that reads cramped (fields glued to the card edges).
+.form-label {
+    margin-bottom: 0.45rem;
+    color: var(--fib-text);
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+textarea.form-control {
+    min-height: 8rem;
+}
+
+// Footnotes ("Fields marked with * are required") and the privacy notice
+// were nearly invisible and glued to the fields above.
+.form-text,
+.privacy-notice {
+    color: var(--fib-text-dim);
+    margin-top: 0.75rem;
+    line-height: 1.55;
+
+    a {
+        color: color-mix(in srgb, var(--fib-aurora-two) 80%, white);
+    }
+}
+
+// Submit row of CMS forms: breathing room above, never glued to the edge.
+.cms-element-form .form-content {
+    margin-top: 1.25rem;
+}
+
+// Storefront zeroes --bs-card-spacer-* — fine for its borderless cards,
+// wrong for our glass surfaces: titles sat ON the top border and submit
+// buttons clipped at the bottom. Cards are visible surfaces here, so their
+// bodies get real padding again (components with own inner padding keep
+// working — they pad relative to the body).
+.card {
+    --bs-card-spacer-y: 1.5rem;
+    --bs-card-spacer-x: 1.5rem;
+}
+
+.card .card-title {
+    margin-bottom: 1.25rem;
+}
+
+// Product boxes manage their own internal layout — keep them compact.
+.product-box {
+    --bs-card-spacer-y: 1rem;
+    --bs-card-spacer-x: 1rem;
 }
 
 // ---------------------------------------------------------------------------
@@ -432,9 +487,61 @@ a:focus-visible,
     padding-bottom: 4rem;
 }
 
+// Breadcrumbs as glass pills: every crumb is its own chip, the current page
+// gets the accent ring. Bootstrap's slash divider is dropped — the pill gap
+// carries the separation.
 .breadcrumb {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding: 1rem 0 0.5rem;
     margin-bottom: 0.75rem;
+}
+
+.breadcrumb-item {
+    @include fib-glass;
+
+    border-radius: 999px;
+    padding: 0.35rem 1rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--fib-text-dim);
+    transition:
+        border-color 0.2s var(--fib-lift),
+        transform 0.2s var(--fib-lift),
+        box-shadow 0.2s var(--fib-lift);
+
+    // Bootstrap's "/" divider + its left padding — gone, pills carry the gap.
+    + .breadcrumb-item {
+        padding-left: 1rem;
+
+        &::before {
+            display: none;
+        }
+    }
+
+    a {
+        color: var(--fib-text-dim);
+        text-decoration: none;
+
+        &:hover {
+            color: #ffffff;
+        }
+    }
+
+    &:has(a):hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--fib-aurora-two) 50%, var(--fib-glass-border));
+        box-shadow: 0 8px 22px rgba(4, 6, 12, 0.45);
+    }
+
+    &.active,
+    &[aria-current='page'] {
+        color: #ffffff;
+        border-color: color-mix(in srgb, var(--fib-aurora-one) 50%, var(--fib-glass-border));
+        background: color-mix(in srgb, var(--fib-aurora-one) 14%, transparent);
+    }
 }
 
 // CMS blocks breathe instead of stacking edge-to-edge.
@@ -517,15 +624,148 @@ a:focus-visible,
     border-radius: 999px;
 }
 
+// Bootstrap's muted gray is dark-on-dark on our palette — barely legible
+// (e.g. the booking window line on ticket cards).
+.text-muted {
+    color: var(--fib-text-dim) !important;
+}
+
+// List groups (account sidebar et al.): Bootstrap paints them light-theme.
+.list-group-item {
+    background: transparent;
+    color: var(--fib-text);
+    border-color: var(--fib-glass-border);
+    padding: 0.75rem 1.25rem;
+
+    &:hover,
+    &:focus {
+        background: rgba(255, 255, 255, 0.06);
+        color: #ffffff;
+    }
+
+    &.active,
+    &.is-active {
+        background: color-mix(in srgb, var(--fib-aurora-one) 22%, transparent);
+        border-color: color-mix(in srgb, var(--fib-aurora-one) 45%, transparent);
+        color: #ffffff;
+    }
+}
+
+// Account navigation — one glass panel language for BOTH surfaces that
+// render page/account/sidebar.html.twig: the account sidebar and the header
+// account dropdown. Translucent header/footer rows, dimmed links that light
+// up, accent bar on the active entry.
+.account-menu-inner {
+    overflow: hidden;
+}
+
+.account-aside-header {
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--fib-glass-border);
+    padding: 1.1rem 1.25rem;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.account-aside-item {
+    border: 0;
+    border-left: 2px solid transparent;
+    padding: 0.8rem 1.25rem;
+    color: var(--fib-text-dim);
+    transition:
+        background 0.2s var(--fib-lift),
+        color 0.2s var(--fib-lift),
+        border-color 0.2s var(--fib-lift);
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #ffffff;
+    }
+
+    &.is-active,
+    &.active {
+        background: color-mix(in srgb, var(--fib-aurora-one) 14%, transparent);
+        border-left-color: var(--fib-aurora-two);
+        color: #ffffff;
+    }
+}
+
+.account-aside-footer {
+    background: rgba(255, 255, 255, 0.04);
+    border-top: 1px solid var(--fib-glass-border);
+    padding: 0.75rem 1rem;
+}
+
+.account-aside-btn {
+    color: var(--fib-text-dim);
+    text-decoration: none;
+
+    &:hover {
+        color: #ffffff;
+    }
+}
+
+// Header account dropdown: the dropdown itself is already a glass panel —
+// flatten the embedded sidebar card so it doesn't render box-in-box.
+// NOTE: .account-menu is the WRAPPER around the header button — sizing
+// belongs on the .dropdown-menu panel only, never on the wrapper (a
+// min-width there shoves the account icon out of the actions row).
+.account-menu {
+    .dropdown-menu {
+        min-width: 16rem;
+    }
+
+    .account-menu-header {
+        padding: 0.9rem 1.25rem 0.75rem;
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .account-menu-inner {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        border-radius: 0;
+
+        @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+    }
+
+    // The dropdown repeats the greeting from the dropdown-header — drop the
+    // inner duplicate row.
+    .account-aside-header {
+        display: none;
+    }
+}
+
+.account-welcome h1 {
+    color: var(--fib-text);
+}
+
+// Account ticket cards: the scan QR sits on a white chip — QR codes need
+// light contrast on a dark theme to stay scannable from the screen.
+.fib-booking-ticket-qr {
+    background: #ffffff;
+    border-radius: 0.875rem;
+    padding: 0.5rem;
+    line-height: 0;
+    box-shadow: 0 6px 24px rgba(4, 6, 12, 0.45);
+
+    img {
+        display: block;
+        border-radius: 0.5rem;
+    }
+}
+
 .alert {
     @include fib-glass(rgba(22, 25, 38, 0.65));
 
     color: var(--fib-text);
 }
 
-.breadcrumb {
-    background: transparent;
-}
 
 // ---------------------------------------------------------------------------
 // Motion & accessibility guards.

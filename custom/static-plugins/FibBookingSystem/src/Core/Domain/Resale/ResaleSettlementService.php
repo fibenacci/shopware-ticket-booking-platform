@@ -6,7 +6,9 @@ namespace FibBookingSystem\Core\Domain\Resale;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use FibBookingSystem\Core\Domain\Ticket\BookingTicket;
 use FibBookingSystem\Core\Domain\Time\UtcDateTime;
+use FibBookingSystem\FibBookingException;
 use Psr\Log\LoggerInterface;
 use Shopware\Core\Defaults;
 use Shopware\Core\Framework\Context;
@@ -43,6 +45,53 @@ class ResaleSettlementService
         private readonly TicketTransferService $transferService,
         private readonly LoggerInterface $logger,
     ) {
+    }
+
+    /**
+     * Atomic claim at order placement (double-sell guard): every resale
+     * listing the order references flips `active → pending` in one UPDATE —
+     * the database decides concurrent claims. From this moment the listing
+     * drops out of every other cart (the processor only accepts `active`).
+     * A claim that finds the listing already taken is logged; that buyer's
+     * settlement will conflict loudly instead of double-charging silently.
+     *
+     * No TTL on purpose: slow payment methods (invoice!) legitimately take
+     * days. The claim is released when the order is cancelled or refunded.
+     *
+     * @return int number of listings claimed
+     */
+    public function claimForOrder(string $orderId): int
+    {
+        $claimed = 0;
+
+        foreach ($this->fetchResaleOrderItems($orderId) as $item) {
+            $affected = $this->connection->executeStatement(
+                <<<'SQL'
+                    UPDATE fib_booking_listing
+                    SET status = :pending, pending_order_id = :orderId, updated_at = UTC_TIMESTAMP(3)
+                    WHERE id = :listingId AND status = :active
+                SQL,
+                [
+                    'pending' => ListingStatus::PENDING,
+                    'orderId' => Uuid::fromHexToBytes($orderId),
+                    'listingId' => Uuid::fromHexToBytes($item['listing_id']),
+                    'active' => ListingStatus::ACTIVE,
+                ],
+            );
+
+            if ($affected === 0) {
+                $this->logger->warning('Resale claim lost: listing {listingId} was no longer active when order {orderId} was placed.', [
+                    'listingId' => $item['listing_id'],
+                    'orderId' => $orderId,
+                ]);
+
+                continue;
+            }
+
+            ++$claimed;
+        }
+
+        return $claimed;
     }
 
     public function settleForOrderTransaction(
@@ -111,6 +160,29 @@ class ResaleSettlementService
         string $orderId,
         string $reason,
     ): int {
+        // Cancelled before payment: the claim is released and the listing is
+        // sellable again — the seller lost nothing.
+        $released = $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE fib_booking_listing
+                SET status = :active, pending_order_id = NULL, updated_at = UTC_TIMESTAMP(3)
+                WHERE pending_order_id = :orderId AND status = :pending
+            SQL,
+            [
+                'active' => ListingStatus::ACTIVE,
+                'orderId' => Uuid::fromHexToBytes($orderId),
+                'pending' => ListingStatus::PENDING,
+            ],
+        );
+
+        if ($released > 0) {
+            $this->logger->info('Released {listings} pending resale claim(s) of cancelled order {orderId} ({reason}).', [
+                'listings' => $released,
+                'orderId' => $orderId,
+                'reason' => $reason,
+            ]);
+        }
+
         $revoked = $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE fib_booking_ticket ticket
@@ -149,10 +221,12 @@ class ResaleSettlementService
         Context $context,
     ): bool {
         return $this->connection->transactional(function () use ($item, $orderId, $buyerCustomerId, $context): bool {
-            /** @var array{ticket_id: string, status: string, sold_order_id: string|null}|false $listing */
+            /** @var array{ticket_id: string, status: string, sold_order_id: string|null, pending_order_id: string|null}|false $listing */
             $listing = $this->connection->fetchAssociative(
                 <<<'SQL'
-                    SELECT LOWER(HEX(ticket_id)) AS ticket_id, status, LOWER(HEX(sold_order_id)) AS sold_order_id
+                    SELECT LOWER(HEX(ticket_id)) AS ticket_id, status,
+                    LOWER(HEX(sold_order_id)) AS sold_order_id,
+                    LOWER(HEX(pending_order_id)) AS pending_order_id
                     FROM fib_booking_listing WHERE id = :listingId
                     FOR UPDATE
                 SQL,
@@ -173,7 +247,12 @@ class ResaleSettlementService
                 return false;
             }
 
-            if ($listing['status'] !== ListingStatus::ACTIVE) {
+            // Settleable: the order's OWN pending claim, or (orders created
+            // outside the storefront claim path) a still-active listing.
+            $ownClaim = $listing['status'] === ListingStatus::PENDING
+                && $listing['pending_order_id'] === strtolower($orderId);
+
+            if (!$ownClaim && $listing['status'] !== ListingStatus::ACTIVE) {
                 $this->logger->error('Resale settlement conflict: listing {listingId} is "{status}" but order {orderId} paid for it — refund the buyer manually.', [
                     'listingId' => $item['listing_id'],
                     'status' => $listing['status'],
@@ -183,12 +262,16 @@ class ResaleSettlementService
                 return false;
             }
 
-            $newTicket = $this->transferService->transfer($listing['ticket_id'], $context, $buyerCustomerId);
+            $newTicket = $this->transferOrCloseConflicted($listing['ticket_id'], $item['listing_id'], $orderId, $buyerCustomerId, $context);
+
+            if ($newTicket === null) {
+                return false;
+            }
 
             $this->connection->executeStatement(
                 <<<'SQL'
                     UPDATE fib_booking_listing
-                    SET status = :sold, active_ticket_id = NULL,
+                    SET status = :sold, active_ticket_id = NULL, pending_order_id = NULL,
                     sold_to_customer_id = :buyerId, sold_price = :soldPrice, sold_at = :soldAt,
                     sold_order_id = :orderId, sold_order_version_id = :orderVersionId,
                     sold_ticket_id = :soldTicketId, updated_at = UTC_TIMESTAMP(3)
@@ -208,6 +291,45 @@ class ResaleSettlementService
 
             return true;
         });
+    }
+
+    /**
+     * Runs the transfer primitive for a settling listing. A transfer failure
+     * (e.g. the seller scanned the ticket after the buyer had already paid)
+     * must NEVER escape into the payment state transition — the order has to
+     * reach `paid` regardless. The listing is closed instead and the
+     * conflict logged loudly: refunding the buyer is an operator decision.
+     */
+    private function transferOrCloseConflicted(
+        string $ticketId,
+        string $listingId,
+        string $orderId,
+        string $buyerCustomerId,
+        Context $context,
+    ): ?BookingTicket {
+        try {
+            return $this->transferService->transfer($ticketId, $context, $buyerCustomerId);
+        } catch (FibBookingException $exception) {
+            $this->connection->executeStatement(
+                <<<'SQL'
+                    UPDATE fib_booking_listing
+                    SET status = :cancelled, active_ticket_id = NULL, updated_at = UTC_TIMESTAMP(3)
+                    WHERE id = :listingId
+                SQL,
+                [
+                    'cancelled' => ListingStatus::CANCELLED,
+                    'listingId' => Uuid::fromHexToBytes($listingId),
+                ],
+            );
+
+            $this->logger->error('Resale settlement conflict: ticket of listing {listingId} is no longer transferable ({reason}) but order {orderId} paid for it — refund the buyer manually.', [
+                'listingId' => $listingId,
+                'reason' => $exception->getMessage(),
+                'orderId' => $orderId,
+            ]);
+
+            return null;
+        }
     }
 
     /**

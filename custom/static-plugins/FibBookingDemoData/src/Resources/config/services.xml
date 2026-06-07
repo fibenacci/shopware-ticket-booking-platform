@@ -31,11 +31,43 @@
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
         </service>
 
+        <service id="FibBookingDemoData\Service\ShopStructureSeeder">
+            <argument type="service" id="cms_page.repository"/>
+            <argument type="service" id="category.repository"/>
+            <argument type="service" id="sales_channel.repository"/>
+            <argument type="service" id="product.repository"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\ShopLookups">
+            <argument type="service" id="sales_channel.repository"/>
+            <argument type="service" id="country.repository"/>
+            <argument type="service" id="salutation.repository"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\CustomerSeeder">
+            <argument type="service" id="customer.repository"/>
+            <argument type="service" id="FibBookingDemoData\Service\ShopLookups"/>
+        </service>
+
+        <service id="FibBookingDemoData\Service\OrderSeeder">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="product.repository"/>
+            <argument type="service" id="fib_booking_reservation.repository"/>
+            <argument type="service" id="fib_booking_ticket.repository"/>
+            <argument type="service" id="state_machine_state.repository"/>
+            <argument type="service" id="FibBookingDemoData\Service\ShopLookups"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\BookingTicketService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Resale\BookingResaleService"/>
+        </service>
+
         <service id="FibBookingDemoData\Service\BookingDemoDataSeeder">
             <argument type="service" id="FibBookingDemoData\Service\CatalogSeeder"/>
             <argument type="service" id="FibBookingDemoData\Service\ReservationSeeder"/>
             <argument type="service" id="FibBookingDemoData\Service\DemoCmsSeeder"/>
             <argument type="service" id="FibBookingDemoData\Service\ScannerAccessSeeder"/>
+            <argument type="service" id="FibBookingDemoData\Service\ShopStructureSeeder"/>
+            <argument type="service" id="FibBookingDemoData\Service\CustomerSeeder"/>
+            <argument type="service" id="FibBookingDemoData\Service\OrderSeeder"/>
         </service>
 
         <service id="FibBookingDemoData\Command\SeedDemoDataCommand">

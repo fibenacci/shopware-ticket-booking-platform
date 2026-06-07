@@ -116,7 +116,7 @@ services:
         environment:
             - SERVER_NAME=:80
             - MERCURE_PUBLISHER_JWT_KEY=fib-dev-mercure-secret-0123456789abcdef!
-            - MERCURE_SUBSCRIBER_JWT_KEY=fib-dev-mercure-secret-0123456789abcdef!
+            - MERCURE_SUBSCRIBER_JWT_KEY=fib-dev-mercure-subscriber-0123456789abcd!
             - 'MERCURE_EXTRA_DIRECTIVES=anonymous
               cors_origins *'
         networks:

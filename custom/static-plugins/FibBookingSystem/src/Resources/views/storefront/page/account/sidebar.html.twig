@@ -1,0 +1,14 @@
+{% sw_extends '@Storefront/storefront/page/account/sidebar.html.twig' %}
+
+{# "My tickets" right after Orders — this template renders BOTH the account
+   sidebar and the header account dropdown (Storefront includes it for the
+   widget), so the entry shows up in either place. #}
+{% block page_account_sidebar_link_orders %}
+    {{ parent() }}
+
+    <a href="{{ path('frontend.account.fib_booking.tickets') }}"
+       title="{{ 'fibBooking.account.ticketsHeadline'|trans|striptags }}"
+       class="list-group-item list-group-item-action account-aside-item{% if activeRoute is same as('frontend.account.fib_booking.tickets') %} is-active{% endif %}">
+        {{ 'fibBooking.account.ticketsHeadline'|trans|sw_sanitize }}
+    </a>
+{% endblock %}

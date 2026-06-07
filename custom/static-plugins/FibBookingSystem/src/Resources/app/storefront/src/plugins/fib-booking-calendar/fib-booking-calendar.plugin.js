@@ -3,7 +3,8 @@ import HttpClient from 'src/service/http-client.service';
 
 /**
  * Booking calendar ("Terminkalender") — rendered by the CMS element
- * cms-element-fib-booking-calendar.
+ * cms-element-fib-booking-calendar AND product detail pages of slot
+ * products (shared include component/fib-booking/calendar-widget.html.twig).
  *
  * Month grid over the resource's operator-defined slots:
  *   day status "free"    → green, selectable
@@ -13,11 +14,15 @@ import HttpClient from 'src/service/http-client.service';
  *
  * Booking flow: pick day → pick slot → pick package (product) + quantity →
  * hold is created → product goes to the cart → redirect to checkout.
+ * Seatmap resources swap the quantity input for the seat-picker island.
+ *
+ * Product pages pass a fixed `productId` instead of the package dropdown.
  */
 export default class FibBookingCalendarPlugin extends Plugin {
     static options = {
         resourceId: null,
         resourceName: null,
+        productId: null,
         packages: [],
         monthsAhead: 3,
         calendarUrl: null,
@@ -233,8 +238,10 @@ export default class FibBookingCalendarPlugin extends Plugin {
 
         this._hideError();
 
+        // Product pages bind the calendar to ONE product; CMS calendars let
+        // the visitor pick a package.
         const packageSelect = this.el.querySelector('.fib-booking-calendar-package');
-        const productId = packageSelect ? packageSelect.value : null;
+        const productId = this.options.productId || (packageSelect ? packageSelect.value : null);
 
         if (!productId) {
             this._showError('No bookable package is configured.');

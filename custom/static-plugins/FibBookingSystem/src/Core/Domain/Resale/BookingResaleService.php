@@ -138,13 +138,18 @@ class BookingResaleService
                 LOWER(HEX(COALESCE(ticket.owner_customer_id, reservation.customer_id))) AS owner_customer_id,
                 reservation.starts_at,
                 config.validity_mode,
-                line_item.unit_price
+                -- anti-scalping reference = what the CURRENT owner paid:
+                -- a re-listed resale ticket caps against its own sold price,
+                -- not the original face value (price-cap lineage)
+                COALESCE(prior_listing.sold_price, line_item.unit_price) AS unit_price
                 FROM fib_booking_ticket ticket
                 INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
                 LEFT JOIN order_line_item line_item
                 ON line_item.id = reservation.order_line_item_id AND line_item.version_id = reservation.order_line_item_version_id
                 LEFT JOIN fib_booking_product_config config
                 ON config.product_id = line_item.product_id AND config.product_version_id = line_item.product_version_id
+                LEFT JOIN fib_booking_listing prior_listing
+                ON prior_listing.sold_ticket_id = ticket.id AND prior_listing.status = 'sold'
                 WHERE ticket.id = :ticketId
             SQL,
             ['ticketId' => Uuid::fromHexToBytes($ticketId)],
@@ -211,8 +216,11 @@ class BookingResaleService
 
     /**
      * Anti-scalping price cap (`resaleMaxFactor`, 0/unset = off): ask price
-     * may not exceed factor × the originally paid unit price. Tickets
-     * without an order (manually issued) have no reference price — exempt.
+     * may not exceed factor × what the CURRENT owner paid (the prior sold
+     * price for re-listed resale tickets, the order unit price otherwise —
+     * see the lineage COALESCE in fetchListableRow). Tickets without any
+     * reference price (manually issued, no prior sale) are exempt — that
+     * exemption is deliberate and documented, not an oversight.
      *
      * @param ListableRow $ticket
      */

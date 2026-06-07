@@ -14,6 +14,8 @@ use FibBookingSystem\Core\Domain\Resale\ResaleSettlementService;
 use FibBookingSystem\Core\Domain\Resale\TicketTransferService;
 use FibBookingSystem\Core\Domain\Security\TokenCipher;
 use FibBookingSystem\Core\Domain\Ticket\QrCodeGenerator;
+use FibBookingSystem\Core\Domain\Ticket\TicketScanResult;
+use FibBookingSystem\Core\Domain\Ticket\TicketScanService;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Shopware\Core\Checkout\Cart\Cart;
@@ -33,6 +35,7 @@ use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Shopware\Core\Test\Generator;
+use Shopware\Core\Test\Stub\SystemConfigService\StaticSystemConfigService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -148,6 +151,70 @@ class ResaleFixedPriceFlowTest extends TestCase
 
         // Replays must not find anything left to revoke.
         static::assertSame(0, $service->revokeForOrder($orderId, 'phpunit refund'));
+    }
+
+    public function testOrderPlacementClaimsTheListingAtomically(): void
+    {
+        $listingId = $this->createListing();
+        $orderId = $this->seedResaleOrder($listingId);
+        $service = $this->createSettlementService();
+
+        // First order claims; the listing leaves the market immediately.
+        static::assertSame(1, $service->claimForOrder($orderId));
+        $listing = $this->fetchListingRow($listingId);
+        static::assertSame('pending', $listing['status']);
+        static::assertSame(strtolower($orderId), $listing['pending_order_id']);
+
+        // A pending listing is gone for every other cart …
+        $cart = $this->calculatedCartFor($listingId, self::BUYER_ID);
+        static::assertCount(0, $cart->getLineItems());
+
+        // … and a racing second order cannot claim it.
+        $secondOrderId = $this->seedResaleOrder($listingId);
+        static::assertSame(0, $service->claimForOrder($secondOrderId));
+
+        // The claim owner settles fine.
+        static::assertSame(1, $service->settleForOrder($orderId, $this->context));
+        static::assertSame('sold', $this->fetchListingRow($listingId)['status']);
+
+        // The race loser conflicts loudly instead of transferring anything.
+        static::assertSame(0, $service->settleForOrder($secondOrderId, $this->context));
+    }
+
+    public function testCancelledOrderReleasesThePendingClaim(): void
+    {
+        $listingId = $this->createListing();
+        $orderId = $this->seedResaleOrder($listingId);
+        $service = $this->createSettlementService();
+
+        $service->claimForOrder($orderId);
+        static::assertSame(0, $service->revokeForOrder($orderId, 'phpunit cancel before payment'));
+
+        $listing = $this->fetchListingRow($listingId);
+        static::assertSame('active', $listing['status'], 'cancelling the unpaid order must re-open the listing');
+        static::assertNull($listing['pending_order_id']);
+        static::assertSame('sent', $this->fetchTicketStatus(self::TICKET_ID));
+    }
+
+    public function testScanCancelsLiveListingsAndSettlementStaysCalm(): void
+    {
+        $listingId = $this->createListing();
+        $orderId = $this->seedResaleOrder($listingId);
+        $this->createSettlementService()->claimForOrder($orderId);
+
+        // The seller walks into the venue with the listed ticket.
+        $verdict = $this->createScanService()->scan($this->scanToken, $this->context, 'resale-flow', 'phpunit');
+        static::assertSame(TicketScanResult::VALID, $verdict->verdict);
+
+        // The scan killed the listing on the spot (scan-then-sell guard).
+        $listing = $this->fetchListingRow($listingId);
+        static::assertSame('cancelled', $listing['status']);
+        static::assertNull($listing['active_ticket_id']);
+
+        // The buyer's payment settles to a clean conflict — NO exception
+        // may escape into the payment state transition, no transfer happens.
+        static::assertSame(0, $this->createSettlementService()->settleForOrder($orderId, $this->context));
+        static::assertSame('scanned', $this->fetchTicketStatus(self::TICKET_ID));
     }
 
     public function testCartProcessorPricesActiveListingsTaxFreeAtAskPrice(): void
@@ -329,6 +396,16 @@ class ResaleFixedPriceFlowTest extends TestCase
         );
     }
 
+    private function createScanService(): TicketScanService
+    {
+        return new TicketScanService(
+            $this->connection,
+            self::container()->get('fib_booking_ticket.repository'),
+            self::container()->get('fib_booking_scan_log.repository'),
+            new StaticSystemConfigService([]),
+        );
+    }
+
     private function createSettlementService(): ResaleSettlementService
     {
         return new ResaleSettlementService(
@@ -344,7 +421,7 @@ class ResaleFixedPriceFlowTest extends TestCase
     }
 
     /**
-     * @return array{status: string, active_ticket_id: string|null, sold_to_customer_id: string|null, sold_price: string|float|null, sold_order_id: string|null, sold_ticket_id: string|null}
+     * @return array{status: string, active_ticket_id: string|null, sold_to_customer_id: string|null, sold_price: string|float|null, sold_order_id: string|null, sold_ticket_id: string|null, pending_order_id: string|null}
      */
     private function fetchListingRow(string $listingId): array
     {
@@ -352,7 +429,8 @@ class ResaleFixedPriceFlowTest extends TestCase
             <<<'SQL'
                 SELECT status, LOWER(HEX(active_ticket_id)) AS active_ticket_id,
                 LOWER(HEX(sold_to_customer_id)) AS sold_to_customer_id, sold_price,
-                LOWER(HEX(sold_order_id)) AS sold_order_id, LOWER(HEX(sold_ticket_id)) AS sold_ticket_id
+                LOWER(HEX(sold_order_id)) AS sold_order_id, LOWER(HEX(sold_ticket_id)) AS sold_ticket_id,
+                LOWER(HEX(pending_order_id)) AS pending_order_id
                 FROM fib_booking_listing WHERE id = :id
             SQL,
             ['id' => Uuid::fromHexToBytes($listingId)],
@@ -493,6 +571,14 @@ class ResaleFixedPriceFlowTest extends TestCase
             <<<'SQL'
                 DELETE listing FROM fib_booking_listing listing
                 INNER JOIN fib_booking_ticket ticket ON ticket.id = listing.ticket_id
+                INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
+                WHERE reservation.booking_number = 'B-RESALE-FLOW'
+                SQL,
+        );
+        $this->connection->executeStatement(
+            <<<'SQL'
+                DELETE log FROM fib_booking_scan_log log
+                INNER JOIN fib_booking_ticket ticket ON ticket.id = log.ticket_id
                 INNER JOIN fib_booking_reservation reservation ON reservation.id = ticket.reservation_id
                 WHERE reservation.booking_number = 'B-RESALE-FLOW'
                 SQL,
