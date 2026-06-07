@@ -19,6 +19,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SalesChannel\Aggregate\SalesChannelDomain\SalesChannelDomainCollection;
 use Shopware\Core\System\SalesChannel\Aggregate\SalesChannelDomain\SalesChannelDomainEntity;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class BookingTicketMailSubscriber implements EventSubscriberInterface
@@ -39,6 +40,8 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         private readonly EntityRepository $ticketRepository,
         private readonly WalletPassService $walletService,
         private readonly TicketDocumentService $ticketDocumentService,
+        private readonly IcsCalendarGenerator $icsCalendarGenerator,
+        private readonly SystemConfigService $systemConfigService,
     ) {
     }
 
@@ -89,22 +92,11 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
             'contentPlain' => $template->getTranslation('contentPlain'),
         ];
 
-        // Attach the ticket PDF (QR codes) — same document that appears in
-        // the administration order detail.
-        $orderId = $reservation->getOrderId();
+        $customerName = trim(sprintf('%s %s', $customer->getFirstName(), $customer->getLastName()));
+        $attachments = $this->collectAttachments($reservation, $ticket, $email, $customerName, $salesChannelId, $context);
 
-        if (is_string($orderId)) {
-            $document = $this->ticketDocumentService->getOrderTicketPdf($orderId, $context);
-
-            if ($document !== null) {
-                $data['binAttachments'] = [
-                    [
-                        'content' => $document->getContent(),
-                        'fileName' => $document->getName(),
-                        'mimeType' => $document->getContentType(),
-                    ],
-                ];
-            }
+        if ($attachments !== []) {
+            $data['binAttachments'] = $attachments;
         }
 
         $templateData = [
@@ -132,12 +124,102 @@ class BookingTicketMailSubscriber implements EventSubscriberInterface
         ], $context);
     }
 
+    /**
+     * Gathers the mail attachments: the ticket PDF (QR codes) and — opt-out
+     * per product, default on — the .ics calendar invite for the booked slot.
+     *
+     * @return list<array{content: string, fileName: string, mimeType: string}>
+     */
+    private function collectAttachments(
+        BookingReservationEntity $reservation,
+        BookingTicket $ticket,
+        string $email,
+        string $customerName,
+        ?string $salesChannelId,
+        Context $context,
+    ): array {
+        $attachments = [];
+
+        // Ticket PDF — same document that appears in the admin order detail.
+        $orderId = $reservation->getOrderId();
+        $document = is_string($orderId) ? $this->ticketDocumentService->getOrderTicketPdf($orderId, $context) : null;
+
+        if ($document !== null) {
+            $attachments[] = [
+                'content' => $document->getContent(),
+                'fileName' => $document->getName(),
+                'mimeType' => $document->getContentType(),
+            ];
+        }
+
+        // Calendar invite — snapshotted onto the ticket at issue. Clients show
+        // "Add to calendar" and, with an organizer configured, accept/decline.
+        if ($ticket->isCalendarInviteEnabled()) {
+            $attachments[] = $this->buildCalendarAttachment($reservation, $email, $customerName, $salesChannelId);
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Builds the .ics calendar invite for the booked slot. The organizer is
+     * the shop's basic-information email (when set) — that turns the invite
+     * into a METHOD:REQUEST the customer can accept/decline; without it the
+     * event still adds to the calendar.
+     *
+     * @return array{content: string, fileName: string, mimeType: string}
+     */
+    private function buildCalendarAttachment(
+        BookingReservationEntity $reservation,
+        string $attendeeEmail,
+        string $attendeeName,
+        ?string $salesChannelId,
+    ): array {
+        $resource = $reservation->getResource();
+        $resourceName = $resource?->getName() ?? 'Booking';
+        $bookingNumber = $reservation->getBookingNumber();
+
+        $organizerEmail = $this->systemConfigService->getString('core.basicInformation.email', $salesChannelId);
+        $organizerName = $this->systemConfigService->getString('core.basicInformation.shopName', $salesChannelId);
+
+        // A stable UID per booking so a re-sent mail updates the same event
+        // rather than creating a duplicate in the customer's calendar.
+        $host = $organizerEmail !== '' ? substr(strrchr($organizerEmail, '@') ?: '@booking', 1) : 'booking';
+        $uid = sprintf('%s@%s', $bookingNumber, $host);
+
+        $description = sprintf(
+            'Booking %s — %d ticket(s). Show the ticket QR code at entry.',
+            $bookingNumber,
+            $reservation->getQuantity(),
+        );
+
+        $ics = $this->icsCalendarGenerator->createInvite(
+            uid: $uid,
+            summary: $resourceName,
+            start: $reservation->getStartsAt(),
+            end: $reservation->getEndsAt(),
+            now: new DateTimeImmutable(),
+            attendee: new CalendarContact($attendeeEmail, $attendeeName),
+            organizer: $organizerEmail !== '' ? new CalendarContact($organizerEmail, $organizerName) : null,
+            description: $description,
+            location: $resourceName,
+        );
+
+        return [
+            'content' => $ics,
+            'fileName' => sprintf('booking-%s.ics', $bookingNumber),
+            // method=REQUEST makes mail clients render the accept/decline UI.
+            'mimeType' => 'text/calendar; charset=utf-8; method=REQUEST',
+        ];
+    }
+
     private function fetchReservationMailData(
         string $reservationId,
         Context $context,
     ): ?BookingReservationEntity {
         $criteria = new Criteria([$reservationId]);
         $criteria->addAssociation('customer');
+        $criteria->addAssociation('resource');
 
         /** @var BookingReservationEntity|null $reservation */
         $reservation = $this->reservationRepository->search($criteria, $context)->first();

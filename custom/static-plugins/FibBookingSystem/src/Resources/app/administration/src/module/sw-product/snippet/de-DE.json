@@ -52,7 +52,9 @@
             "rotatingQrEnabledLabel": "Rotierender QR-Code (Sicherheit)",
             "rotatingQrEnabledHelp": "Der Ticket-QR rotiert zeitbasiert (TOTP). Ein Screenshot verfällt nach Sekunden — schützt vor Ticket-Weitergabe. Der Live-Code wird im Konto/App gezeigt; der Scanner prüft online.",
             "rotatingQrIntervalLabel": "Rotationsintervall (Sekunden)",
-            "rotatingQrIntervalHelp": "Wie oft der Code wechselt. Standard 30s (10–120)."
+            "rotatingQrIntervalHelp": "Wie oft der Code wechselt. Standard 30s (10–120).",
+            "calendarInviteEnabledLabel": "Kalender-Einladung (.ics) per E-Mail",
+            "calendarInviteEnabledHelp": "Hängt der Bestätigungs-E-Mail einen Termin für den gebuchten Zeitraum an. Der Kunde kann ihn zum Kalender hinzufügen — und, sofern eine Shop-E-Mail hinterlegt ist, zu-/absagen. Standardmäßig aktiviert."
         }
     }
 }

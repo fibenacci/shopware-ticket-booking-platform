@@ -76,6 +76,7 @@ class BookingTicketDefinition extends EntityDefinition
             new StringField('seat_label', 'seatLabel'),
             new BoolField('rotating_qr_enabled', 'rotatingQrEnabled'),
             new IntField('rotating_qr_interval', 'rotatingQrInterval'),
+            new BoolField('calendar_invite_enabled', 'calendarInviteEnabled'),
             new FkField('replaced_ticket_id', 'replacedTicketId', self::class),
             new FkField('owner_customer_id', 'ownerCustomerId', CustomerDefinition::class),
             new JsonField('payload', 'payload'),

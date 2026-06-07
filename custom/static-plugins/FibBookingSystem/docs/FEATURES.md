@@ -58,6 +58,20 @@ until the holder clicks).
 `GoogleWalletLinkGeneratorTest`, `TokenCipherTest`, `BookingTicketRevocationTest`,
 `BookingNumberRangeTest`.
 
+### 3a. Calendar invite (.ics) in the confirmation email — optional per product
+
+The confirmation mail carries an **iCalendar invite** for the booked slot next
+to the ticket PDF. With a shop email configured it's a `METHOD:REQUEST` the
+customer can **accept/decline**; otherwise an "add to calendar" event. It is
+**opt-out per product, enabled by default** (admin: *Product → Booking*),
+snapshotted onto the ticket at issue like the other settings.
+
+![Confirmation email with the .ics invite](screenshots/07-email-calendar-invite.jpeg)
+
+**Tested by:** `IcsCalendarGeneratorTest` (REQUEST vs PUBLISH, UTC, RFC-5545
+escaping + 75-octet folding); per-product snapshot rides `TicketSlotWindowTest`/
+`TicketScanServiceTest`. Design: [`CALENDAR_INVITE.md`](CALENDAR_INVITE.md).
+
 ---
 
 ## 4. Rotating QR codes (TOTP) — optional per product

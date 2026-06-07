@@ -88,7 +88,8 @@ class BookingTicketService
                     reservation.starts_at, reservation.ends_at, `order`.sales_channel_id,
                     config.validity_mode, config.validity_duration, config.validity_anchor,
                     config.entry_policy, config.max_entries_per_day,
-                    config.rotating_qr_enabled, config.rotating_qr_interval
+                    config.rotating_qr_enabled, config.rotating_qr_interval,
+                    config.calendar_invite_enabled
                     FROM fib_booking_reservation reservation
                     LEFT JOIN `order` ON `order`.id = reservation.order_id AND `order`.version_id = reservation.order_version_id
                     LEFT JOIN order_line_item line_item
@@ -178,6 +179,10 @@ class BookingTicketService
             ? $this->rotatingCodeService->normalizeInterval(is_numeric($reservation['rotating_qr_interval'] ?? null) ? (int) $reservation['rotating_qr_interval'] : null)
             : null;
 
+        // Calendar invite is opt-out per product (default on); a missing
+        // config row (LEFT JOIN null) means default-enabled.
+        $calendarInviteEnabled = (bool) ($reservation['calendar_invite_enabled'] ?? true);
+
         $qrPayload = $this->createQrPayload($ticketNumber, $scanToken);
         $qrCodeDataUri = $rotatingEnabled ? '' : $this->qrCodeGenerator->generateDataUri($qrPayload);
 
@@ -205,11 +210,12 @@ class BookingTicketService
             'seat_label' => $seatLabel,
             'rotating_qr_enabled' => $rotatingEnabled ? 1 : 0,
             'rotating_qr_interval' => $rotatingInterval,
+            'calendar_invite_enabled' => $calendarInviteEnabled ? 1 : 0,
             'payload' => $payload === [] ? null : json_encode($payload, JSON_THROW_ON_ERROR),
             'created_at' => $this->formatDateTime($issuedAt),
         ]);
 
-        return new BookingTicket($ticketId, $ticketNumber, $scanToken, $qrPayload, $qrCodeDataUri, $seatLabel);
+        return new BookingTicket($ticketId, $ticketNumber, $scanToken, $qrPayload, $qrCodeDataUri, $seatLabel, $calendarInviteEnabled);
     }
 
     /**

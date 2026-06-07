@@ -73,6 +73,7 @@ class ProductBookingConfigDefinition extends EntityDefinition
             new IntField('max_entries_per_day', 'maxEntriesPerDay'),
             new BoolField('rotating_qr_enabled', 'rotatingQrEnabled'),
             new IntField('rotating_qr_interval', 'rotatingQrInterval'),
+            new BoolField('calendar_invite_enabled', 'calendarInviteEnabled'),
             new OneToOneAssociationField('product', 'product_id', 'id', ProductDefinition::class, false),
             new ManyToOneAssociationField('resource', 'resource_id', BookingResourceDefinition::class, 'id'),
             new CreatedAtField(),

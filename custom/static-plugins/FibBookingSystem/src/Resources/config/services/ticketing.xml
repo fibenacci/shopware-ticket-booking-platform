@@ -48,8 +48,14 @@
             <argument type="service" id="fib_booking_ticket.repository"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Wallet\WalletPassService"/>
             <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\TicketDocumentService"/>
+            <argument type="service" id="FibBookingSystem\Core\Domain\Ticket\IcsCalendarGenerator"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
             <tag name="kernel.event_subscriber"/>
         </service>
+
+        <!-- iCalendar (.ics) invite builder for the confirmation mail. -->
+        <service id="FibBookingSystem\Core\Domain\Ticket\IcsCalendarGenerator"/>
+
         <!-- Ticket PDF as a regular order document (admin order detail) -->
         <service id="FibBookingSystem\Checkout\Document\BookingTicketRenderer">
             <argument type="service" id="order.repository"/>

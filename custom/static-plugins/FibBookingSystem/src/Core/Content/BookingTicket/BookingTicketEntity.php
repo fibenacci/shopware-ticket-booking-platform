@@ -47,6 +47,8 @@ class BookingTicketEntity extends Entity
 
     protected ?int $rotatingQrInterval = null;
 
+    protected bool $calendarInviteEnabled = true;
+
     protected ?string $ownerCustomerId = null;
 
     /**
@@ -144,6 +146,16 @@ class BookingTicketEntity extends Entity
     public function setRotatingQrInterval(?int $rotatingQrInterval): void
     {
         $this->rotatingQrInterval = $rotatingQrInterval;
+    }
+
+    public function isCalendarInviteEnabled(): bool
+    {
+        return $this->calendarInviteEnabled;
+    }
+
+    public function setCalendarInviteEnabled(bool $calendarInviteEnabled): void
+    {
+        $this->calendarInviteEnabled = $calendarInviteEnabled;
     }
 
     public function getOwnerCustomerId(): ?string
