@@ -98,3 +98,11 @@ RUN set -eux; \
     ./bin/build-storefront.sh; \
     service mysql stop; \
     chown -R www-data:www-data /var/www/html
+
+RUN printf '%s\n' \
+        "MERCURE_URL=${MERCURE_URL}" \
+        "MERCURE_PUBLIC_URL=${MERCURE_PUBLIC_URL}" \
+        "MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET}" \
+        "MERCURE_SUBSCRIBER_JWT_SECRET=${MERCURE_SUBSCRIBER_JWT_SECRET}" \
+        > .env.local \
+    && chown www-data:www-data .env.local
