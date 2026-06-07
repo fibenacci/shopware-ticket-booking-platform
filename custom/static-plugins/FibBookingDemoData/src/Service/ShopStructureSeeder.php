@@ -76,33 +76,83 @@ class ShopStructureSeeder
 
         foreach ($salesChannels as $salesChannel) {
             $parentId = $salesChannel->getNavigationCategoryId();
+            $navCategories = $shop->sections('navigation');
 
-            foreach ($shop->sections('navigation') as $position => $navCategory) {
+            foreach ($navCategories as $position => $navCategory) {
                 $categoryId = SeedIds::stable(sprintf('category:nav:%s:%s', $salesChannel->getId(), $navCategory->string('key')));
+                $afterCategoryId = $position === 0
+                    ? null
+                    : SeedIds::stable(sprintf('category:nav:%s:%s', $salesChannel->getId(), $navCategories[$position - 1]->string('key')));
 
-                $this->categoryRepository->upsert([
-                    [
-                        'id' => $categoryId,
-                        'parentId' => $parentId,
-                        'name' => $navCategory->string('name'),
-                        'description' => $navCategory->string('description', ''),
-                        'active' => true,
-                        'displayNestedProducts' => true,
-                        'type' => 'page',
-                        'productAssignmentType' => 'product',
-                        'cmsPageId' => $listingLayoutId,
-                        'afterCategoryId' => $position === 0
-                            ? null
-                            : SeedIds::stable(sprintf('category:nav:%s:%s', $salesChannel->getId(), $shop->sections('navigation')[$position - 1]->string('key'))),
-                    ],
-                ], $context);
+                $payload = $navCategory->has('link')
+                    ? $this->linkCategoryPayload($categoryId, $parentId, $navCategory, $afterCategoryId)
+                    : $this->listingCategoryPayload($categoryId, $parentId, $navCategory, $afterCategoryId, $listingLayoutId);
 
-                $this->assignProducts($navCategory->stringList('products', []), $categoryId, $context);
+                $this->categoryRepository->upsert([$payload], $context);
+
+                if (!$navCategory->has('link')) {
+                    $this->assignProducts($navCategory->stringList('products', []), $categoryId, $context);
+                }
+
                 ++$count;
             }
         }
 
         return $count;
+    }
+
+    /**
+     * A product-listing navigation category (the offer-type menus).
+     *
+     * @return array<string, mixed>
+     */
+    private function listingCategoryPayload(
+        string $categoryId,
+        string $parentId,
+        SeedSection $navCategory,
+        ?string $afterCategoryId,
+        ?string $listingLayoutId,
+    ): array {
+        return [
+            'id' => $categoryId,
+            'parentId' => $parentId,
+            'name' => $navCategory->string('name'),
+            'description' => $navCategory->string('description', ''),
+            'active' => true,
+            'displayNestedProducts' => true,
+            'type' => 'page',
+            'productAssignmentType' => 'product',
+            'cmsPageId' => $listingLayoutId,
+            'afterCategoryId' => $afterCategoryId,
+        ];
+    }
+
+    /**
+     * A "link" navigation category that points at a (SEO) URL instead of a
+     * CMS page — e.g. the resale market at its canonical `/resale-market`
+     * slug. Mirrors what a merchant sets up in the admin under a category of
+     * type "Link" → "External".
+     *
+     * @return array<string, mixed>
+     */
+    private function linkCategoryPayload(
+        string $categoryId,
+        string $parentId,
+        SeedSection $navCategory,
+        ?string $afterCategoryId,
+    ): array {
+        return [
+            'id' => $categoryId,
+            'parentId' => $parentId,
+            'name' => $navCategory->string('name'),
+            'description' => $navCategory->string('description', ''),
+            'active' => true,
+            'type' => 'link',
+            'linkType' => 'external',
+            'externalLink' => $navCategory->string('link'),
+            'linkNewTab' => false,
+            'afterCategoryId' => $afterCategoryId,
+        ];
     }
 
     /**

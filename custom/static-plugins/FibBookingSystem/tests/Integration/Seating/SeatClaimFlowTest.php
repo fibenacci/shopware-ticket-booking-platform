@@ -289,6 +289,42 @@ class SeatClaimFlowTest extends TestCase
         static::assertSame('free', $states['A3']);
     }
 
+    public function testSeatmapExposesTheCustomLayoutAndSeatRotation(): void
+    {
+        // A free-form layout (decorations + category palette) on the resource.
+        $this->connection->executeStatement(
+            <<<'SQL'
+                UPDATE fib_booking_resource
+                SET layout = :layout
+                WHERE id = :id
+                SQL,
+            [
+                'id' => Uuid::fromHexToBytes(self::RESOURCE_ID),
+                'layout' => json_encode([
+                    'canvas' => ['width' => 800, 'height' => 600],
+                    'categories' => [['key' => 'vip', 'name' => 'VIP', 'color' => '#f0a']],
+                    'elements' => [['id' => 'e1', 'type' => 'stage', 'x' => 100, 'y' => 20, 'width' => 600, 'height' => 40, 'rotation' => 0, 'label' => 'STAGE']],
+                ], \JSON_THROW_ON_ERROR),
+            ],
+        );
+        // A rotated VIP seat (curved-row geometry persisted as a flat point).
+        $this->connection->executeStatement(
+            "UPDATE fib_booking_seat SET rotation = 15, category = 'vip' WHERE id = :id",
+            ['id' => Uuid::fromHexToBytes(self::SEAT_A)],
+        );
+
+        $seatmap = (new SeatmapReadService($this->connection))->getSeatmap(self::SLOT_ID);
+
+        static::assertIsArray($seatmap['layout']);
+        static::assertSame(800, $seatmap['layout']['canvas']['width']);
+        static::assertSame('stage', $seatmap['layout']['elements'][0]['type']);
+        static::assertSame('vip', $seatmap['layout']['categories'][0]['key']);
+
+        $seatA = array_values(array_filter($seatmap['seats'], static fn (array $s): bool => $s['label'] === '1'))[0];
+        static::assertSame(15, $seatA['rotation']);
+        static::assertSame('vip', $seatA['category']);
+    }
+
     private function seedFixtures(): void
     {
         $this->connection->executeStatement(

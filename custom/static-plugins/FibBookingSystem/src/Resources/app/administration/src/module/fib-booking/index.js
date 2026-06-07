@@ -1,5 +1,6 @@
 import './page/fib-booking-resource-list';
 import './page/fib-booking-resource-seating';
+import './page/fib-booking-seat-editor';
 
 import deDE from './snippet/de-DE.json';
 import enGB from './snippet/en-GB.json';
@@ -28,6 +29,13 @@ Shopware.Module.register('fib-booking', {
         seating: {
             component: 'fib-booking-resource-seating',
             path: 'seating/:id',
+            meta: {
+                parentPath: 'fib.booking.list',
+            },
+        },
+        seatEditor: {
+            component: 'fib-booking-seat-editor',
+            path: 'seat-editor/:id',
             meta: {
                 parentPath: 'fib.booking.list',
             },

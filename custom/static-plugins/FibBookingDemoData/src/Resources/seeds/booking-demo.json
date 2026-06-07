@@ -32,7 +32,37 @@
             "seating": {
                 "mode": "seatmap",
                 "rows": 5,
-                "seatsPerRow": 8
+                "seatsPerRow": 8,
+                "layout": {
+                    "canvasWidth": 1000,
+                    "canvasHeight": 620,
+                    "seatSpacing": 46,
+                    "rowSpacing": 50,
+                    "topOffset": 150,
+                    "stage": true,
+                    "stageLabel": "SCREEN",
+                    "categories": [
+                        {
+                            "key": "premium",
+                            "name": "Premium",
+                            "color": "#6366f1",
+                            "rows": [
+                                "A",
+                                "B"
+                            ]
+                        },
+                        {
+                            "key": "standard",
+                            "name": "Standard",
+                            "color": "#22c55e",
+                            "rows": [
+                                "C",
+                                "D",
+                                "E"
+                            ]
+                        }
+                    ]
+                }
             },
             "slots": {
                 "daysAhead": 14,
@@ -240,6 +270,12 @@
                     "FIB-PASS-MONTH",
                     "FIB-PASS-YEAR"
                 ]
+            },
+            {
+                "key": "resale",
+                "name": "Resale Market",
+                "description": "Tickets resold privately between customers — the platform charges no fee.",
+                "link": "/resale-market"
             }
         ],
         "footer": {

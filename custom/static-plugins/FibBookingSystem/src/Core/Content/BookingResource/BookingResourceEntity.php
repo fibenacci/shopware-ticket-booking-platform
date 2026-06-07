@@ -29,6 +29,11 @@ class BookingResourceEntity extends Entity
      */
     protected ?array $configuration = null;
 
+    /**
+     * @var array<string, mixed>|null
+     */
+    protected ?array $layout = null;
+
     protected ?ProductEntity $product = null;
 
     public function getSeatingMode(): string
@@ -105,6 +110,22 @@ class BookingResourceEntity extends Entity
     public function setConfiguration(?array $configuration): void
     {
         $this->configuration = $configuration;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getLayout(): ?array
+    {
+        return $this->layout;
+    }
+
+    /**
+     * @param array<string, mixed>|null $layout
+     */
+    public function setLayout(?array $layout): void
+    {
+        $this->layout = $layout;
     }
 
     public function getProduct(): ?ProductEntity

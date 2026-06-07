@@ -121,3 +121,66 @@
     color: var(--fib-text-dim, rgba(232, 236, 244, 0.6));
     font-size: 0.85rem;
 }
+
+/* ---- Free-form layout (custom seat map) ---- */
+.layout {
+    width: 100%;
+    /* aspect-ratio is bound to the content box (viewBoxAspect) inline, so the
+       SVG is exactly the room's shape — no wasted letterbox, seats render as
+       large as the width allows. max-height keeps tall rooms in view. */
+    max-height: 75vh;
+    display: block;
+    margin: 0 auto;
+}
+
+.layout-seat {
+    cursor: pointer;
+}
+
+.layout-seat[aria-pressed] rect {
+    transition: filter 0.12s ease;
+}
+
+.layout-seat:hover rect {
+    filter: brightness(1.1);
+}
+
+/* Non-free, non-selected seats are not interactive. */
+.layout-seat.is-sold,
+.layout-seat.is-held {
+    cursor: not-allowed;
+}
+
+.layout-seat-label {
+    font-size: 11px;
+    fill: #ffffff;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.layout-el-label {
+    font-size: 13px;
+    fill: #e2e8f0;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+}
+
+.cat-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    justify-content: center;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--fib-text-dim, rgba(232, 236, 244, 0.7));
+}
+
+.cat-legend .dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 0.3rem;
+}

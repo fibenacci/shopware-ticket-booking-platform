@@ -61,6 +61,9 @@ class BookingSeatDefinition extends EntityDefinition
             (new StringField('seat_label', 'seatLabel'))->addFlags(new Required()),
             (new IntField('pos_x', 'posX'))->addFlags(new Required()),
             (new IntField('pos_y', 'posY'))->addFlags(new Required()),
+            // Per-seat angle (deg) for curved/rotated rows — the curve maths
+            // runs in the editor; persisted seats are flat points.
+            new IntField('rotation', 'rotation'),
             new StringField('category', 'category'),
             (new BoolField('active', 'active'))->addFlags(new Required()),
             new ManyToOneAssociationField('resource', 'resource_id', BookingResourceDefinition::class, 'id'),

@@ -1,0 +1,112 @@
+{% block fib_booking_seat_editor %}
+    <sw-page class="fib-booking-seat-editor">
+        {% block fib_booking_seat_editor_header %}
+            <template #smart-bar-header>
+                <h2>{{ $tc('fibBooking.seatEditor.title') }}<template v-if="resource"> — {{ resource.name }}</template></h2>
+            </template>
+        {% endblock %}
+
+        {% block fib_booking_seat_editor_actions %}
+            <template #smart-bar-actions>
+                <sw-button-process
+                    variant="primary"
+                    :is-loading="isSaving"
+                    :process-success="false"
+                    @click="onSave"
+                >
+                    {{ $tc('fibBooking.seatEditor.save') }} ({{ activeSeatCount }})
+                </sw-button-process>
+            </template>
+        {% endblock %}
+
+        {% block fib_booking_seat_editor_content %}
+            <template #content>
+                <sw-card-view v-if="!isLoading">
+                    <div class="fib-seat-editor__layout">
+                        {# ---- toolbar ---- #}
+                        <div class="fib-seat-editor__tools">
+                            <sw-button-group>
+                                <sw-button :variant="tool === 'select' ? 'primary' : null" size="small" @click="setTool('select')">{{ $tc('fibBooking.seatEditor.tools.select') }}</sw-button>
+                                <sw-button :variant="tool === 'seat' ? 'primary' : null" size="small" @click="setTool('seat')">{{ $tc('fibBooking.seatEditor.tools.seat') }}</sw-button>
+                                <sw-button :variant="tool === 'category' ? 'primary' : null" size="small" @click="setTool('category')">{{ $tc('fibBooking.seatEditor.tools.assignCategory') }}</sw-button>
+                                <sw-button :variant="tool === 'delete' ? 'danger' : null" size="small" @click="setTool('delete')">{{ $tc('fibBooking.seatEditor.tools.delete') }}</sw-button>
+                            </sw-button-group>
+
+                            <sw-button-group>
+                                <sw-button :variant="tool === 'element:aisle' ? 'primary' : null" size="small" @click="setTool('element:aisle')">{{ $tc('fibBooking.seatEditor.elements.aisle') }}</sw-button>
+                                <sw-button :variant="tool === 'element:column' ? 'primary' : null" size="small" @click="setTool('element:column')">{{ $tc('fibBooking.seatEditor.elements.column') }}</sw-button>
+                                <sw-button :variant="tool === 'element:wall' ? 'primary' : null" size="small" @click="setTool('element:wall')">{{ $tc('fibBooking.seatEditor.elements.wall') }}</sw-button>
+                                <sw-button :variant="tool === 'element:stage' ? 'primary' : null" size="small" @click="setTool('element:stage')">{{ $tc('fibBooking.seatEditor.elements.stage') }}</sw-button>
+                                <sw-button :variant="tool === 'element:rect' ? 'primary' : null" size="small" @click="setTool('element:rect')">{{ $tc('fibBooking.seatEditor.elements.rect') }}</sw-button>
+                                <sw-button :variant="tool === 'element:circle' ? 'primary' : null" size="small" @click="setTool('element:circle')">{{ $tc('fibBooking.seatEditor.elements.circle') }}</sw-button>
+                                <sw-button :variant="tool === 'element:label' ? 'primary' : null" size="small" @click="setTool('element:label')">{{ $tc('fibBooking.seatEditor.elements.label') }}</sw-button>
+                            </sw-button-group>
+                        </div>
+
+                        <div class="fib-seat-editor__main">
+                            {# ---- canvas ---- #}
+                            <svg
+                                ref="canvas"
+                                class="fib-seat-editor__canvas"
+                                :viewBox="`0 0 ${canvas.width} ${canvas.height}`"
+                                preserveAspectRatio="xMidYMid meet"
+                                @click="onCanvasClick"
+                            >
+                                {# decorations #}
+                                <g v-for="el in elements" :key="el.id" @pointerdown="selectElement(el, $event)" class="fib-seat-editor__el" :class="{ 'is-selected': selectedKey === 'el:' + el.id }">
+                                    <circle v-if="el.type === 'circle'" :cx="el.x + el.width / 2" :cy="el.y + el.height / 2" :r="Math.max(el.width, el.height) / 2" :fill="el.color || '#475569'" fill-opacity="0.55" />
+                                    <rect v-else :x="el.x" :y="el.y" :width="el.width" :height="el.height" :transform="`rotate(${el.rotation} ${el.x + el.width / 2} ${el.y + el.height / 2})`" :rx="el.type === 'stage' ? 6 : 2" :fill="el.color || (el.type === 'stage' ? '#1e293b' : '#475569')" :fill-opacity="el.type === 'aisle' ? 0.25 : 0.7" />
+                                    <text v-if="el.label" :x="el.x + el.width / 2" :y="el.y + el.height / 2" text-anchor="middle" dominant-baseline="central" class="fib-seat-editor__el-label">{{ el.label }}</text>
+                                </g>
+
+                                {# seats #}
+                                <g
+                                    v-for="seat in seats"
+                                    :key="seat.key"
+                                    class="fib-seat-editor__seat"
+                                    :class="{ 'is-selected': selectedKey === 'seat:' + seat.key }"
+                                    :transform="`translate(${seat.posX} ${seat.posY}) rotate(${seat.rotation})`"
+                                    @pointerdown="selectSeat(seat, $event)"
+                                >
+                                    <rect :x="-11" :y="-11" width="22" height="22" rx="4" :fill="seat.category && categoryColor[seat.category] ? categoryColor[seat.category] : '#22c55e'" />
+                                    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" class="fib-seat-editor__seat-label">{{ seat.seatLabel }}</text>
+                                </g>
+                            </svg>
+
+                            {# ---- side panel ---- #}
+                            <div class="fib-seat-editor__panel">
+                                <sw-card :title="$tc('fibBooking.seatEditor.straightRow')" small>
+                                    <sw-text-field v-model:value="rowForm.rowLabel" :label="$tc('fibBooking.seatEditor.rowLabel')" size="small" />
+                                    <sw-number-field v-model:value="rowForm.count" number-type="int" :min="1" :label="$tc('fibBooking.seatEditor.count')" size="small" />
+                                    <sw-number-field v-model:value="rowForm.spacing" number-type="int" :min="10" :label="$tc('fibBooking.seatEditor.spacing')" size="small" />
+                                    <sw-number-field v-model:value="rowForm.angleDeg" number-type="int" :label="$tc('fibBooking.seatEditor.angle')" size="small" />
+                                    <sw-button size="small" variant="ghost" @click="generateStraight">{{ $tc('fibBooking.seatEditor.addRow') }}</sw-button>
+                                </sw-card>
+
+                                <sw-card :title="$tc('fibBooking.seatEditor.arcRow')" small>
+                                    <sw-text-field v-model:value="arcForm.rowLabel" :label="$tc('fibBooking.seatEditor.rowLabel')" size="small" />
+                                    <sw-number-field v-model:value="arcForm.count" number-type="int" :min="1" :label="$tc('fibBooking.seatEditor.count')" size="small" />
+                                    <sw-number-field v-model:value="arcForm.radius" number-type="int" :min="20" :label="$tc('fibBooking.seatEditor.radius')" size="small" />
+                                    <sw-number-field v-model:value="arcForm.startAngleDeg" number-type="int" :label="$tc('fibBooking.seatEditor.startAngle')" size="small" />
+                                    <sw-number-field v-model:value="arcForm.endAngleDeg" number-type="int" :label="$tc('fibBooking.seatEditor.endAngle')" size="small" />
+                                    <sw-button size="small" variant="ghost" @click="generateArc">{{ $tc('fibBooking.seatEditor.addRow') }}</sw-button>
+                                </sw-card>
+
+                                <sw-card :title="$tc('fibBooking.seatEditor.categories')" small>
+                                    <div v-for="cat in categories" :key="cat.key" class="fib-seat-editor__cat" :class="{ 'is-active': activeCategory === cat.key }" @click="activeCategory = cat.key">
+                                        <span class="fib-seat-editor__cat-swatch" :style="{ background: cat.color }"></span>
+                                        <sw-text-field v-model:value="cat.name" size="small" />
+                                    </div>
+                                    <sw-button size="small" variant="ghost" @click="addCategory">{{ $tc('fibBooking.seatEditor.addCategory') }}</sw-button>
+                                    <sw-button v-if="activeCategory" size="small" variant="ghost" @click="activeCategory = null">{{ $tc('fibBooking.seatEditor.clearCategory') }}</sw-button>
+                                </sw-card>
+                            </div>
+                        </div>
+                    </div>
+                </sw-card-view>
+
+                <sw-loader v-else />
+            </template>
+        {% endblock %}
+    </sw-page>
+{% endblock %}

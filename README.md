@@ -36,7 +36,10 @@ Shopware's cart, order and DAL primitives.
   window (RFC 6238), single-use per window, verified online — a screenshot is
   worthless. See [`docs/ROTATING_QR.md`](custom/static-plugins/FibBookingSystem/docs/ROTATING_QR.md).
 - **Numbered seating** — cinema-style seat maps, claim-on-hold, a Vue seat
-  picker island (TypeScript) and live updates via Mercure SSE.
+  picker island (TypeScript) and live updates via Mercure SSE. Optional
+  **2D layout editor** for irregular venues (draw seats, blockers, curved/
+  rotated tiers, categories) — see
+  [`docs/SEAT_EDITOR.md`](custom/static-plugins/FibBookingSystem/docs/SEAT_EDITOR.md).
 - **Scanning** — least-privilege scanner app (own ACL role), race-safe
   check-in/out with re-entry, daily limits and an append-only audit log.
 - **Resale & auctions** — private C2C secondary market: list/buy with transfer

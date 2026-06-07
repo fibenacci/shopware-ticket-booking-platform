@@ -1,7 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
-import { groupRows, reconcileSelection, toggleSeat } from '../selection';
-import type { Seat } from '../selection';
+import { categoryColors, fitContentBox, groupRows, reconcileSelection, seatFill as computeSeatFill, toggleSeat } from '../selection';
+import type { Seat, SeatmapLayout } from '../selection';
 
 export interface SelectionPayload {
     seatIds: string[];
@@ -28,10 +28,16 @@ export interface UseSeatmap {
     error: Ref<string>;
     notice: Ref<string>;
     rows: ComputedRef<Seat[][]>;
+    layout: Ref<SeatmapLayout | null>;
+    /** SVG viewBox fitted to the actual content (seats + decorations). */
+    viewBox: ComputedRef<string>;
+    /** CSS aspect-ratio matching the viewBox, so the SVG wastes no space. */
+    viewBoxAspect: ComputedRef<string>;
     capReached: ComputedRef<boolean>;
     load: () => Promise<void>;
     onSeatClick: (seat: Seat) => void;
     seatClass: (seat: Seat) => string;
+    seatFill: (seat: Seat) => string;
 }
 
 const SSE_SAFETY_NET_MS = 60000;
@@ -48,6 +54,7 @@ const SSE_SAFETY_NET_MS = 60000;
 export function useSeatmap(options: UseSeatmapOptions): UseSeatmap {
     const seats = ref<Seat[]>([]);
     const selection = ref<string[]>([]);
+    const layout = ref<SeatmapLayout | null>(null);
     const loading = ref(true);
     const error = ref('');
     const notice = ref('');
@@ -59,6 +66,20 @@ export function useSeatmap(options: UseSeatmapOptions): UseSeatmap {
     const capReached = computed(
         () => options.maxSeats > 0 && selection.value.length >= options.maxSeats,
     );
+
+    // Fit the box to the content so the room fills the SVG instead of
+    // floating tiny inside the full canvas (pure fn, unit-tested).
+    const contentBox = computed(() => fitContentBox(seats.value, layout.value));
+
+    const viewBox = computed(() => {
+        const box = contentBox.value;
+        return `${box.minX} ${box.minY} ${box.width} ${box.height}`;
+    });
+
+    const viewBoxAspect = computed(() => {
+        const box = contentBox.value;
+        return `${box.width} / ${box.height}`;
+    });
 
     onMounted(async () => {
         await load();
@@ -82,8 +103,9 @@ export function useSeatmap(options: UseSeatmapOptions): UseSeatmap {
                 throw new Error(`seatmap request failed (${response.status})`);
             }
 
-            const data: { seats?: Seat[] } = await response.json();
+            const data: { seats?: Seat[]; layout?: SeatmapLayout | null } = await response.json();
             seats.value = Array.isArray(data.seats) ? data.seats : [];
+            layout.value = data.layout ?? null;
             error.value = '';
 
             const result = reconcileSelection(seats.value, selection.value);
@@ -122,6 +144,12 @@ export function useSeatmap(options: UseSeatmapOptions): UseSeatmap {
         }
 
         return `is-${seat.state}`;
+    }
+
+    /** Fill colour for a seat in the free-form SVG layout (pure fn). */
+    function seatFill(seat: Seat): string {
+        const colors = layout.value ? categoryColors(layout.value.categories) : {};
+        return computeSeatFill(seat, selection.value.includes(seat.id), colors);
     }
 
     function emitChange(): void {
@@ -169,5 +197,5 @@ export function useSeatmap(options: UseSeatmapOptions): UseSeatmap {
         }
     }
 
-    return { seats, selection, loading, error, notice, rows, capReached, load, onSeatClick, seatClass };
+    return { seats, selection, loading, error, notice, rows, layout, viewBox, viewBoxAspect, capReached, load, onSeatClick, seatClass, seatFill };
 }

@@ -32,7 +32,7 @@ const emit = defineEmits<{
     'seats-change': [payload: SelectionPayload];
 }>();
 
-const { selection, loading, error, notice, rows, capReached, load, onSeatClick, seatClass } = useSeatmap({
+const { seats, selection, loading, error, notice, rows, layout, viewBox, viewBoxAspect, capReached, load, onSeatClick, seatClass, seatFill } = useSeatmap({
     slotId: props.slotId,
     maxSeats: Number(props.maxSeats) || 0,
     endpoint: props.endpoint,

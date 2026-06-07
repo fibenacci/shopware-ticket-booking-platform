@@ -1,0 +1,96 @@
+.fib-booking-seat-editor {
+    .fib-seat-editor__tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .fib-seat-editor__main {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 16px;
+        align-items: start;
+    }
+
+    .fib-seat-editor__canvas {
+        width: 100%;
+        aspect-ratio: 10 / 7;
+        background:
+            linear-gradient(0deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 100% 28px,
+            linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 28px 100%,
+            #f8fafc;
+        border: 1px solid #d6dade;
+        border-radius: 8px;
+        touch-action: none;
+        user-select: none;
+    }
+
+    .fib-seat-editor__seat {
+        cursor: grab;
+
+        rect {
+            transition: filter 0.1s ease;
+        }
+
+        &.is-selected rect {
+            stroke: #1d4ed8;
+            stroke-width: 2;
+        }
+
+        &:hover rect {
+            filter: brightness(1.08);
+        }
+    }
+
+    .fib-seat-editor__seat-label {
+        font-size: 11px;
+        fill: #ffffff;
+        font-weight: 600;
+        pointer-events: none;
+    }
+
+    .fib-seat-editor__el {
+        cursor: grab;
+
+        &.is-selected rect,
+        &.is-selected circle {
+            stroke: #1d4ed8;
+            stroke-width: 2;
+        }
+    }
+
+    .fib-seat-editor__el-label {
+        font-size: 13px;
+        fill: #e2e8f0;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        pointer-events: none;
+    }
+
+    .fib-seat-editor__panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .fib-seat-editor__cat {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px;
+        border-radius: 4px;
+        cursor: pointer;
+
+        &.is-active {
+            background: rgba(99, 102, 241, 0.12);
+        }
+    }
+
+    .fib-seat-editor__cat-swatch {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        flex: 0 0 auto;
+    }
+}

@@ -79,7 +79,38 @@ class GoogleWalletLinkGeneratorTest extends TestCase
         static::assertSame(1, $verified);
     }
 
-    private function createTicketData(): TicketWalletData
+    public function testRotatingTicketOmitsTheStaticBarcodeAndAddsANote(): void
+    {
+        $keyPair = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        static::assertNotFalse($keyPair);
+        $privateKeyPem = '';
+        openssl_pkey_export($keyPair, $privateKeyPem);
+
+        $generator = new GoogleWalletLinkGenerator($this->createConfigStub([
+            'FibBookingSystem.config.googleWalletIssuerId' => '3388000000012345',
+            'FibBookingSystem.config.googleWalletServiceAccountJson' => json_encode([
+                'client_email' => 'wallet@test-project.iam.gserviceaccount.com',
+                'private_key' => $privateKeyPem,
+            ], JSON_THROW_ON_ERROR),
+        ]));
+
+        $link = $generator->generateSaveLink($this->createTicketData(rotating: true));
+        [, $payload] = explode('.', substr($link, strlen('https://pay.google.com/gp/v/save/')));
+        $claims = json_decode($this->base64UrlDecode($payload), true);
+        $object = $claims['payload']['eventTicketObjects'][0];
+
+        // A frozen barcode would never scan — rotating passes carry none, and
+        // point the holder to the live code instead.
+        static::assertArrayNotHasKey('barcode', $object, 'rotating tickets must not embed a static barcode');
+        $rotatingNote = array_values(array_filter(
+            $object['textModulesData'],
+            static fn (array $m): bool => ($m['id'] ?? '') === 'rotating',
+        ));
+        static::assertCount(1, $rotatingNote);
+        static::assertStringContainsStringIgnoringCase('rotating', $rotatingNote[0]['body']);
+    }
+
+    private function createTicketData(bool $rotating = false): TicketWalletData
     {
         return new TicketWalletData(
             ticketId: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
@@ -94,6 +125,7 @@ class GoogleWalletLinkGeneratorTest extends TestCase
                 quantity: 2,
             ),
             customerName: 'Jane Doe',
+            rotating: $rotating,
         );
     }
 

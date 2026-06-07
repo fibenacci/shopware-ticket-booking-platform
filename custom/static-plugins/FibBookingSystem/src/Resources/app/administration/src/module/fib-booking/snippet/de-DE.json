@@ -31,6 +31,43 @@
                 "generated": "Saalplan-Grid erzeugt.",
                 "saved": "Ressource und Saalplan gespeichert.",
                 "error": "Speichern des Saalplans fehlgeschlagen."
+            },
+            "openEditor": "2D-Layout-Editor öffnen"
+        },
+        "seatEditor": {
+            "title": "Sitzplan-Editor",
+            "save": "Layout speichern",
+            "straightRow": "Gerade Reihe",
+            "arcRow": "Gebogene Reihe (Bogen)",
+            "rowLabel": "Reihe",
+            "count": "Sitze",
+            "spacing": "Abstand (px)",
+            "angle": "Winkel (°)",
+            "radius": "Radius (px)",
+            "startAngle": "Startwinkel (°)",
+            "endAngle": "Endwinkel (°)",
+            "addRow": "Reihe hinzufügen",
+            "categories": "Kategorien",
+            "addCategory": "Kategorie hinzufügen",
+            "clearCategory": "Keine Kategorie",
+            "tools": {
+                "select": "Auswählen / verschieben",
+                "seat": "Sitz hinzufügen",
+                "assignCategory": "Kategorie zuweisen",
+                "delete": "Löschen"
+            },
+            "elements": {
+                "aisle": "Gang",
+                "column": "Säule",
+                "wall": "Wand",
+                "stage": "Bühne",
+                "rect": "Rechteck",
+                "circle": "Kreis",
+                "label": "Beschriftung"
+            },
+            "notification": {
+                "saved": "Layout gespeichert.",
+                "error": "Speichern des Layouts fehlgeschlagen."
             }
         }
     }

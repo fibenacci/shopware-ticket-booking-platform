@@ -2,6 +2,54 @@
     <p v-if="loading" class="muted">Loading seats…</p>
     <p v-else-if="error" class="error" role="alert">{{ error }}</p>
 
+    <template v-else-if="layout">
+        <!-- Free-form layout: decorations + seats on an SVG canvas. -->
+        <svg
+            class="layout"
+            :viewBox="viewBox"
+            :style="{ aspectRatio: viewBoxAspect }"
+            preserveAspectRatio="xMidYMid meet"
+            role="group"
+            aria-label="Seat selection"
+        >
+            <g v-for="el in layout.elements" :key="el.id" class="layout-el">
+                <circle v-if="el.type === 'circle'" :cx="el.x + el.width / 2" :cy="el.y + el.height / 2" :r="Math.max(el.width, el.height) / 2" :fill="el.color || '#475569'" fill-opacity="0.5" />
+                <rect v-else :x="el.x" :y="el.y" :width="el.width" :height="el.height" :transform="`rotate(${el.rotation} ${el.x + el.width / 2} ${el.y + el.height / 2})`" :rx="el.type === 'stage' ? 6 : 2" :fill="el.color || (el.type === 'stage' ? '#1e293b' : '#475569')" :fill-opacity="el.type === 'aisle' ? 0.2 : 0.65" />
+                <text v-if="el.label" :x="el.x + el.width / 2" :y="el.y + el.height / 2" text-anchor="middle" dominant-baseline="central" class="layout-el-label">{{ el.label }}</text>
+            </g>
+
+            <g
+                v-for="seat in seats"
+                :key="seat.id"
+                class="layout-seat"
+                :class="seatClass(seat)"
+                :transform="`translate(${seat.x} ${seat.y}) rotate(${seat.rotation})`"
+                :aria-pressed="selection.includes(seat.id)"
+                :aria-label="`${seat.row}${seat.label}`"
+                @click="onSeatClick(seat)"
+            >
+                <rect x="-15" y="-15" width="30" height="30" rx="6" :fill="seatFill(seat)" />
+                <text x="0" y="0" text-anchor="middle" dominant-baseline="central" class="layout-seat-label">{{ seat.label }}</text>
+            </g>
+        </svg>
+
+        <div v-if="layout.categories.length" class="cat-legend">
+            <span v-for="cat in layout.categories" :key="cat.key">
+                <i class="dot" :style="{ background: cat.color }"></i> {{ cat.name }}
+            </span>
+        </div>
+
+        <div class="legend">
+            <span><i class="dot is-free"></i> free</span>
+            <span><i class="dot is-held"></i> held</span>
+            <span><i class="dot is-sold"></i> sold</span>
+            <span><i class="dot is-selected"></i> yours</span>
+        </div>
+
+        <p v-if="notice" class="notice" role="status">{{ notice }}</p>
+        <p v-if="capReached" class="muted">Seat limit reached — deselect to change.</p>
+    </template>
+
     <template v-else>
         <div class="screen" aria-hidden="true">SCREEN</div>
 

@@ -31,6 +31,43 @@
                 "generated": "Seat grid generated.",
                 "saved": "Resource and seat map saved.",
                 "error": "Saving the seat map failed."
+            },
+            "openEditor": "Open 2D layout editor"
+        },
+        "seatEditor": {
+            "title": "Seat-map editor",
+            "save": "Save layout",
+            "straightRow": "Straight row",
+            "arcRow": "Curved row (arc)",
+            "rowLabel": "Row",
+            "count": "Seats",
+            "spacing": "Spacing (px)",
+            "angle": "Angle (°)",
+            "radius": "Radius (px)",
+            "startAngle": "Start angle (°)",
+            "endAngle": "End angle (°)",
+            "addRow": "Add row",
+            "categories": "Categories",
+            "addCategory": "Add category",
+            "clearCategory": "No category",
+            "tools": {
+                "select": "Select / move",
+                "seat": "Add seat",
+                "assignCategory": "Assign category",
+                "delete": "Delete"
+            },
+            "elements": {
+                "aisle": "Aisle",
+                "column": "Column",
+                "wall": "Wall",
+                "stage": "Stage",
+                "rect": "Rectangle",
+                "circle": "Circle",
+                "label": "Label"
+            },
+            "notification": {
+                "saved": "Layout saved.",
+                "error": "Saving the layout failed."
             }
         }
     }

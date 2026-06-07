@@ -63,6 +63,7 @@ class BookingResourceDefinition extends EntityDefinition
             (new StringField('seating_mode', 'seatingMode'))->addFlags(new Required()),
             (new BoolField('active', 'active'))->addFlags(new Required()),
             new JsonField('configuration', 'configuration'),
+            new JsonField('layout', 'layout'),
             new ManyToOneAssociationField('product', 'product_id', ProductDefinition::class, 'id'),
             new CreatedAtField(),
             new UpdatedAtField(),

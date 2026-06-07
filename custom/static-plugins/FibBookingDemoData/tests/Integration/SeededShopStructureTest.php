@@ -70,6 +70,38 @@ class SeededShopStructureTest extends TestCase
         static::assertSame(1, (int) $assigned, 'the cinema product must be assigned to the cinema category');
     }
 
+    public function testResaleMarketIsALinkCategoryPointingAtTheSeoSlug(): void
+    {
+        $channelId = $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT LOWER(HEX(id)) FROM sales_channel
+                WHERE type_id = UNHEX('8A243080F92E4C719546314B577CF82B') LIMIT 1
+            SQL,
+        );
+        static::assertIsString($channelId);
+
+        $categoryId = SeedIds::stable(sprintf('category:nav:%s:resale', $channelId));
+
+        $category = $this->connection->fetchAssociative(
+            <<<'SQL'
+                SELECT category.type, translation.name, translation.external_link, translation.link_type
+                FROM category
+                INNER JOIN category_translation translation ON translation.category_id = category.id
+                AND translation.language_id = UNHEX('2FBB5FE2E29A4D70AA5854CE7CE3E20B')
+                WHERE category.id = :id
+                LIMIT 1
+            SQL,
+            ['id' => Uuid::fromHexToBytes($categoryId)],
+        );
+
+        static::assertIsArray($category, 'resale navigation category must exist');
+        static::assertSame('link', $category['type']);
+        static::assertSame('external', $category['link_type']);
+        // Points at the canonical SEO slug, not the technical route.
+        static::assertSame('/resale-market', $category['external_link']);
+        static::assertSame('Resale Market', $category['name']);
+    }
+
     public function testLegalAndServicePagesExist(): void
     {
         foreach (['footer-page:imprint', 'footer-page:privacy', 'footer-page:terms', 'footer-page:withdrawal', 'service-page:faq', 'service-page:contact', 'service-page:how-it-works'] as $key) {

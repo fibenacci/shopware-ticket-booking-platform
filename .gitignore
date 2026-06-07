@@ -26,6 +26,13 @@ node_modules/
 /custom/static-plugins/*/build/
 /junit-artifacts/
 
+# Compiled plugin assets — rebuilt by `shopware-cli project ci` at image
+# build (see Dockerfile), so they must NOT be committed. NOTE: the standalone
+# Vue islands (apps/* → Resources/public/<island>/) are deploy artifacts the
+# Shopware build does NOT regenerate — those stay tracked (e.g. seat-picker).
+/custom/static-plugins/*/src/Resources/public/administration/
+/custom/static-plugins/*/src/Resources/app/storefront/dist/
+
 ###> shopware/core ###
 .env.local
 .env.local.php

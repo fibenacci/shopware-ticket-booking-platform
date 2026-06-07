@@ -5,6 +5,12 @@
         </template>
 
         <template #smart-bar-actions>
+            <sw-button
+                v-if="isSeatmap"
+                @click="$router.push({ name: 'fib.booking.seatEditor', params: { id: resourceId } })"
+            >
+                {{ $tc('fibBooking.seating.openEditor') }}
+            </sw-button>
             <sw-button-process
                 variant="primary"
                 :is-loading="isSaving"

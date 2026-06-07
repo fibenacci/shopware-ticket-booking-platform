@@ -22,6 +22,8 @@ class BookingSeatEntity extends Entity
 
     protected int $posY = 0;
 
+    protected int $rotation = 0;
+
     protected ?string $category = null;
 
     protected bool $active = true;
@@ -76,6 +78,16 @@ class BookingSeatEntity extends Entity
     public function setPosY(int $posY): void
     {
         $this->posY = $posY;
+    }
+
+    public function getRotation(): int
+    {
+        return $this->rotation;
+    }
+
+    public function setRotation(int $rotation): void
+    {
+        $this->rotation = $rotation;
     }
 
     public function getCategory(): ?string

@@ -137,9 +137,23 @@ class CatalogSeeder
         $rows = max(1, min(26, $seating->int('rows', 5)));
         $seatsPerRow = max(1, $seating->int('seatsPerRow', 8));
 
+        // A free-form layout block turns the plain grid into canvas geometry
+        // (px coordinates, a stage, category bands) — the same shape the 2D
+        // editor produces, so the demo cinema shows off the rich variant.
+        $layout = $seating->sectionOrNull('layout');
+        $canvas = $layout !== null
+            ? ['width' => $layout->int('canvasWidth', 1000), 'height' => $layout->int('canvasHeight', 700)]
+            : null;
+        $spacing = $layout?->int('seatSpacing', 40) ?? 40;
+        $rowSpacing = $layout?->int('rowSpacing', 46) ?? 46;
+        $topOffset = $layout?->int('topOffset', 150) ?? 150;
+        $categoryByRow = $this->categoryByRow($layout);
+
         $payload = [];
         for ($row = 0; $row < $rows; ++$row) {
             $rowLabel = chr(ord('A') + $row);
+            $rowWidth = ($seatsPerRow - 1) * $spacing;
+            $startX = $canvas !== null ? (int) (($canvas['width'] - $rowWidth) / 2) : 0;
 
             for ($seat = 1; $seat <= $seatsPerRow; ++$seat) {
                 $payload[] = [
@@ -147,14 +161,103 @@ class CatalogSeeder
                     'resourceId' => $resourceId,
                     'rowLabel' => $rowLabel,
                     'seatLabel' => (string) $seat,
-                    'posX' => $seat,
-                    'posY' => $row + 1,
+                    'posX' => $canvas !== null ? $startX + ($seat - 1) * $spacing : $seat,
+                    'posY' => $canvas !== null ? $topOffset + $row * $rowSpacing : $row + 1,
+                    'category' => $categoryByRow[$rowLabel] ?? null,
                     'active' => true,
                 ];
             }
         }
 
         $this->seatRepository->upsert($payload, $context);
+
+        if ($layout !== null && $canvas !== null) {
+            $this->writeResourceLayout($resourceId, $layout, $canvas, $seatsPerRow, $spacing, $context);
+        }
+    }
+
+    /**
+     * Reuse an existing row's id (id-scheme changes never collide), else a
+     * deterministic stable id from the seed string.
+     */
+    private function reuseOrStableId(
+        mixed $existingId,
+        string $seed,
+    ): string {
+        return is_string($existingId) ? $existingId : SeedIds::stable($seed);
+    }
+
+    /**
+     * Row label → category key, from the layout's category bands.
+     *
+     * @return array<string, string>
+     */
+    private function categoryByRow(?SeedSection $layout): array
+    {
+        if ($layout === null) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($layout->sections('categories') as $category) {
+            foreach ($category->stringList('rows', []) as $rowLabel) {
+                $map[$rowLabel] = $category->string('key');
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Writes the resource's free-form layout JSON (canvas, a stage element,
+     * category palette) — exactly the shape the 2D editor persists.
+     *
+     * @param array{width: int, height: int} $canvas
+     */
+    private function writeResourceLayout(
+        string $resourceId,
+        SeedSection $layout,
+        array $canvas,
+        int $seatsPerRow,
+        int $spacing,
+        Context $context,
+    ): void {
+        $elements = [];
+        if ($layout->bool('stage')) {
+            // Stage spans the seat block (a touch wider) so the room reads
+            // proportionally instead of a wide screen over a narrow block.
+            $blockWidth = ($seatsPerRow - 1) * $spacing + 40;
+            $stageWidth = (int) min($canvas['width'] - 80, $blockWidth + 80);
+
+            $elements[] = [
+                'id' => 'stage',
+                'type' => 'stage',
+                'x' => (int) (($canvas['width'] - $stageWidth) / 2),
+                'y' => 30,
+                'width' => $stageWidth,
+                'height' => 48,
+                'rotation' => 0,
+                'label' => $layout->string('stageLabel', 'SCREEN'),
+                'color' => null,
+            ];
+        }
+
+        $categories = array_map(static fn (SeedSection $category): array => [
+            'key' => $category->string('key'),
+            'name' => $category->string('name'),
+            'color' => $category->has('color') ? $category->string('color') : null,
+        ], $layout->sections('categories'));
+
+        $this->resourceRepository->upsert([
+            [
+                'id' => $resourceId,
+                'layout' => [
+                    'canvas' => $canvas,
+                    'elements' => $elements,
+                    'categories' => $categories,
+                ],
+            ],
+        ], $context);
     }
 
     /**
@@ -179,13 +282,13 @@ class CatalogSeeder
             (new Criteria())->addFilter(new EqualsFilter('productNumber', $productNumber)),
             $context,
         )->firstId();
-        $productId = is_string($existingProductId) ? $existingProductId : SeedIds::stable('product:' . $productNumber);
+        $productId = $this->reuseOrStableId($existingProductId, 'product:' . $productNumber);
 
         $existingConfigId = $this->productConfigRepository->searchIds(
             (new Criteria())->addFilter(new EqualsFilter('productId', $productId)),
             $context,
         )->firstId();
-        $configId = is_string($existingConfigId) ? $existingConfigId : SeedIds::stable('product-config:' . $productNumber);
+        $configId = $this->reuseOrStableId($existingConfigId, 'product-config:' . $productNumber);
 
         $payload = [
             'id' => $productId,
