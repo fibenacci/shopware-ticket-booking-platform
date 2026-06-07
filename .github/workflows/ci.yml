@@ -6,6 +6,9 @@ on:
         branches:
             - trunk
             - main
+        tags:
+            - 'v*'
+            - 'scanner-v*'
     workflow_dispatch:
 
 concurrency:
@@ -106,6 +109,17 @@ jobs:
                         "Admin extension tests=${{ steps.admin_tests.outcome }}" \
                         "Plugin JS syntax=${{ steps.node_syntax.outcome }}"
 
+    mobile-test:
+        name: Mobile scanner — analyze + test
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            -   uses: actions/checkout@v6
+            -   uses: subosito/flutter-action@v2
+                with:
+                    channel: stable
+            -   run: .github/scripts/test-mobile.sh
+
     composer-audit:
         name: Composer Audit
         runs-on: ubuntu-latest
@@ -196,11 +210,11 @@ jobs:
 
     quality-gate:
         name: Quality Gate
-        needs: [quality, lint, shopware-validate]
+        needs: [quality, lint, shopware-validate, mobile-test]
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            -   run: echo "✅ static quality + JS/TS lint + shopware-validate passed."
+            -   run: echo "✅ static quality + JS/TS lint + shopware-validate + mobile passed."
 
     tests:
         name: PHPUnit + Playwright
@@ -361,3 +375,139 @@ jobs:
                         "quality-gate (quality + lint + shopware-validate)=${{ needs.quality-gate.result }}" \
                         "security-gate (npm-audit + composer-audit + codeql)=${{ needs.security-gate.result }}" \
                         "tests=${{ needs.tests.result }}"
+
+    build-docker:
+        needs: [report-ci]
+        if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/trunk' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+        env:
+            IMAGE: ghcr.io/${{ github.repository_owner }}/fib-booking-system
+            SCANNER_IMAGE: ghcr.io/${{ github.repository_owner }}/fib-booking-scanner
+        steps:
+            -   uses: actions/checkout@v6
+            -   uses: docker/login-action@v4
+                with:
+                    registry: ghcr.io
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
+            -   uses: docker/setup-buildx-action@v4
+            -   id: meta
+                uses: docker/metadata-action@v6
+                with:
+                    images: ${{ env.IMAGE }}
+                    tags: |
+                        type=ref,event=tag
+                        type=raw,value=latest,enable={{is_default_branch}}
+                        type=sha
+            # Build locally first so Trivy gates BEFORE anything reaches GHCR.
+            -   name: Build shop image (local, for scan)
+                uses: docker/build-push-action@v7
+                with:
+                    context: .
+                    file: Dockerfile
+                    push: false
+                    load: true
+                    tags: ${{ env.IMAGE }}:scan
+                    cache-from: type=gha
+                    cache-to: type=gha,mode=max
+            -   name: Trivy scan (shop image)
+                uses: aquasecurity/trivy-action@v0.36.0
+                with:
+                    image-ref: ${{ env.IMAGE }}:scan
+                    severity: CRITICAL,HIGH
+                    exit-code: '1'
+                    ignore-unfixed: true
+            -   name: Build & push shop image
+                uses: docker/build-push-action@v7
+                with:
+                    context: .
+                    file: Dockerfile
+                    push: true
+                    tags: ${{ steps.meta.outputs.tags }}
+                    labels: ${{ steps.meta.outputs.labels }}
+                    cache-from: type=gha
+                    cache-to: type=gha,mode=max
+            -   id: meta_scanner
+                uses: docker/metadata-action@v6
+                with:
+                    images: ${{ env.SCANNER_IMAGE }}
+                    tags: |
+                        type=ref,event=tag
+                        type=raw,value=latest,enable={{is_default_branch}}
+                        type=sha
+            -   name: Build scanner image (local, for scan)
+                uses: docker/build-push-action@v7
+                with:
+                    context: custom/static-plugins/FibBookingSystem/apps/scanner
+                    push: false
+                    load: true
+                    tags: ${{ env.SCANNER_IMAGE }}:scan
+                    cache-from: type=gha,scope=scanner
+                    cache-to: type=gha,mode=max,scope=scanner
+            -   name: Trivy scan (scanner image)
+                uses: aquasecurity/trivy-action@v0.36.0
+                with:
+                    image-ref: ${{ env.SCANNER_IMAGE }}:scan
+                    severity: CRITICAL,HIGH
+                    exit-code: '1'
+                    ignore-unfixed: true
+            -   name: Build & push scanner image
+                uses: docker/build-push-action@v7
+                with:
+                    context: custom/static-plugins/FibBookingSystem/apps/scanner
+                    push: true
+                    tags: ${{ steps.meta_scanner.outputs.tags }}
+                    labels: ${{ steps.meta_scanner.outputs.labels }}
+                    cache-from: type=gha,scope=scanner
+                    cache-to: type=gha,mode=max,scope=scanner
+
+    # Mobile scanner artifacts: scanner-v* tags only (macOS runner for iOS).
+    build-mobile-android:
+        needs: [report-ci]
+        if: ${{ startsWith(github.ref, 'refs/tags/scanner-v') }}
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v6
+            -   uses: subosito/flutter-action@v2
+                with:
+                    channel: stable
+            -   run: .github/scripts/build-android.sh "${{ github.ref_name }}"
+            -   uses: actions/upload-artifact@v4
+                with:
+                    name: scanner-android
+                    path: custom/static-plugins/FibBookingSystem/apps/scanner-mobile/build/scanner-*.apk
+                    if-no-files-found: error
+
+    build-mobile-ios:
+        needs: [report-ci]
+        if: ${{ startsWith(github.ref, 'refs/tags/scanner-v') }}
+        runs-on: macos-latest
+        steps:
+            -   uses: actions/checkout@v6
+            -   uses: subosito/flutter-action@v2
+                with:
+                    channel: stable
+            -   run: .github/scripts/build-ios.sh "${{ github.ref_name }}"
+            -   uses: actions/upload-artifact@v4
+                with:
+                    name: scanner-ios
+                    path: custom/static-plugins/FibBookingSystem/apps/scanner-mobile/build/ipa/scanner-*-unsigned.ipa
+                    if-no-files-found: error
+
+    release-mobile:
+        needs: [build-mobile-android, build-mobile-ios]
+        if: ${{ startsWith(github.ref, 'refs/tags/scanner-v') }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            -   uses: actions/checkout@v6
+            -   uses: actions/download-artifact@v4
+                with:
+                    path: dist
+            -   env:
+                    GH_TOKEN: ${{ github.token }}
+                run: .github/scripts/publish-mobile-release.sh "${{ github.ref_name }}" dist/scanner-android/*.apk dist/scanner-ios/*.ipa
