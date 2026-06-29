@@ -475,7 +475,7 @@ jobs:
                 with:
                     channel: stable
             -   run: .github/scripts/build-android.sh "${{ github.ref_name }}"
-            -   uses: actions/upload-artifact@v4
+            -   uses: actions/upload-artifact@v7
                 with:
                     name: scanner-android
                     path: custom/static-plugins/FibBookingSystem/apps/scanner-mobile/build/scanner-*.apk
@@ -491,7 +491,7 @@ jobs:
                 with:
                     channel: stable
             -   run: .github/scripts/build-ios.sh "${{ github.ref_name }}"
-            -   uses: actions/upload-artifact@v4
+            -   uses: actions/upload-artifact@v7
                 with:
                     name: scanner-ios
                     path: custom/static-plugins/FibBookingSystem/apps/scanner-mobile/build/ipa/scanner-*-unsigned.ipa
