@@ -38,7 +38,7 @@ jobs:
                     extensions: ${{ env.PHP_EXTENSIONS }}
                     tools: composer:v2
                     coverage: none
-            -   uses: actions/cache@v5
+            -   uses: actions/cache@v6
                 with:
                     path: ~/.composer/cache
                     key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
@@ -234,7 +234,7 @@ jobs:
                     cache-dependency-path: |
                         custom/static-plugins/FibBookingSystem/package-lock.json
 
-            -   uses: actions/cache@v5
+            -   uses: actions/cache@v6
                 with:
                     path: ~/.cache/ms-playwright
                     key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('custom/static-plugins/FibBookingSystem/package-lock.json') }}
